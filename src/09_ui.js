@@ -6,14 +6,14 @@ const QUALITY = [
   { name: 'E lartë', pr: 1.75, terrainStep: 10, density: 1, rows: 3, trees: 1, particles: 900, neon: true, beams: true, weather: 1, trailSeg: 28, fogMul: 1.1, msaa: 4, shadows: 2048, bloom: 0.5 },
 ];
 const SKEY = 'kafshimAsfalti.v1';
-const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {}, mode: 'race', ptsMin: 2, pbest: {} };
+const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {}, mode: 'race', ptsMin: 2, pbest: {}, driver: 0 };
 function loadSettings() {
   let s = {}; try { s = JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { }
   // first run on a weak phone starts on the lighter graphics tier
   if (s.quality == null) SET.quality = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 ? 1 : 2;
   Object.assign(SET, s); SET.best = SET.best || {}; SET.seen = SET.seen || {}; SET.pbest = SET.pbest || {};
   if (!(SET.city >= 0 && SET.city < CITIES.length)) SET.city = 0; if (!(SET.car >= 0 && SET.car < CARS.length)) SET.car = 0;
-  if (SET.mode !== 'points') SET.mode = 'race'; if (SET.ptsMin !== 3) SET.ptsMin = 2;
+  if (SET.mode !== 'points') SET.mode = 'race'; if (SET.ptsMin !== 3) SET.ptsMin = 2; if (!(SET.driver >= 0 && SET.driver < DRIVERS.length)) SET.driver = 0;
 }
 function saveSettings() { try { localStorage.setItem(SKEY, JSON.stringify(SET)); } catch (e) { } }
 const Q = () => QUALITY[clamp(SET.quality | 0, 0, 2)];
@@ -127,7 +127,8 @@ const UI = {
       const pts = SET.mode === 'points';
       [...ms.children].forEach((b, i) => b.setAttribute('aria-pressed', String(MODES[i].mode === SET.mode && (!MODES[i].min || MODES[i].min === SET.ptsMin))));
       $('citygrid').hidden = pts; $('arena-info').hidden = !pts;
-      if (pts) $('arena-info').innerHTML = `<div class="nm">${ARENA.name}</div><p>Pa garë dhe pa xhiro. Goditi makinat e tjera: sa më fort përplasesh, aq më shumë pikë. Goditjet e shpejta radhazi shumëzojnë pikët deri ×5, dhe goditja që e bën një makinë copë jep bonus. Kur të mbarojë koha, fiton ai me më shumë pikë.</p><p class="muted" style="margin:10px 0 0">Kohëzgjatja: ${SET.ptsMin} minuta.</p>`;
+      if (pts) $('arena-info').innerHTML = `<div class="eyebrow">Pikë · ${SET.ptsMin} minuta</div><div class="nm">${ARENA.name}</div><p>${ARENA.blurb}</p>`
+        + `<div class="rules"><div><b>Godit</b>Sa më shpejt përplasesh, aq më shumë pikë.</div><div><b>×5</b>Goditjet radhazi shumëzojnë pikët.</div><div><b>KO +300</b>Kush e bën copë një makinë merr bonus.</div></div>`;
     };
     // cars + paints
     const cl = $('carlist');
@@ -139,8 +140,16 @@ const UI = {
       b.onclick = () => { SET.car = i; saveSettings(); [...cl.children].forEach((x, j) => x.setAttribute('aria-pressed', String(i === j))); AUD.play('ui'); garageCar(); };
       cl.appendChild(b);
     });
-    const pp = $('paints');
-    PAINTS.forEach((p) => { const b = document.createElement('button'); b.style.background = p; b.setAttribute('aria-label', 'Ngjyra ' + p); b.setAttribute('aria-pressed', String(SET.paint === p)); b.onclick = () => { SET.paint = p; saveSettings(); [...pp.children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); AUD.play('ui'); garageCar(); }; pp.appendChild(b); });
+    // drivers: you are one of the five; the other four are your rivals. Each has its own colour on track.
+    const dl = $('drivers');
+    const paintDrv = () => { [...dl.children].forEach((x, j) => x.setAttribute('aria-pressed', String(j === SET.driver))); $('drv-tag').textContent = DRIVERS[SET.driver].tag; };
+    DRIVERS.forEach((d, i) => {
+      const b = document.createElement('button'); b.className = 'drv'; b.style.setProperty('--c', d.col); b.setAttribute('aria-label', 'Shoferi ' + d.name);
+      b.innerHTML = `<i>${d.name[0]}</i><span>${d.name}</span>`;
+      b.onclick = () => { SET.driver = i; saveSettings(); paintDrv(); AUD.play('ui'); garageCar(); };
+      dl.appendChild(b);
+    });
+    paintDrv();
     // help legend
     const lg = $('legend');
     PW_KEYS.forEach((k) => { const d = document.createElement('div'); d.innerHTML = `<img alt="" src="${TEX.icons[k].url}"><b style="color:${PW[k].col}">${PW[k].name}</b><span>${PW[k].desc}</span>`; lg.appendChild(d); });
@@ -186,13 +195,13 @@ const UI = {
   buildSettings() {
     const list = this.$('setlist'); list.innerHTML = '';
     const tog = (key, label, note, after) => {
-      const row = document.createElement('div'); row.className = 'setrow';
+      const row = document.createElement('div'); row.className = 'setrow glass';
       row.innerHTML = `<label for="set-${key}">${label}<small>${note}</small></label><div class="seg"><button id="set-${key}" aria-pressed="${SET[key]}">${SET[key] ? 'Po' : 'Jo'}</button></div>`;
       const b = row.querySelector('button'); b.onclick = () => { SET[key] = !SET[key]; b.textContent = SET[key] ? 'Po' : 'Jo'; b.setAttribute('aria-pressed', String(SET[key])); saveSettings(); after && after(); AUD.play('ui'); };
       list.appendChild(row);
     };
     const choice = (key, label, note, opts, after) => {
-      const row = document.createElement('div'); row.className = 'setrow';
+      const row = document.createElement('div'); row.className = 'setrow glass';
       row.innerHTML = `<label>${label}<small>${note}</small></label><div class="seg"></div>`;
       const sg = row.querySelector('.seg');
       opts.forEach(([v, t]) => { const b = document.createElement('button'); b.textContent = t; b.setAttribute('aria-pressed', String(SET[key] === v)); b.onclick = () => { SET[key] = v; [...sg.children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); saveSettings(); after && after(); AUD.play('ui'); }; sg.appendChild(b); });
@@ -232,7 +241,24 @@ const UI = {
   flash(col, a) { const f = this.$('fx-flash'); f.style.setProperty('--fc', col); f.style.transition = 'none'; f.style.opacity = a || 0.8; void f.offsetWidth; f.style.transition = 'opacity .45s'; f.style.opacity = 0; },
   last: {},
   set(id, v, html) { if (this.last[id] === v) return; this.last[id] = v; const e = this.$(id); if (html) e.innerHTML = v; else e.textContent = v; },
+  // speed fills the outer 270° arc, health the inner one
+  gauge(p) {
+    const sp = Math.round(Math.abs(p.v) * 3.6), vf = clamp(Math.abs(p.v) / (p.def.vmax * (G.arena ? ARENA_SPEED : 1) * 1.05), 0, 1);
+    this.set('h-speed', `${sp}<small>KM/H</small>`, true);
+    const a = Math.round(vf * 245); if (this.last.arc !== a) { this.last.arc = a; this.$('h-arc').setAttribute('stroke-dasharray', `${a} 400`); }
+    const hp = clamp(p.health / p.maxHp, 0, 1), hk = Math.round(hp * 50);
+    if (this.last.hp !== hk) {
+      this.last.hp = hk; const e = this.$('h-hp');
+      e.setAttribute('stroke-dasharray', `${Math.round(hp * 202)} 400`); e.setAttribute('stroke', hp > 0.5 ? '#2bff88' : hp > 0.25 ? '#ffc21a' : '#ff3b4e');
+    }
+    if (this.last.me !== p.name) { this.last.me = p.name; const m = this.$('h-me'); m.style.setProperty('--c', p.color); m.querySelector('span').textContent = p.name; }
+  },
+  pop(text, combo) {
+    const e = this.$('h-pop'); e.innerHTML = `<span class="grad">${text}</span>${combo > 1 ? `<em>×${combo}</em>` : ''}`;
+    e.classList.remove('go'); void e.offsetWidth; e.classList.add('go');
+  },
   updateHud(race, p) {
+    this.gauge(p);
     if (race.points) {
       // points mode: score up front, combo and rank on the lap line, time left on the clock, hits in the fans slot
       this.set('h-pos', `${p.score}<small>PIKË</small>`, true);
@@ -240,19 +266,13 @@ const UI = {
       const left = Math.max(0, race.timeLimit - race.time), m = Math.floor(left / 60), s = Math.floor(left % 60);
       this.set('h-time', `${m}:${String(s).padStart(2, '0')}`);
       this.set('h-fans', `${p.hitsN}<small>GODITJE</small>`, true);
-      const hp = clamp(p.health / p.maxHp, 0, 1), hk = Math.round(hp * 50);
-      if (this.last.hp !== hk) { this.last.hp = hk; const b = this.$('h-health').firstChild; b.style.width = (hp * 100) + '%'; b.style.background = hp > 0.5 ? 'var(--good)' : hp > 0.25 ? 'var(--warn)' : 'var(--bad)'; }
-      this.set('h-speed', `${Math.round(Math.abs(p.v) * 3.6)}<small>KM/H</small>`, true);
       return;
     }
     this.set('h-pos', `${p.place}<small>/${race.cars.length}</small>`, true);
     const lap = clamp(p.lap + 1, 1, race.laps);
     this.set('h-lap', p.finished ? 'MBËRRITE' : `XHIRO ${lap}/${race.laps}`);
     this.set('h-time', fmtTime(p.finished ? p.finishTime : race.time));
-    this.set('h-speed', `${Math.round(Math.abs(p.v) * 3.6)}<small>KM/H</small>`, true);
     this.set('h-fans', `${p.fans}<small>TIFOZË</small>`, true);
-    const hp = clamp(p.health / p.maxHp, 0, 1), hk = Math.round(hp * 50);
-    if (this.last.hp !== hk) { this.last.hp = hk; const b = this.$('h-health').firstChild; b.style.width = (hp * 100) + '%'; b.style.background = hp > 0.5 ? 'var(--good)' : hp > 0.25 ? 'var(--warn)' : 'var(--bad)'; }
     const st = p.slots.map(s => s.type + s.ammo).join(',');
     if (st !== this.slotState) {
       this.slotState = st;

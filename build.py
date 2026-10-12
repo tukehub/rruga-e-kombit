@@ -9,8 +9,8 @@ import os, shutil, sys
 R = os.path.dirname(os.path.abspath(__file__))
 S, W = os.path.join(R, 'src'), os.path.join(R, 'www')
 NM = os.path.join(R, 'node_modules')
-ORDER = ['00_util.js', '01_data.js', '02_track.js', '03_sim.js', '04_tex.js', '045_gfx.js', '05_world.js',
-         '06_cars.js', '07_fx.js', '08_audio.js', '09_ui.js', '10_main.js']
+ORDER = ['00_util.js', '01_data.js', '02_track.js', '03_sim.js', '035_arena.js', '04_tex.js', '045_gfx.js', '05_world.js',
+         '06_cars.js', '07_fx.js', '08_audio.js', '09_ui.js', '095_arena_view.js', '10_main.js']
 EXTRAS = ['shaders/CopyShader.js', 'shaders/LuminosityHighPassShader.js',
           'postprocessing/EffectComposer.js', 'postprocessing/UnrealBloomPass.js']
 FONTS = [('Big Shoulders Display', 'big-shoulders-display', [('700', 'normal'), ('900', 'normal')]),
@@ -44,7 +44,7 @@ def main():
     i = shell_local.index('</style>') + len('</style>')
     head = ('<!doctype html>\n<html lang="sq">\n<head>\n<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">\n'
-            '<meta name="theme-color" content="#0d0a10">\n<link rel="icon" href="icon-192.png">\n<link rel="stylesheet" href="fonts.css">\n'
+            '<meta name="theme-color" content="#06060b">\n<link rel="icon" href="icon-192.png">\n<link rel="stylesheet" href="fonts.css">\n'
             '<style>[hidden]{display:none!important}body{margin:0}</style>\n')
     page = (head + shell_local[:i] + '\n</head>\n<body>\n' + shell_local[i:] +
             '\n<script src="three.min.js"></script>\n<script src="three-post.js"></script>\n<script>\n' + js + '\n</script>\n</body>\n</html>\n')

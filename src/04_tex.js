@@ -240,9 +240,18 @@ function iconCanvas(type, size) {
   size = size || 128; const c = mkCanvas(size, size), g = c.getContext('2d'), s = size / 128;
   const col = PW[type].col;
   g.scale(s, s);
-  const gr = g.createRadialGradient(64, 64, 8, 64, 64, 62); gr.addColorStop(0, col); gr.addColorStop(0.62, col); gr.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = gr; g.beginPath(); g.arc(64, 64, 62, 0, 7); g.fill();
-  g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(64, 64, 42, 0, 7); g.fill();
+  const hex = (r) => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; g[i ? 'lineTo' : 'moveTo'](64 + Math.cos(a) * r, 64 + Math.sin(a) * r); } g.closePath(); };
+  // outer glow, metal rim in the power-up colour, smoked-glass face, inner light, glossy highlight
+  g.shadowColor = col; g.shadowBlur = 14; hex(58); g.fillStyle = col; g.fill(); g.shadowBlur = 0;
+  const rim = g.createLinearGradient(0, 6, 0, 122); rim.addColorStop(0, '#ffffff'); rim.addColorStop(0.35, col); rim.addColorStop(1, '#0c0a12');
+  hex(58); g.fillStyle = rim; g.fill();
+  const face = g.createRadialGradient(64, 58, 4, 64, 64, 54); face.addColorStop(0, col); face.addColorStop(0.55, '#1a1424'); face.addColorStop(1, '#07060b');
+  hex(51); g.fillStyle = face; g.fill();
+  g.globalAlpha = 0.85; const inner = g.createRadialGradient(64, 66, 2, 64, 66, 40); inner.addColorStop(0, col); inner.addColorStop(1, 'rgba(0,0,0,0)'); hex(51); g.fillStyle = inner; g.fill(); g.globalAlpha = 1;
+  g.save(); hex(51); g.clip(); const gl = g.createLinearGradient(0, 12, 0, 64); gl.addColorStop(0, 'rgba(255,255,255,0.35)'); gl.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gl; g.beginPath(); g.ellipse(64, 20, 62, 40, 0, 0, 7); g.fill(); g.restore();
+  g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,0.55)'; hex(51); g.stroke();
+  g.translate(64, 64); g.scale(0.82, 0.82); g.translate(-64, -64);
+  g.shadowColor = col; g.shadowBlur = 10;
   g.fillStyle = '#fff'; g.strokeStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
   const poly = (p) => { g.beginPath(); p.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]))); g.closePath(); g.fill(); };
   switch (type) {

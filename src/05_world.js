@@ -116,6 +116,7 @@ class World {
     this.buildRoad();
     this.buildStart();
     this.buildLandmarks();
+    this.buildHero();
     this.buildBuildings();
     this.buildProps();
     this.buildMountains();
@@ -647,6 +648,34 @@ class World {
         const gy = this.groundAt(lm.x, lm.z), sz = lm.type === 'castle' ? 90 : lm.type === 'pyramid' ? 70 : 34;
         const sp = new THREE.Sprite(fm); sp.scale.set(sz, sz * 0.7, 1); sp.position.set(lm.x, gy + sz * 0.22, lm.z); this.scene.add(sp);
       }
+    }
+  }
+  // the city's signature landmark, built big and set on the skyline where the road faces it most
+  buildHero() {
+    const h = this.city.hero, T = this.track; if (!h || !this['lm_' + h.type]) return;
+    const b = T.bbox, dist = b.r + 240;
+    let best = null, bs = -1;
+    for (let k = 0; k < 32; k++) {
+      const a = k / 32 * Math.PI * 2, x = b.cx + Math.cos(a) * dist, z = b.cz + Math.sin(a) * dist;
+      if (this.isWater(x, z) || T.distTo(x, z) < 190) continue;
+      let sc = 0;
+      for (let i = 0; i < T.M; i += 3) { const dx = x - T.X[i], dz = z - T.Z[i], l = Math.hypot(dx, dz) || 1; if ((-Math.sin(T.HD[i]) * dx + Math.cos(T.HD[i]) * dz) / l > 0.8) sc++; }
+      if (sc > bs) { bs = sc; best = { x, z }; }
+    }
+    if (!best) return;
+    const grp = new THREE.Group(), g = new GB(false), proxy = Object.create(this);
+    proxy.scene = grp; proxy.groundAt = () => 0;
+    this['lm_' + h.type].call(proxy, fr(0, 0, 0, Math.atan2(b.cx - best.x, b.cz - best.z)), Object.assign({}, h), g);
+    const dark = this.env.win >= 0.45;
+    if (g.count) { const m = new THREE.Mesh(g.build(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, emissive: dark ? 0x7a5c40 : 0x000000 })); grp.add(m); }
+    // skyline size: scaled so it stands about h.height metres tall, well above any block in town
+    const bb = new THREE.Box3().setFromObject(grp), H0 = Math.max(1, bb.max.y - bb.min.y), k = h.height / H0;
+    grp.scale.setScalar(k); grp.position.set(best.x, this.groundAt(best.x, best.z) - 0.5, best.z);
+    this.scene.add(grp); this.hero = grp;
+    this.occCircle(best.x, best.z, 12 * k);
+    if (dark) { // floodlit at night
+      const sp = new THREE.Sprite(glowSprite('#ffc890', 1.1)); const gs = h.height * 1.3; sp.scale.set(gs, gs * 0.8, 1);
+      sp.position.set(best.x, grp.position.y + gs * 0.3, best.z); this.scene.add(sp);
     }
   }
   texMesh(geo, tex, F, lx, ly, lz, rotY, o) {

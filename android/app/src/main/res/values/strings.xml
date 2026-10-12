@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Kafshim asfalti</string>
-    <string name="title_activity_main">Kafshim asfalti</string>
+    <string name="app_name">Vortex</string>
+    <string name="title_activity_main">Vortex</string>
     <string name="package_name">al.tukehub.rruga</string>
     <string name="custom_url_scheme">al.tukehub.rruga</string>
 </resources>

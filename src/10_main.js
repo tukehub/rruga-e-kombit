@@ -45,21 +45,21 @@ function applyQuality() { G.pr = Math.min(window.devicePixelRatio || 1, Q().pr);
 
 // ---------- garage (menu backdrop) ----------
 function initGarage() {
-  const sc = new THREE.Scene(); sc.background = new THREE.Color('#0d0a10'); sc.fog = new THREE.Fog('#0d0a10', 16, 46);
+  const sc = new THREE.Scene(); sc.background = new THREE.Color('#06060b'); sc.fog = new THREE.Fog('#06060b', 16, 46);
   const fl = new THREE.CircleGeometry(40, 48); fl.rotateX(-Math.PI / 2);
   const floor = new THREE.Mesh(fl, new THREE.MeshStandardMaterial({ color: 0x141016, roughness: 0.62, metalness: 0.2, envMapIntensity: 0.2 })); floor.receiveShadow = true; sc.add(floor);
   const grid = new THREE.GridHelper(80, 40, 0x3c2b36, 0x221a22); grid.position.y = 0.01; sc.add(grid);
   const rg = new THREE.RingGeometry(4.2, 4.4, 96); rg.rotateX(-Math.PI / 2);
-  const ring = new THREE.Mesh(rg, glowMat('#e41e20', 4)); ring.position.y = 0.03; sc.add(ring);
+  const ring = new THREE.Mesh(rg, glowMat('#8a5cff', 4)); ring.position.y = 0.03; sc.add(ring);
   // neon light bars overhead, like a showroom
   const bar = new THREE.BoxGeometry(0.12, 0.12, 9);
-  for (const x of [-3.2, 0, 3.2]) { const b = new THREE.Mesh(bar, glowMat(x ? '#ffffff' : '#e41e20', x ? 3 : 4)); b.position.set(x, 6.5, 0); sc.add(b); }
+  for (const x of [-3.2, 0, 3.2]) { const b = new THREE.Mesh(bar, glowMat(x ? '#2de2ff' : '#ff2d6f', x ? 3 : 4)); b.position.set(x, 6.5, 0); sc.add(b); }
   sc.add(new THREE.HemisphereLight(0x9c8aa8, 0x1a1012, 0.5));
   const d1 = new THREE.DirectionalLight(0xfff1e0, 1.4); d1.position.set(5, 9, 6); d1.castShadow = true; d1.shadow.mapSize.set(1024, 1024);
   Object.assign(d1.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 }); d1.shadow.camera.updateProjectionMatrix(); d1.shadow.bias = -0.0008; sc.add(d1);
-  const d2 = new THREE.DirectionalLight(0xff3040, 0.55); d2.position.set(-6, 3, -8); sc.add(d2);
+  const d2 = new THREE.DirectionalLight(0xff2d6f, 0.6); d2.position.set(-6, 3, -8); sc.add(d2);
   const d3 = new THREE.DirectionalLight(0xb8c8ff, 0.6); d3.position.set(-7, 5, 6); sc.add(d3);
-  const envRT = makeEnvMap(renderer, ENV.night, '#e41e20'); sc.environment = envRT.texture;
+  const envRT = makeEnvMap(renderer, ENV.night, '#8a5cff'); sc.environment = envRT.texture;
   const ec = mkCanvas(256, 256), eg = ec.getContext('2d'); drawEagle(eg, 128, 132, 230, '#ffffff');
   const et = new THREE.CanvasTexture(ec);
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(26, 26), new THREE.MeshBasicMaterial({ map: et, color: 0x5a1216, transparent: true, depthWrite: false, fog: false }));
@@ -71,7 +71,7 @@ function initGarage() {
 function garageCar() {
   const g = G.garage; if (!g) return;
   if (g.view) g.scene.remove(g.view.root);
-  const car = new Car(0, CARS[SET.car], 'TI', true, SET.paint);
+  const d = DRIVERS[SET.driver] || DRIVERS[0], car = new Car(0, CARS[SET.car], d.name, true, d.col);
   g.view = new CarView(car, g.scene, {}); g.view.root.traverse(o => { if (o.isMesh && o !== g.view.shadow) o.castShadow = true; });
 }
 function renderGarage(dt) {
@@ -117,17 +117,18 @@ function disposeRace() {
     }
   });
   if (G.world.envRT) G.world.envRT.dispose();
-  G.world = G.race = G.track = G.player = null; G.views = []; G.ent.clear(); G.trans = []; G.fx = null; G.weather = null; G.trails = null;
+  G.world = G.race = G.track = G.player = null; G.arena = false; G.camH = null; G.views = []; G.ent.clear(); G.trans = []; G.fx = null; G.weather = null; G.trails = null;
   renderer.renderLists.dispose();
 }
 function buildRace(city) {
+  if (SET.mode === 'points') return buildArena();
   disposeRace(); lazyTextures();
   const q = Q(), env = ENV[city.env];
   const track = new Track(city);
   const world = new World(track, q, renderer);
-  const race = new Race(track, { playerDef: CARS[SET.car], playerColor: SET.paint, diff: SET.diff, seed: (Math.random() * 1e9) | 0, wet: !!env.wet, assist: SET.assist, laps: city.laps, mode: SET.mode === 'points' ? 'points' : 'race', time: SET.ptsMin * 60 });
+  const race = new Race(track, { playerDef: CARS[SET.car], driver: SET.driver, diff: SET.diff, seed: (Math.random() * 1e9) | 0, wet: !!env.wet, assist: SET.assist, laps: city.laps });
   const scene = world.scene;
-  UI.$('hud').classList.toggle('pts', race.points);
+  UI.$('hud').classList.remove('pts');
   G.track = track; G.world = world; G.race = race; G.player = race.player; G.city = city; G.env = env;
   G.views = race.cars.map(c => new CarView(c, scene, { beams: q.beams && env.win >= 0.45, tags: true }));
   G.trails = new Trails(scene, race.cars.length, q.trailSeg); race.cars.forEach((c, i) => G.trails.setColor(i, c.color)); G.trailI = [];
@@ -138,17 +139,25 @@ function buildRace(city) {
     ring: (() => { const g = new THREE.RingGeometry(1.25, 1.7, 24); g.rotateX(-Math.PI / 2); return g; })(),
     pick: {}, pring: {},
     gm: {}, glow(col) { return this.gm[col] || (this.gm[col] = glowSprite(col, 2.4)); },
-    pillar: (() => { const g = new THREE.CylinderGeometry(1.15, 1.15, 9, 28, 1, true); g.translate(0, 4.5, 0); return g; })(), ppm: {},
+    pillar: (() => { const g = new THREE.CylinderGeometry(0.85, 1.25, 11, 6, 1, true); g.rotateY(Math.PI / 6); g.translate(0, 5.5, 0); return g; })(), ppm: {},
+    hexPad: (() => { const g = new THREE.RingGeometry(1.45, 1.95, 6); g.rotateX(-Math.PI / 2); g.rotateY(Math.PI / 6); return g; })(),
+    hexA: new THREE.TorusGeometry(1.5, 0.065, 6, 6), hexB: new THREE.TorusGeometry(1.12, 0.045, 6, 6), pfm: {},
   };
   G.picks = new Map();
+  // pick-ups: a holographic badge inside two spinning hex frames, over a lit hex pad with a light column
   for (const p of race.pickups) {
-    const m = G.res.pick[p.type] || (G.res.pick[p.type] = linMat(Object.assign(new THREE.SpriteMaterial({ map: TEX.icons[p.type].tex, transparent: true, depthWrite: false, toneMapped: false }), { userData: { hdr: 1.3 } })));
-    const rm = G.res.pring[p.type] || (G.res.pring[p.type] = linMat(glowMat(PW[p.type].col, 3, { transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })));
-    const pm = G.res.ppm[p.type] || (G.res.ppm[p.type] = linMat(glowMat(PW[p.type].col, 1.1, { map: TEX.vgrad, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })));
-    const sp = new THREE.Sprite(m); sp.scale.set(2.9, 2.9, 1); const ring = new THREE.Mesh(G.res.ring, rm), pil = new THREE.Mesh(G.res.pillar, pm);
-    track.pos(p.s, p.d, tmpA); sp.position.set(tmpA.x, tmpA.y + 1.6, tmpA.z); ring.position.set(tmpA.x, tmpA.y + 0.12, tmpA.z); pil.position.set(tmpA.x, tmpA.y + 0.1, tmpA.z);
-    scene.add(sp); scene.add(ring); scene.add(pil);
-    G.picks.set(p.id, { sp, ring, pil, y: tmpA.y, ph: Math.random() * 6, pop: 1 });
+    const col = PW[p.type].col;
+    const m = G.res.pick[p.type] || (G.res.pick[p.type] = linMat(Object.assign(new THREE.SpriteMaterial({ map: TEX.icons[p.type].tex, transparent: true, depthWrite: false, toneMapped: false }), { userData: { hdr: 1.25 } })));
+    const rm = G.res.pring[p.type] || (G.res.pring[p.type] = linMat(glowMat(col, 3, { transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })));
+    const pm = G.res.ppm[p.type] || (G.res.ppm[p.type] = linMat(glowMat(col, 0.9, { map: TEX.vgrad, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })));
+    const fm = G.res.pfm[p.type] || (G.res.pfm[p.type] = linMat(glowMat(col, 3.4)));
+    const grp = new THREE.Group(), sp = new THREE.Sprite(m); sp.scale.set(2.3, 2.3, 1); sp.position.y = 1.75;
+    const f1 = new THREE.Mesh(G.res.hexA, fm), f2 = new THREE.Mesh(G.res.hexB, fm); f1.position.y = f2.position.y = 1.75;
+    const pad = new THREE.Mesh(G.res.hexPad, rm), halo = new THREE.Sprite(G.res.glow(col)); pad.position.y = 0.12; halo.scale.set(5.5, 5.5, 1); halo.position.y = 1.75;
+    const pil = new THREE.Mesh(G.res.pillar, pm); pil.position.y = 0.1;
+    grp.add(halo, sp, f1, f2, pad, pil);
+    track.pos(p.s, p.d, tmpA); grp.position.copy(tmpA); scene.add(grp);
+    G.picks.set(p.id, { grp, sp, f1, f2, pil, ph: Math.random() * 6, pop: 1 });
   }
   linearize(scene); G.post.setLook(env); G.lookFor = 'race'; renderer.toneMappingExposure = env.exp || 1;
   G.acc = 0; G.shake = 0; G.fov = 66; G.camLook = new V3(); G.finT = 0; G.sndT = {};
@@ -175,19 +184,20 @@ function wpos(s, d, out, dy) { G.track.pos(s, d, out); out.y += dy || 0; return 
 function nearVol(s) { const p = G.player; if (!p) return 1; return clamp(1 - Math.abs(G.track.wrapS(s - p.s)) / 220, 0, 1); }
 function limited(key, gap) { const t = G.t; if ((G.sndT[key] || 0) > t) return false; G.sndT[key] = t + gap; return true; }
 function processEvents() {
+  if (G.arena) return arenaEvents();
   const race = G.race, P = G.player, fx = G.fx;
   for (const e of race.events) {
     const c = e.car;
     switch (e.t) {
       case 'pickup': {
-        const v = G.picks.get(e.p.id); if (v) { v.sp.visible = false; v.ring.visible = false; v.pil.visible = false; fx.burst('pickup', v.sp.position.x, v.sp.position.y, v.sp.position.z, { col: PW[e.type].col }); }
+        const v = G.picks.get(e.p.id); if (v) { v.grp.visible = false; fx.burst('pickup', v.grp.position.x, v.grp.position.y + 1.75, v.grp.position.z, { col: PW[e.type].col }); fx.burst('ring', v.grp.position.x, v.grp.position.y, v.grp.position.z, { col: PW[e.type].col }); }
         if (c === P) {
           AUD.play('pickup'); UI.feed('+ ' + PW[e.type].name, PW[e.type].col, 1.6);
           if (!SET.seen[e.type]) { SET.seen[e.type] = 1; saveSettings(); UI.feed(PW[e.type].desc, PW[e.type].col, 4.5); }
         }
         break;
       }
-      case 'pickupBack': { const v = G.picks.get(e.p.id); if (v) { v.sp.visible = true; v.ring.visible = true; v.pil.visible = true; v.pop = 0; } break; }
+      case 'pickupBack': { const v = G.picks.get(e.p.id); if (v) { v.grp.visible = true; v.pop = 0; } break; }
       case 'fire': {
         const vol = nearVol(c.s);
         const snd = { eagle: 'eagle', bolt: 'bolt', barge: 'barge', mine: 'mine', shock: 'shock', nitro: e.back ? 'brake' : 'nitro', shield: 'shield', repair: 'repair' }[e.type];
@@ -198,8 +208,8 @@ function processEvents() {
         wpos(c.s, c.d, tmpA, 0.8); fx.burst('hit', tmpA.x, tmpA.y, tmpA.z, { col: PW[e.kind] ? PW[e.kind].col : '#ffffff' });
         AUD.play('hit', nearVol(c.s));
         const col = PW[e.kind] ? PW[e.kind].col : '#ffffff';
-        if (c === P) { UI.flash(e.kind === 'shock' ? 'rgba(255,224,58,0.8)' : 'rgba(228,30,32,0.85)'); G.shake = Math.max(G.shake, e.kind === 'eagle' ? 1.2 : 0.6); UI.feed(`${e.by ? e.by.name : '?'} → TI`, col); }
-        else if (e.by === P) UI.feed(`TI → ${c.name}  +${FANS[e.kind] || 0}`, col);
+        if (c === P) { UI.flash(e.kind === 'shock' ? 'rgba(255,224,58,0.8)' : 'rgba(228,30,32,0.85)'); G.shake = Math.max(G.shake, e.kind === 'eagle' ? 1.2 : 0.6); UI.feed(`${e.by ? e.by.name : '?'} → ${P.name}`, col); }
+        else if (e.by === P) { UI.feed(`${P.name} → ${c.name}  +${FANS[e.kind] || 0}`, col); UI.pop(`+${FANS[e.kind] || 0}`, 1); }
         if (G.views[c.id] && G.views[c.id].tag) G.views[c.id].updateTag();
         break;
       }
@@ -211,7 +221,7 @@ function processEvents() {
       case 'wreck': {
         wpos(c.s, c.d, tmpA, 0.6); fx.burst('explode', tmpA.x, tmpA.y, tmpA.z, 1); AUD.play('boom', nearVol(c.s));
         if (c === P) { UI.center('U bëre copë!<small>Rikthehesh pas dy sekondash</small>', 2.2); UI.flash('rgba(255,120,30,0.9)', 1); G.shake = 1.6; }
-        else if (e.by === P) UI.feed(`${c.name} u bë copë!  +${e.pts}`, '#ffb547');
+        else if (e.by === P) { UI.feed(`${c.name} u bë copë!  +${FANS.wreck}`, '#ffb547'); UI.pop(`KO +${FANS.wreck}`, 2); }
         else if (nearVol(c.s) > 0.6) UI.feed(`${c.name} u bë copë`, '#a2959f', 1.8);
         break;
       }
@@ -249,20 +259,6 @@ function processEvents() {
       case 'denied': if (c === P) { AUD.play('denied'); UI.feed(e.why === 'first' ? 'Je i pari. S’ka kë të godasë Stuhia.' : 'Makina s’ka asnjë gërvishtje. Ende.', '#a2959f'); } break;
       case 'cycle': if (c === P) AUD.play('cycle'); break;
       case 'lap': if (c === P) { AUD.play('lap'); UI.center(e.lap === race.laps ? 'Xhiro e fundit!' : `Xhiro ${e.lap}/${race.laps}`, 1.6); } break;
-      case 'score': {
-        if (c === P) {
-          wpos(e.victim.s, e.victim.d, tmpA, 0.9); fx.burst('hit', tmpA.x, tmpA.y, tmpA.z, { col: e.combo > 1 ? '#ffe03a' : '#ffffff' });
-          UI.feed(`+${e.pts}${e.combo > 1 ? `  ×${e.combo}` : ''}`, e.combo > 1 ? '#ffe03a' : '#38ff6a', 1.4); AUD.play('hit', 1);
-        }
-        break;
-      }
-      case 'timeup': {
-        if (G.state === 'race') {
-          G.state = 'finish'; G.finT = 0; P.ctrl.gas = P.ctrl.brake = false; P.ctrl.steer = 0;
-          AUD.play('finish'); UI.flash('rgba(255,181,71,0.7)', 0.8); UI.center(`Koha mbaroi!<small>${P.score} pikë · ${P.hitsN} goditje</small>`, 3.2);
-        }
-        break;
-      }
       case 'finish': {
         if (c === P) {
           G.state = 'finish'; G.finT = 0; P.autopilot = true; AUD.play('finish'); UI.flash('rgba(255,181,71,0.7)', 0.8);
@@ -276,6 +272,7 @@ function processEvents() {
 }
 // ---------- views ----------
 function updateViews(dt) {
+  if (G.arena) return arenaUpdateViews(dt);
   const T = G.track, race = G.race, fx = G.fx, env = G.env, t = G.t;
   race.cars.forEach((c, i) => {
     const v = G.views[i], root = v.root;
@@ -319,6 +316,7 @@ function updateViews(dt) {
   });
 }
 function syncEntities(dt) {
+  if (G.arena) return;
   const race = G.race, T = G.track, sc = G.world.scene, t = G.t, seen = G.seen || (G.seen = new Set());
   seen.clear();
   for (const p of race.projs) {
@@ -375,9 +373,11 @@ function syncEntities(dt) {
   for (const [id, e] of G.ent) if (!seen.has(id)) { sc.remove(e.obj); e.obj.traverse(o => { if (o.geometry && o.geometry !== G.res.ring) o.geometry.dispose(); }); G.ent.delete(id); }
   // pick-ups bob, transient rings
   for (const [, v] of G.picks) {
-    if (!v.sp.visible) continue;
-    v.pop = Math.min(1, v.pop + dt * 3); const s = 2.9 * (v.pop < 1 ? 0.3 + 0.7 * v.pop : 1);
-    v.sp.scale.set(s, s, 1); v.sp.position.y = v.y + 1.6 + Math.sin(t * 3 + v.ph) * 0.25; v.sp.material.rotation = Math.sin(t * 1.7 + v.ph) * 0.15;
+    if (!v.grp.visible) continue;
+    v.pop = Math.min(1, v.pop + dt * 3); const k = v.pop < 1 ? 0.3 + 0.7 * v.pop : 1, y = 1.75 + Math.sin(t * 3 + v.ph) * 0.22;
+    v.sp.scale.set(2.3 * k, 2.3 * k, 1); v.sp.position.y = y; v.sp.material.rotation = Math.sin(t * 1.7 + v.ph) * 0.12;
+    v.f1.position.y = v.f2.position.y = y; v.f1.scale.setScalar(k); v.f2.scale.setScalar(k);
+    v.f1.rotation.y = t * 1.7 + v.ph; v.f2.rotation.y = -t * 2.4 - v.ph; v.f2.rotation.x = 0.45 + Math.sin(t * 1.3 + v.ph) * 0.3;
     v.pil.scale.set(v.pop, 0.85 + 0.15 * Math.sin(t * 4 + v.ph), v.pop);
   }
   for (let i = G.trans.length - 1; i >= 0; i--) {
@@ -388,12 +388,13 @@ function syncEntities(dt) {
 }
 // ---------- cameras ----------
 function chaseCam(dt) {
+  if (G.arena) return arenaCam(dt);
   const c = G.player, T = G.track, sp = Math.abs(c.v);
-  const back = 6.3 + sp * 0.03, h = 1.95 + sp * 0.009;
+  const back = 4.5 + sp * 0.026, h = 1.5 + sp * 0.007;
   T.pos(c.s - back, c.d * 0.82, tmpA); tmpA.y += h + c.hop * 0.5;
   T.pos(c.s, c.d, tmpB); tmpB.y += c.hop;
   const psi = T.heading(c.s) + c.yaw * 0.5; T.tangent(c.s, tmpT);
-  tmpC.set(tmpB.x - Math.sin(psi) * 9, tmpB.y + 1.15 + tmpT.y * 9, tmpB.z + Math.cos(psi) * 9);
+  tmpC.set(tmpB.x - Math.sin(psi) * 9, tmpB.y + 0.95 + tmpT.y * 9, tmpB.z + Math.cos(psi) * 9);
   const snap = !dt || G.snapCam || camera.position.distanceToSquared(tmpA) > 900; G.snapCam = false;
   const k = snap ? 1 : 1 - Math.exp(-dt * 8), kl = snap ? 1 : 1 - Math.exp(-dt * 12);
   camera.position.lerp(tmpA, k); G.camLook.lerp(tmpC, kl);
@@ -412,6 +413,7 @@ function orbitAround(c, ang, r, h, dt, k) {
   tmpC.set(tmpB.x, tmpB.y + 1, tmpB.z); G.camLook.lerp(tmpC, kk); camera.lookAt(G.camLook);
 }
 function introCam(dt) {
+  if (G.arena) return arenaIntroCam(dt);
   const c = G.player, T = G.track, t = clamp((G.introT || 0) / 2.8, 0, 1), e = t * t * (3 - 2 * t);
   T.pos(c.s + lerp(26, -7.6, e), c.d * lerp(0.2, 0.82, e), tmpA); tmpA.y += lerp(2.2, 2.6, e) + Math.sin(e * Math.PI) * 7;
   camera.position.copy(tmpA);
@@ -419,8 +421,9 @@ function introCam(dt) {
   tmpC.set(tmpB.x - Math.sin(psi) * 7 * e, tmpB.y + 1.0, tmpB.z + Math.cos(psi) * 7 * e);
   G.camLook.copy(tmpC); camera.lookAt(G.camLook);
 }
-function orbitCam(dt) { G.orbA = (G.orbA || 0) + dt * 0.35; orbitAround(G.player, G.orbA, 10, 3.6, dt, 1 - Math.exp(-dt * 3)); }
+function orbitCam(dt) { if (G.arena) return arenaOrbitCam(dt); G.orbA = (G.orbA || 0) + dt * 0.35; orbitAround(G.player, G.orbA, 10, 3.6, dt, 1 - Math.exp(-dt * 3)); }
 function drawMinimap() {
+  if (G.arena) return arenaMinimap();
   const cv = UI.$('minimap'), g = cv.getContext('2d'), W = cv.width, H = cv.height, c = G.player, T = G.track, race = G.race;
   const sc = W / 620, psi = T.heading(c.s) + c.yaw * 0.3; T.pos(c.s, c.d, tmpA);
   const rot = -Math.PI / 2 - Math.atan2(Math.cos(psi), -Math.sin(psi)), cr = Math.cos(rot), sr = Math.sin(rot), ox = W / 2, oy = H * 0.62;
@@ -443,9 +446,9 @@ function showResults() {
   const place = P.place;
   UI.$('res-city').textContent = pts ? `${ARENA.name} · Pikë · ${SET.ptsMin} minuta` : `${city.name} · ${REGIONS[city.region]} · ${DIFFS[SET.diff].name}`;
   UI.$('res-place').textContent = ORD[place - 1];
-  UI.$('res-msg').textContent = PLACE_MSG[place - 1];
+  UI.$('res-msg').textContent = placeMsg(place, race.cars.length);
   const th = document.querySelectorAll('.res thead th'); th[3].textContent = pts ? 'Goditje' : 'Koha'; th[4].textContent = pts ? 'Pikë' : 'Tifozë';
-  UI.$('res-body').innerHTML = rows.map((c, i) => `<tr class="${c === P ? 'me' : ''}"><td class="n">${i + 1}</td><td>${c === P ? 'TI' : c.name}</td><td>${c.def.name}</td>` +
+  UI.$('res-body').innerHTML = rows.map((c, i) => `<tr class="${c === P ? 'me' : ''}"><td class="n">${i + 1}</td><td><i class="dot" style="background:${c.color}"></i>${c.name}</td><td>${c.def.name}</td>` +
     (pts ? `<td>${c.hitsN}</td><td>${c.score}</td>` : `<td>${fmtTime(c.est)}${c.finished ? '' : '*'}</td><td>${c.fans}</td>`) + '</tr>').join('');
   if (pts) {
     const key = String(SET.ptsMin), prev = SET.pbest[key] || 0, best = Math.max(prev, P.score);
@@ -460,6 +463,7 @@ function showResults() {
   UI.show('scr-res');
 }
 function render(dt) {
+  if (G.arena) return arenaRender(dt);
   const w = G.world, P = G.player;
   if (w.dl && w.dl.castShadow && P) { G.track.pos(P.s + 22, 0, tmpA); w.dl.target.position.copy(tmpA); w.dl.position.copy(tmpA).addScaledVector(w.sunDir, 160); }
   G.post.render(w.scene, camera, dt);

@@ -14,6 +14,7 @@ const REGIONS = { al: 'Shqipëri', xk: 'Kosovë', mk: 'Maqedoni e Veriut' };
 // Track control points are metres in the x/z plane; the race runs in point order.
 const CITIES = [
   {
+    hero: { type: 'skanderbeg', height: 260 },
     id: 'tirane', name: 'Tiranë', region: 'al', env: 'night', laps: 3, neon: '#ff2d6f', road: 'asphalt',
     blurb: 'Bulevardi natën: pallate me ngjyra, neon dhe semaforë dekorativë.',
     styles: [['painted', 5], ['soviet', 3], ['modern', 2]], hRange: [14, 46], tall: 0.12, ground: 'urban', amp: 3, tscale: 420,
@@ -29,6 +30,7 @@ const CITIES = [
     pts: [[0, -120], [0, 150], [0, 330], [28, 440], [120, 492], [262, 488], [356, 430], [392, 330], [360, 228], [404, 120], [418, -10], [392, -150], [318, -268], [196, -330], [76, -338], [12, -260]],
   },
   {
+    hero: { type: 'venetian', height: 200 },
     id: 'durres', name: 'Durrës', region: 'al', env: 'night', laps: 3, neon: '#ff8c3a', road: 'asphalt',
     blurb: 'Shëtitorja natën. Kujdes nga turistët dhe nga bunkerët në plazh.',
     styles: [['seaside', 6], ['soviet', 3]], hRange: [10, 34], tall: 0.08, ground: 'dry', amp: 3, tscale: 380,
@@ -43,6 +45,7 @@ const CITIES = [
     pts: [[-300, -200], [0, -206], [300, -196], [460, -150], [520, -40], [470, 80], [350, 124], [262, 222], [120, 262], [-36, 206], [-160, 244], [-330, 232], [-462, 150], [-522, 20], [-482, -130]],
   },
   {
+    hero: { type: 'indep', height: 240 },
     id: 'vlore', name: 'Vlorë', region: 'al', env: 'sunset', laps: 3, neon: '#ffd23a', road: 'asphalt',
     blurb: 'Këtu lindi shteti. Rrugën po e rregullojnë që atëherë.',
     styles: [['seaside', 5], ['modern', 3], ['soviet', 2]], hRange: [10, 40], tall: 0.1, ground: 'dry', amp: 5, tscale: 420,
@@ -56,6 +59,7 @@ const CITIES = [
     pts: [[-370, -120], [-382, 80], [-340, 260], [-220, 372], [-50, 362], [56, 262], [40, 128], [124, 26], [262, -18], [306, -150], [232, -280], [70, -332], [-110, -270], [-250, -330], [-344, -270]],
   },
   {
+    hero: { type: 'castle', height: 150, r: 52 },
     id: 'shkoder', name: 'Shkodër', region: 'al', env: 'dusk', laps: 3, neon: '#4ee0ff', road: 'asphalt',
     blurb: 'Liqeni, Rozafa dhe një mijë biçikleta që s’të lënë rrugë.',
     styles: [['old', 5], ['soviet', 4], ['painted', 1]], hRange: [8, 26], tall: 0.04, ground: 'grass', amp: 4, tscale: 400,
@@ -70,6 +74,7 @@ const CITIES = [
     pts: [[0, -352], [150, -330], [282, -250], [334, -100], [302, 60], [342, 222], [262, 352], [100, 382], [-60, 332], [-150, 222], [-160, 62], [-222, -80], [-202, -232], [-120, -330]],
   },
   {
+    hero: { type: 'castle', height: 150, r: 40 },
     id: 'berat', scale: 1.2, name: 'Berat', region: 'al', env: 'dusk', laps: 3, neon: '#ffb347', road: 'cobble',
     blurb: 'Qyteti i një mbi një dritareve. Të gjitha të shohin kur humb.',
     styles: [['old', 7], ['soviet', 2]], hRange: [7, 15], tall: 0, ground: 'grass', amp: 9, tscale: 360,
@@ -84,6 +89,7 @@ const CITIES = [
     pts: [[0, -252], [102, -262], [182, -200], [202, -90], [150, 2], [202, 102], [182, 222], [80, 282], [-42, 252], [-82, 150], [-162, 110], [-222, 0], [-182, -112], [-100, -202]],
   },
   {
+    hero: { type: 'castle', height: 150, r: 46, clock: true },
     id: 'gjirokaster', scale: 1.1, name: 'Gjirokastër', region: 'al', env: 'rain', laps: 3, neon: '#3d9dff', road: 'cobble',
     blurb: 'Gurë, shi dhe kthesa. Qyteti i gurtë nuk fal.',
     styles: [['stone', 8], ['soviet', 1]], hRange: [7, 16], tall: 0, ground: 'grass', amp: 16, tscale: 330,
@@ -96,6 +102,7 @@ const CITIES = [
     pts: [[0, -282], [140, -252], [236, -150], [214, -46], [256, 60], [222, 190], [110, 250], [20, 206], [-70, 252], [-182, 242], [-252, 120], [-214, 0], [-252, -120], [-182, -242], [-82, -302]],
   },
   {
+    hero: { type: 'cathedral', height: 220 },
     id: 'korce', name: 'Korçë', region: 'al', env: 'snow', laps: 3, neon: '#ffe6a0', road: 'asphalt',
     blurb: 'Borë, serenata dhe asnjë zinxhir në gomat e tua.',
     styles: [['old', 5], ['soviet', 4]], hRange: [8, 22], tall: 0, ground: 'snow', amp: 5, tscale: 400,
@@ -109,6 +116,7 @@ const CITIES = [
     pts: [[0, -262], [200, -242], [322, -120], [302, 40], [362, 160], [282, 282], [120, 302], [0, 222], [-120, 302], [-282, 262], [-342, 120], [-302, -20], [-342, -150], [-222, -262]],
   },
   {
+    hero: { type: 'library', height: 160 },
     id: 'prishtine', scale: 1.18, name: 'Prishtinë', region: 'xk', env: 'night', laps: 3, neon: '#2de2ff', road: 'asphalt',
     blurb: 'NEWBORN natën, makiato ditën, gara gjithmonë.',
     styles: [['modern', 4], ['soviet', 5], ['painted', 1]], hRange: [14, 44], tall: 0.1, ground: 'urban', amp: 5, tscale: 420,
@@ -123,6 +131,7 @@ const CITIES = [
     pts: [[0, -252], [0, 52], [32, 202], [142, 262], [302, 252], [382, 162], [366, 42], [296, -36], [304, -152], [262, -272], [142, -322], [30, -310]],
   },
   {
+    hero: { type: 'mosque', height: 260, dome: 7, minaret: 30 },
     id: 'prizren', scale: 1.22, name: 'Prizren', region: 'xk', env: 'sunset', laps: 3, neon: '#ff7a59', road: 'cobble',
     blurb: 'Kalaja sipër, Ura e Gurit poshtë, dhe ti në mes pa frena.',
     styles: [['old', 7], ['modern', 1]], hRange: [7, 16], tall: 0, ground: 'grass', amp: 7, tscale: 360,
@@ -137,6 +146,7 @@ const CITIES = [
     pts: [[0, -202], [120, -232], [232, -172], [262, -62], [202, 42], [242, 152], [162, 252], [40, 242], [-42, 152], [-152, 172], [-242, 102], [-252, -22], [-172, -102], [-102, -202]],
   },
   {
+    hero: { type: 'mosque', height: 260, dome: 5, minaret: 26 },
     id: 'peje', name: 'Pejë', region: 'xk', env: 'golden', laps: 2, neon: '#7dff9a', road: 'asphalt',
     blurb: 'Rugova, kthesa malore dhe shkëmbinj që s’lëvizin për ty.',
     styles: [['old', 5], ['soviet', 3]], hRange: [8, 20], tall: 0, ground: 'grass', amp: 14, tscale: 460,
@@ -149,6 +159,7 @@ const CITIES = [
     pts: [[0, -402], [200, -382], [382, -282], [462, -100], [422, 100], [482, 282], [402, 442], [200, 482], [40, 402], [-80, 262], [-200, 202], [-342, 122], [-382, -60], [-302, -222], [-180, -362]],
   },
   {
+    hero: { type: 'paintedmosque', height: 220 },
     id: 'tetove', name: 'Tetovë', region: 'mk', env: 'night', laps: 3, neon: '#ff5fc8', road: 'asphalt',
     blurb: 'Xhamia e Larme, Sharri me borë dhe kthesa që s’mbarojnë.',
     styles: [['old', 4], ['soviet', 4], ['painted', 1]], hRange: [8, 26], tall: 0.03, ground: 'grass', amp: 6, tscale: 420,
@@ -163,17 +174,8 @@ const CITIES = [
   },
 ];
 
-// Points mode: a closed square (sheshi) walled in by its road edges. Same loop engine as the races, no laps.
-// A squircle, so the straights are long enough to build speed and the corners are where the crashes happen.
-const ARENA_PTS = Array.from({ length: 40 }, (_, i) => {
-  const a = i / 40 * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), k = 2 / 4;
-  return [Math.round(Math.sign(c) * Math.pow(Math.abs(c), k) * 84), Math.round(Math.sign(s) * Math.pow(Math.abs(s), k) * 46)];
-});
-const ARENA = {
-  id: 'arena', name: 'Sheshi', region: 'al', env: 'dusk', laps: 1, neon: '#ff2d6f', road: 'asphalt', halfW: 14, arena: true,
-  blurb: 'Sheshi pa semafor. Pa garë, vetëm përplasje.',
-  styles: [['painted', 5], ['soviet', 3], ['modern', 2]], hRange: [14, 40], tall: 0.1, ground: 'urban', amp: 1, tscale: 420, trees: 'deciduous', pts: ARENA_PTS,
-};
+// Points mode: free driving in Skanderbeg Square (Tirana), walled in. The arena itself lives in 035_arena.js.
+const ARENA = { id: 'arena', name: 'Sheshi Skënderbej', short: 'Sheshi', region: 'al', env: 'dusk', neon: '#ff2d6f', blurb: 'Sheshi më i madh i Tiranës, i mbyllur me barriera. Pa rrugë, pa xhiro: vetëm ti dhe katër shoferë.' };
 
 const CARS = [
   { id: 'benxi', name: 'Benxi GT', style: 'gt', vmax: 58, acc: 17, grip: 1.0, hp: 100, mass: 1.0, color: '#e41e20', desc: 'Kapot i gjatë, motor V8, dhe gjithmonë i parkuar te kafeneja.' },
@@ -197,7 +199,21 @@ const PW = {
 };
 const PW_KEYS = Object.keys(PW);
 
-const BOT_NAMES = ['Artur', 'Ritvan', 'Desantin', 'Eno', 'Erlin'];
+// The five drivers. The player is one of them; the other four are the rivals. Each has a colour nobody else uses.
+const DRIVERS = [
+  { name: 'Artur', col: '#ff2a3d', tag: 'Gjithmonë me gaz' },
+  { name: 'Ritvan', col: '#1fb6ff', tag: 'Ftohtë si Valbona' },
+  { name: 'Desantin', col: '#ffc21a', tag: 'Fren? Ç’është ajo?' },
+  { name: 'Eno', col: '#2bff88', tag: 'Drift në çdo kthesë' },
+  { name: 'Erlin', col: '#c46bff', tag: 'Godet i pari, pyet më vonë' },
+];
+// the rivals of driver pi (all five when pi < 0), shuffled
+function rivalsOf(pi, r) {
+  const b = DRIVERS.filter((_, i) => i !== pi);
+  for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = b[i]; b[i] = b[j]; b[j] = t; }
+  return b;
+}
+function placeMsg(place, n) { return place >= n ? PLACE_MSG[PLACE_MSG.length - 1] : PLACE_MSG[place - 1]; }
 
 const ADS = {
   lavazh:     { t: 'LAVAZH 24/7', s: 'Lajmë edhe gropat', bg: '#1f6fd1', fg: '#ffffff' },

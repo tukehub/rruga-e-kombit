@@ -2,7 +2,7 @@
   "name": "rruga-e-kombit",
   "version": "1.0.0",
   "private": true,
-  "description": "Blur-style combat racer through Albania, Kosovo and Tetovë",
+  "description": "Vortex: Blur-style combat racer through Albania, Kosovo and Tetovë",
   "scripts": { "build": "python3 build.py" },
   "dependencies": {
     "@capacitor/android": "8.5.3",

@@ -8,7 +8,7 @@ const E = ctx.E; let ok = true; const places = [[], [], []];
 for (const city of E.CITIES) {
   const tr = new E.Track(city); const row = [];
   for (const diff of [0, 1, 2]) {
-    const race = new E.Race(tr, { playerDef: E.CARS[0], playerColor: '#e41e20', diff, seed: 3 + diff, laps: city.laps });
+    const race = new E.Race(tr, { playerDef: E.CARS[0], diff, seed: 3 + diff, laps: city.laps });
     race.player.autopilot = true; race.started = true;
     let t = 0, nan = false;
     while (t < 420 && !race.cars.every(c => c.finished)) { race.step(1 / 60); t += 1 / 60; race.events.length = 0; for (const c of race.cars) if (!isFinite(c.progress)) nan = true; }
