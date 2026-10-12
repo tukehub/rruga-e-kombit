@@ -13,13 +13,16 @@ class Car {
     this.finished = false; this.finishTime = 0; this.place = 0; this.lap = -1; this.lapStart = 0; this.bestLap = Infinity; this.lapTimes = [];
     this.fans = 0; this.drift = 0; this.driftT = 0; this.scrape = 0; this.wrecks = 0; this.hits = 0; this.vmaxMul = 1;
     this.ai = null; this.braking = false; this.gasOn = false; this.est = 0;
+    this.score = 0; this.combo = 1; this.comboN = 0; this.comboT = -99; this.hitsN = 0; this.lastHitBy = null; this.lastHitT = -99;
   }
 }
 
 class Race {
   constructor(track, opt) {
     this.track = track; this.L = track.L; this.hw = track.halfW; this.opt = opt;
-    this.laps = opt.laps || track.city.laps || 3;
+    this.mode = opt.mode || 'race'; this.points = this.mode === 'points';
+    this.timeLimit = opt.time || 120; this.over = false; this.pairT = new Map();
+    this.laps = this.points ? Infinity : opt.laps || track.city.laps || 3;
     this.diff = DIFFS[opt.diff == null ? 1 : opt.diff];
     this.rng = mulberry32(opt.seed || 1234);
     this.wet = !!opt.wet;
@@ -46,13 +49,15 @@ class Race {
         used.add(col2);
         c = new Car(i, def, nm, false, col2);
       }
-      c.progress = -9 - row * 9 - col * 3.5; c.s = this.mod(c.progress); c.d = col ? 4 : -4;
+      if (this.points) { c.progress = i * this.L / n; c.d = ((i % 3) - 1) * 5; }
+      else { c.progress = -9 - row * 9 - col * 3.5; c.d = col ? 4 : -4; }
+      c.s = this.mod(c.progress);
       c.ai = { t: 1 + r(), planT: 0, vT: 0, dT: c.d, laneBias: (r() - 0.5) * 4, lineAmt: 0.6 + r() * 0.35, skill: 0.975 + r() * 0.05, react: 0.8 + r() * 0.5 };
       this.cars.push(c);
     }
     if (!this.player) this.player = null;
     // pick-up stations
-    const nSt = clamp(Math.round(this.L / 300), 5, 10);
+    const nSt = this.points ? 0 : clamp(Math.round(this.L / 300), 5, 10);
     const wsum = PW_KEYS.reduce((a, k) => a + PW[k].w, 0);
     const pickType = () => { let x = r() * wsum; for (const k of PW_KEYS) { x -= PW[k].w; if (x <= 0) return k; } return 'nitro'; };
     for (let k = 0; k < nSt; k++) {
@@ -65,6 +70,7 @@ class Race {
   mod(p) { const L = this.L; p = p % L; return p < 0 ? p + L : p; }
   emit(e) { this.events.push(e); }
   computeOrder() {
+    if (this.points) { this.order = this.cars.slice().sort((a, b) => b.score - a.score || b.progress - a.progress); this.order.forEach((c, i) => { c.place = i + 1; }); return; }
     this.order = this.cars.slice().sort((a, b) => {
       if (a.finished && b.finished) return a.finishTime - b.finishTime;
       if (a.finished) return -1; if (b.finished) return 1;
@@ -94,6 +100,7 @@ class Race {
   }
   step(dt) {
     this.time += dt;
+    if (this.points && !this.over && this.time >= this.timeLimit) { this.over = true; this.emit({ t: 'timeup' }); }
     const cars = this.cars;
     for (const c of cars) if (!c.isPlayer || c.finished || c.autopilot) this.aiDrive(c, dt);
     for (const c of cars) this.physics(c, dt);
@@ -107,8 +114,8 @@ class Race {
     this.updateProjs(dt);
     this.updateMines(dt);
     this.updateDomes(dt);
-    // laps
-    for (const c of cars) {
+    // laps (races only)
+    if (!this.points) for (const c of cars) {
       const li = Math.floor(c.progress / this.L);
       if (li > c.lap) {
         c.lap = li;
@@ -121,11 +128,13 @@ class Race {
     }
     this.computeOrder();
     // rubber band + difficulty (bots only)
-    const ref = this.player && !this.player.finished ? this.player.progress : null;
+    const ref = !this.points && this.player && !this.player.finished ? this.player.progress : null;
     for (const c of cars) {
       if (c.isPlayer) { c.vmaxMul = 1; continue; }
       let mul = this.diff.speed * c.ai.skill;
       if (ref != null) mul *= 1 + clamp(-(c.progress - ref) / 520, -0.05, 0.075);
+      // points mode: a bot sprints when it has a target close by, or nobody ever catches anybody
+      if (this.points) mul *= c.ai.chase < 60 ? 1.25 : 1.05;
       c.vmaxMul = mul;
     }
   }
@@ -207,17 +216,20 @@ class Race {
         const dd = b.d - a.d; if (Math.abs(dd) > 2.05) continue;
         const penS = 4.5 - Math.abs(ds), penD = 2.05 - Math.abs(dd);
         const ma = a.def.mass, mb = b.def.mass, tot = ma + mb;
+        const relV = Math.abs(a.v - b.v) + Math.abs(a.latV - b.latV);
         if (penD < penS * 0.75) {
           const sg = dd >= 0 ? 1 : -1;
           a.d -= sg * penD * (mb / tot); b.d += sg * penD * (ma / tot);
           a.latV = -sg * 6 * (mb / tot); b.latV = sg * 6 * (ma / tot);
           a.yaw *= 0.75; b.yaw *= 0.75;
           this.emit({ t: 'bump', a, b, side: true });
+          if (this.points) this.scoreHit(a, b, relV);
         } else {
           const front = ds > 0 ? b : a, rear = ds > 0 ? a : b;
           rear.progress -= penS * (front.def.mass / tot); front.progress += penS * (rear.def.mass / tot);
           rear.s = this.mod(rear.progress); front.s = this.mod(front.progress);
           const dv = rear.v - front.v;
+          if (this.points) this.scoreHit(a, b, relV);
           if (dv > 0) {
             rear.v -= dv * (0.55 * front.def.mass / tot + 0.2); front.v += dv * 0.45 * rear.def.mass / tot;
             if (dv > 14) { this.damage(rear, (dv - 14) * 0.6, front, 'bump'); this.damage(front, (dv - 14) * 0.4, rear, 'bump'); }
@@ -234,8 +246,14 @@ class Race {
   }
   wreck(c, by, kind) {
     c.health = 0; c.wreckT = 2.4; c.spinT = 0; c.wrecks++; c.nitroT = 0; c.shieldT = 0;
-    if (by && by !== c) { by.fans += FANS.wreck; }
-    this.emit({ t: 'wreck', car: c, by, kind });
+    let pts = 0;
+    if (this.points) {
+      // the car that hit this one most recently gets the wreck bonus
+      c.comboN = 0; c.combo = 1;
+      by = c.lastHitBy && this.time - c.lastHitT < 4 ? c.lastHitBy : null;
+      if (by) { pts = 300 * by.combo; by.score += pts; }
+    } else if (by && by !== c) { by.fans += FANS.wreck; pts = FANS.wreck; }
+    this.emit({ t: 'wreck', car: c, by, kind, pts });
   }
   hit(o, by, kind, dmg, fx) {
     if (o.finished || o.wreckT > 0) return false;
@@ -408,6 +426,8 @@ class Race {
     ai.planT -= dt; ai.t -= dt;
     if (ai.planT <= 0) {
       ai.planT = 0.1;
+      const tg = this.points ? this.pointsTarget(c) : null;
+      ai.chase = tg ? Math.abs(T.wrapS(tg.s - c.s)) : 999;
       const aLat = c.def.grip * 22 * 0.93 * (this.wet ? 0.93 : 1);
       let vT = c.def.vmax * c.vmaxMul * (c.nitroT > 0 ? 1.3 : 1) * (c.stunT > 0 ? 0.55 : 1);
       for (let x = 0; x <= 240; x += 6) {
@@ -426,7 +446,8 @@ class Race {
       const hz = (hs, hd, rad) => { const ds = T.wrapS(hs - c.s); if (ds > 0 && ds < 70 && Math.abs(hd - dT) < rad) dT = hd + (hd > 0 ? -rad - 1 : rad + 1); };
       for (const m of this.mines) if (m.fly <= 0) hz(m.s, m.d, 3);
       for (const dm of this.domes) hz(dm.s, dm.d, dm.r + 0.5);
-      for (const o of this.cars) {
+      if (tg) dT = tg.d;
+      else for (const o of this.cars) {
         if (o === c || o.wreckT > 0) continue;
         const ds = T.wrapS(o.s - c.s);
         if (ds > 0 && ds < 24 && Math.abs(o.d - c.d) < 2.6 && c.v > o.v + 0.5) dT = o.d + (o.d > 0 ? -3.6 : 3.6);
@@ -485,9 +506,37 @@ class Race {
     if (fire) this.useItem(c, back);
     else if (c.slots.length >= 2 && r > 0.9) c.slots.push(c.slots.shift());
   }
+  // points mode: a bot goes for the nearest car ahead, or the nearest one behind when nothing is close ahead
+  pointsTarget(c) {
+    let ahead = null, ad = Infinity, behind = null, bd = Infinity;
+    for (const o of this.cars) {
+      if (o === c || o.wreckT > 0) continue;
+      const ds = this.track.wrapS(o.s - c.s);
+      if (ds > 0 && ds < ad) { ad = ds; ahead = o; } else if (ds <= 0 && -ds < bd) { bd = -ds; behind = o; }
+    }
+    return ahead && ad < 120 ? ahead : behind;
+  }
+  // points mode: a hit is contact at real closing speed. The faster car scores, times its combo (x1 up to x5).
+  scoreHit(a, b, relV) {
+    if (this.over || relV < 5) return;
+    const key = a.id < b.id ? a.id * 100 + b.id : b.id * 100 + a.id, last = this.pairT.get(key);
+    if (last != null && this.time - last < 0.8) return;
+    this.pairT.set(key, this.time);
+    const att = Math.abs(a.v) >= Math.abs(b.v) ? a : b, vic = att === a ? b : a;
+    if (this.time - att.comboT > 3.5) att.comboN = 0;
+    att.comboN++; att.comboT = this.time; att.combo = Math.min(5, 1 + Math.floor(att.comboN / 3));
+    const gain = Math.round(relV * 12) * att.combo;
+    att.score += gain; att.hitsN++;
+    vic.lastHitBy = att; vic.lastHitT = this.time;
+    this.emit({ t: 'score', car: att, victim: vic, pts: gain, combo: att.combo });
+    // the harder the ram, the more it hurts; a wreck is credited to the car that landed the last hit
+    const dmg = Math.max(0, relV - 6) * 4;
+    if (dmg > 0) { this.damage(vic, dmg, att, 'ram'); this.damage(att, dmg * 0.3, vic, 'ram'); }
+  }
   // estimated finishing times for cars still racing when results are shown
   estimate() {
     for (const c of this.cars) {
+      if (this.points) { c.est = this.time; continue; }
       if (c.finished) { c.est = c.finishTime; continue; }
       const remain = this.laps * this.L - c.progress;
       const avg = Math.max(18, c.progress / Math.max(1, this.time));

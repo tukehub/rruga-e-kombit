@@ -3,7 +3,7 @@
 // Units: metres. Car faces +z. Profiles are keyframes [z, value] interpolated with monotone cubics.
 const CAR_SHAPES = {
   gt: { // Benxi GT: long-hood fastback coupé
-    L: 4.55, W: 1.96, wr: 0.355, tyreW: 0.28, zF: 1.32, zR: -1.30, n: 4.2, tumble: 0.1,
+    L: 4.55, W: 1.96, wr: 0.355, tyreW: 0.28, zF: 1.32, zR: -1.30, n: 3.1, tumble: 0.12,
     top: [[-2.275, 0.66], [-2.22, 0.84], [-2.0, 0.89], [-1.5, 0.875], [-0.9, 0.86], [-0.2, 0.87], [0.4, 0.86], [1.1, 0.8], [1.7, 0.72], [2.1, 0.6], [2.275, 0.46]],
     bot: [[-2.275, 0.44], [-2.15, 0.28], [-1.8, 0.17], [1.8, 0.15], [2.2, 0.2], [2.275, 0.28]],
     half: [[-2.275, 0.8], [-2.05, 0.96], [-1.4, 1.0], [-0.7, 0.95], [0.2, 0.93], [1.0, 0.97], [1.5, 0.99], [2.0, 0.92], [2.275, 0.7]],
@@ -12,7 +12,7 @@ const CAR_SHAPES = {
     grille: { y: 0.42, w: 0.78, h: 0.2 }, spoiler: 'duck', exhaust: [-0.62, -0.5, 0.5, 0.62], rim: { n: 10, sp: 0.36, col: 'dark' }, caliper: '#e01818',
   },
   muscle: { // Kali i Egër: long, wide, flat-nosed fastback
-    L: 4.79, W: 1.98, wr: 0.37, tyreW: 0.29, zF: 1.43, zR: -1.29, n: 5, tumble: 0.06,
+    L: 4.79, W: 1.98, wr: 0.37, tyreW: 0.29, zF: 1.43, zR: -1.29, n: 3.5, tumble: 0.08,
     top: [[-2.395, 0.76], [-2.33, 0.96], [-1.9, 0.95], [-1.0, 0.95], [-0.2, 0.97], [0.6, 0.98], [1.4, 0.95], [2.0, 0.9], [2.3, 0.82], [2.395, 0.6]],
     bot: [[-2.395, 0.42], [-2.25, 0.28], [-1.9, 0.19], [1.95, 0.18], [2.3, 0.24], [2.395, 0.3]],
     half: [[-2.395, 0.88], [-2.15, 0.98], [-1.4, 1.0], [-0.6, 0.94], [0.4, 0.94], [1.3, 0.98], [2.1, 0.95], [2.395, 0.86]],
@@ -21,7 +21,7 @@ const CAR_SHAPES = {
     grille: { y: 0.6, w: 0.64, h: 0.26 }, spoiler: 'lip', exhaust: [-0.66, -0.56, 0.56, 0.66], rim: { n: 10, sp: 0.3, col: 'black' }, caliper: '#d8d8dc',
   },
   hatch: { // Golfi GTI: compact hot hatch
-    L: 4.28, W: 1.84, wr: 0.34, tyreW: 0.25, zF: 1.26, zR: -1.37, n: 4.5, tumble: 0.08,
+    L: 4.28, W: 1.84, wr: 0.34, tyreW: 0.25, zF: 1.26, zR: -1.37, n: 3.3, tumble: 0.1,
     top: [[-2.14, 0.86], [-2.08, 1.0], [-1.7, 1.0], [-0.8, 0.99], [0.2, 0.98], [0.9, 0.94], [1.5, 0.88], [1.95, 0.8], [2.12, 0.66], [2.14, 0.5]],
     bot: [[-2.14, 0.42], [-2.02, 0.28], [-1.75, 0.2], [1.75, 0.19], [2.08, 0.24], [2.14, 0.3]],
     half: [[-2.14, 0.86], [-1.95, 0.97], [-1.4, 1.0], [0.0, 0.97], [1.3, 0.98], [1.9, 0.92], [2.14, 0.8]],
@@ -30,7 +30,7 @@ const CAR_SHAPES = {
     grille: { y: 0.55, w: 0.72, h: 0.16 }, spoiler: 'roof', exhaust: [-0.6, 0.6], rim: { n: 5, sp: 0.34, col: 'silver' }, caliper: '#e01818',
   },
   sleek: { // Uragani: mid-engine wedge supercar
-    L: 4.52, W: 2.0, wr: 0.36, tyreW: 0.3, zF: 1.23, zR: -1.39, n: 3.8, tumble: 0.14,
+    L: 4.52, W: 2.0, wr: 0.36, tyreW: 0.3, zF: 1.23, zR: -1.39, n: 2.7, tumble: 0.16,
     top: [[-2.26, 0.62], [-2.18, 0.84], [-1.8, 0.9], [-1.2, 0.9], [-0.6, 0.86], [0.1, 0.8], [0.8, 0.72], [1.5, 0.62], [2.0, 0.5], [2.26, 0.36]],
     bot: [[-2.26, 0.38], [-2.12, 0.24], [-1.75, 0.13], [1.85, 0.12], [2.18, 0.15], [2.26, 0.2]],
     half: [[-2.26, 0.86], [-1.95, 1.0], [-1.3, 1.0], [-0.5, 0.9], [0.4, 0.9], [1.2, 0.98], [1.9, 0.93], [2.26, 0.68]],
@@ -39,7 +39,7 @@ const CAR_SHAPES = {
     grille: { y: 0.25, w: 0.86, h: 0.13 }, spoiler: 'duck', exhaust: [-0.12, 0.12], rim: { n: 5, sp: 0.42, col: 'black' }, caliper: '#f2c230',
   },
   jeep: { // Gelendvagen: the box that never dies
-    L: 4.82, W: 1.98, wr: 0.43, tyreW: 0.3, zF: 1.6, zR: -1.29, n: 9, tumble: 0.02,
+    L: 4.82, W: 1.98, wr: 0.43, tyreW: 0.3, zF: 1.6, zR: -1.29, n: 5.2, tumble: 0.05,
     top: [[-2.41, 1.08], [-2.37, 1.24], [-1.0, 1.25], [0.5, 1.27], [1.9, 1.24], [2.33, 1.18], [2.41, 0.95]],
     bot: [[-2.41, 0.58], [-2.3, 0.48], [-1.9, 0.44], [2.0, 0.44], [2.33, 0.5], [2.41, 0.58]],
     half: [[-2.41, 0.93], [-2.32, 0.97], [-1.29, 1.0], [-0.4, 0.96], [0.6, 0.96], [1.6, 1.0], [2.3, 0.97], [2.41, 0.93]],
@@ -48,7 +48,7 @@ const CAR_SHAPES = {
     grille: { y: 0.98, w: 0.62, h: 0.3 }, spare: true, bumpers: true, rim: { n: 6, sp: 0.45, col: 'silver' }, caliper: '#3a3a40',
   },
   van: { // Sprinteri: the national furgon
-    L: 5.6, W: 2.02, wr: 0.38, tyreW: 0.25, zF: 1.85, zR: -1.62, n: 8, tumble: 0.03, van: true,
+    L: 5.6, W: 2.02, wr: 0.38, tyreW: 0.25, zF: 1.85, zR: -1.62, n: 4.4, tumble: 0.05, van: true,
     top: [[-2.8, 1.2], [-2.76, 1.3], [1.35, 1.32], [1.9, 1.2], [2.5, 1.08], [2.75, 0.95], [2.8, 0.78]],
     bot: [[-2.8, 0.62], [-2.65, 0.46], [2.45, 0.44], [2.75, 0.5], [2.8, 0.6]],
     half: [[-2.8, 0.95], [-2.7, 1.0], [2.3, 0.99], [2.8, 0.86]],
@@ -88,7 +88,7 @@ function mergeGeos(list) {
 }
 // body: closed loft of superellipse sections; wheel wells cut and fenders raised over the wheels
 function loftBody(S, f) {
-  const hz = S.L / 2, HW = S.W / 2, n = S.n, tumble = S.tumble, NZ = 96, NS = 14, R = S.wr + 0.06;
+  const hz = S.L / 2, HW = S.W / 2, n = S.n, tumble = S.tumble, NZ = 120, NS = 18, R = S.wr + 0.06;
   const archY = (z) => { let y = -1; for (const zc of [S.zR, S.zF]) { const dz = z - zc; if (Math.abs(dz) < R) y = Math.max(y, S.wr + Math.sqrt(R * R - dz * dz)); } return y; };
   const P = [], I = [];
   const ringAt = (z, k0, sc) => {
@@ -210,8 +210,12 @@ function carGeo(style) {
     }
   }
   if (H.bar) push(head, stick(bm, 0, H.y + 0.01, 6, 0, 0, -1, HW * 0.75, 0.018, 0.04));
+  // continuous LED light bar across the nose (the modern cue; the lamps above sit inside it)
+  push(head, stick(bm, 0, H.y + 0.02, 6, 0, 0, -1, HW * 1.45, 0.02, 0.04, 0.03));
   // tail lights
   const T = S.tail;
+  // rear LED bar, same width as the nose bar
+  push(tail, stick(bm, 0, T.y + 0.04, -6, 0, 0, 1, HW * 1.45, 0.018, 0.04, 0.03));
   if (T.type === 'bar') { for (let i = -6; i <= 6; i++) push(tail, stick(bm, i / 6 * HW * 0.84, T.y, -6, 0, 0, 1, HW * 0.15, T.h, 0.05)); }
   else for (const sx of [-1, 1]) {
     if (T.type === 'tri') for (let k = 0; k < 3; k++) push(tail, stick(bm, sx * HW * (0.5 + k * 0.12), T.y, -6, 0, 0, 1, 0.06, T.h, 0.05));
@@ -283,7 +287,7 @@ function carMats() {
 }
 function paintMat(hex) {
   const key = 'p' + hex; if (CAR_MATS[key]) return CAR_MATS[key];
-  const m = linMat(new THREE.MeshPhysicalMaterial({ color: hex, roughness: 0.3, metalness: 0.5, clearcoat: 1, clearcoatRoughness: 0.05 }));
+  const m = linMat(new THREE.MeshPhysicalMaterial({ color: hex, roughness: 0.22, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.03 }));
   m.envMapIntensity = 2.6; CAR_MATS[key] = m; return m;
 }
 function caliperMat(hex) {

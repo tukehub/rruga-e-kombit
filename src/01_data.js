@@ -163,6 +163,18 @@ const CITIES = [
   },
 ];
 
+// Points mode: a closed square (sheshi) walled in by its road edges. Same loop engine as the races, no laps.
+// A squircle, so the straights are long enough to build speed and the corners are where the crashes happen.
+const ARENA_PTS = Array.from({ length: 40 }, (_, i) => {
+  const a = i / 40 * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), k = 2 / 4;
+  return [Math.round(Math.sign(c) * Math.pow(Math.abs(c), k) * 84), Math.round(Math.sign(s) * Math.pow(Math.abs(s), k) * 46)];
+});
+const ARENA = {
+  id: 'arena', name: 'Sheshi', region: 'al', env: 'dusk', laps: 1, neon: '#ff2d6f', road: 'asphalt', halfW: 14, arena: true,
+  blurb: 'Sheshi pa semafor. Pa garë, vetëm përplasje.',
+  styles: [['painted', 5], ['soviet', 3], ['modern', 2]], hRange: [14, 40], tall: 0.1, ground: 'urban', amp: 1, tscale: 420, trees: 'deciduous', pts: ARENA_PTS,
+};
+
 const CARS = [
   { id: 'benxi', name: 'Benxi GT', style: 'gt', vmax: 58, acc: 17, grip: 1.0, hp: 100, mass: 1.0, color: '#e41e20', desc: 'Kapot i gjatë, motor V8, dhe gjithmonë i parkuar te kafeneja.' },
   { id: 'kali', name: 'Kali i Egër GT', style: 'muscle', vmax: 62, acc: 15.5, grip: 0.9, hp: 110, mass: 1.15, color: '#26262c', desc: 'Kalë amerikan. Shpejt në vijë të drejtë, kthesat janë opinion personal.' },

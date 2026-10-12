@@ -91,10 +91,10 @@ function renderGarage(dt) {
 function startRace() {
   if (G.state === 'loading') return;
   AUD.init(); clearQueued();
-  const city = CITIES[SET.city];
+  const points = SET.mode === 'points', city = points ? ARENA : CITIES[SET.city];
   UI.hud(false); UI.centerOff();
   UI.$('load-city').textContent = city.name;
-  UI.$('load-region').textContent = REGIONS[city.region] + ' · ' + ENV[city.env].label;
+  UI.$('load-region').textContent = points ? `Pikë · ${SET.ptsMin} minuta` : REGIONS[city.region] + ' · ' + ENV[city.env].label;
   UI.$('load-tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   UI.show('scr-load');
   G.state = 'loading';
@@ -103,7 +103,7 @@ function startRace() {
     catch (e) { console.error(e); G.state = 'menu'; UI.show('scr-title'); return; }
     G.state = 'intro'; G.introT = 0; G.last = 0;
     UI.show(null); UI.hud(true); UI.slotState = ''; UI.last = {};
-    UI.center(`${city.name}<small>${REGIONS[city.region]} · ${ENV[city.env].label} · ${city.laps} xhiro</small>`, 2.6);
+    UI.center(`${city.name}<small>${points ? `Pikë · ${SET.ptsMin} minuta` : `${REGIONS[city.region]} · ${ENV[city.env].label} · ${city.laps} xhiro`}</small>`, 2.6);
     requestWake();
   }, 90);
 }
@@ -125,8 +125,9 @@ function buildRace(city) {
   const q = Q(), env = ENV[city.env];
   const track = new Track(city);
   const world = new World(track, q, renderer);
-  const race = new Race(track, { playerDef: CARS[SET.car], playerColor: SET.paint, diff: SET.diff, seed: (Math.random() * 1e9) | 0, wet: !!env.wet, assist: SET.assist, laps: city.laps });
+  const race = new Race(track, { playerDef: CARS[SET.car], playerColor: SET.paint, diff: SET.diff, seed: (Math.random() * 1e9) | 0, wet: !!env.wet, assist: SET.assist, laps: city.laps, mode: SET.mode === 'points' ? 'points' : 'race', time: SET.ptsMin * 60 });
   const scene = world.scene;
+  UI.$('hud').classList.toggle('pts', race.points);
   G.track = track; G.world = world; G.race = race; G.player = race.player; G.city = city; G.env = env;
   G.views = race.cars.map(c => new CarView(c, scene, { beams: q.beams && env.win >= 0.45, tags: true }));
   G.trails = new Trails(scene, race.cars.length, q.trailSeg); race.cars.forEach((c, i) => G.trails.setColor(i, c.color)); G.trailI = [];
@@ -210,7 +211,7 @@ function processEvents() {
       case 'wreck': {
         wpos(c.s, c.d, tmpA, 0.6); fx.burst('explode', tmpA.x, tmpA.y, tmpA.z, 1); AUD.play('boom', nearVol(c.s));
         if (c === P) { UI.center('U bëre copë!<small>Rikthehesh pas dy sekondash</small>', 2.2); UI.flash('rgba(255,120,30,0.9)', 1); G.shake = 1.6; }
-        else if (e.by === P) UI.feed(`${c.name} u bë copë!  +${FANS.wreck}`, '#ffb547');
+        else if (e.by === P) UI.feed(`${c.name} u bë copë!  +${e.pts}`, '#ffb547');
         else if (nearVol(c.s) > 0.6) UI.feed(`${c.name} u bë copë`, '#a2959f', 1.8);
         break;
       }
@@ -248,6 +249,20 @@ function processEvents() {
       case 'denied': if (c === P) { AUD.play('denied'); UI.feed(e.why === 'first' ? 'Je i pari. S’ka kë të godasë Stuhia.' : 'Makina s’ka asnjë gërvishtje. Ende.', '#a2959f'); } break;
       case 'cycle': if (c === P) AUD.play('cycle'); break;
       case 'lap': if (c === P) { AUD.play('lap'); UI.center(e.lap === race.laps ? 'Xhiro e fundit!' : `Xhiro ${e.lap}/${race.laps}`, 1.6); } break;
+      case 'score': {
+        if (c === P) {
+          wpos(e.victim.s, e.victim.d, tmpA, 0.9); fx.burst('hit', tmpA.x, tmpA.y, tmpA.z, { col: e.combo > 1 ? '#ffe03a' : '#ffffff' });
+          UI.feed(`+${e.pts}${e.combo > 1 ? `  ×${e.combo}` : ''}`, e.combo > 1 ? '#ffe03a' : '#38ff6a', 1.4); AUD.play('hit', 1);
+        }
+        break;
+      }
+      case 'timeup': {
+        if (G.state === 'race') {
+          G.state = 'finish'; G.finT = 0; P.ctrl.gas = P.ctrl.brake = false; P.ctrl.steer = 0;
+          AUD.play('finish'); UI.flash('rgba(255,181,71,0.7)', 0.8); UI.center(`Koha mbaroi!<small>${P.score} pikë · ${P.hitsN} goditje</small>`, 3.2);
+        }
+        break;
+      }
       case 'finish': {
         if (c === P) {
           G.state = 'finish'; G.finT = 0; P.autopilot = true; AUD.play('finish'); UI.flash('rgba(255,181,71,0.7)', 0.8);
@@ -423,17 +438,25 @@ function drawMinimap() {
 }
 function showResults() {
   G.state = 'results'; UI.hud(false); releaseWake(); AUD.engine(0, false, false, 0); G.speedO = 0; UI.$('fx-speed').style.opacity = 0;
-  const race = G.race, P = G.player, city = G.city; race.estimate();
-  const rows = race.cars.slice().sort((a, b) => a.est - b.est);
+  const race = G.race, P = G.player, city = G.city, pts = race.points; race.estimate();
+  const rows = pts ? race.cars.slice().sort((x, y) => y.score - x.score) : race.cars.slice().sort((x, y) => x.est - y.est);
   const place = P.place;
-  UI.$('res-city').textContent = `${city.name} · ${REGIONS[city.region]} · ${DIFFS[SET.diff].name}`;
+  UI.$('res-city').textContent = pts ? `${ARENA.name} · Pikë · ${SET.ptsMin} minuta` : `${city.name} · ${REGIONS[city.region]} · ${DIFFS[SET.diff].name}`;
   UI.$('res-place').textContent = ORD[place - 1];
   UI.$('res-msg').textContent = PLACE_MSG[place - 1];
-  UI.$('res-body').innerHTML = rows.map((c, i) => `<tr class="${c === P ? 'me' : ''}"><td class="n">${i + 1}</td><td>${c === P ? 'TI' : c.name}</td><td>${c.def.name}</td><td>${fmtTime(c.est)}${c.finished ? '' : '*'}</td><td>${c.fans}</td></tr>`).join('');
-  const prev = SET.best[city.id];
-  const best = { place: Math.min(prev ? prev.place : 9, place), lap: Math.min(prev && prev.lap ? prev.lap : Infinity, P.bestLap) };
-  UI.$('res-best').textContent = `Xhiroja jote më e mirë: ${fmtTime(P.bestLap)} · Rekordi në ${city.name}: ${fmtTime(best.lap)}${rows.some(c => !c.finished) ? ' · * kohë e parashikuar' : ''}`;
-  SET.best[city.id] = best; SET.fans += P.fans; saveSettings(); UI.buildCities(); UI.updateTotals();
+  const th = document.querySelectorAll('.res thead th'); th[3].textContent = pts ? 'Goditje' : 'Koha'; th[4].textContent = pts ? 'Pikë' : 'Tifozë';
+  UI.$('res-body').innerHTML = rows.map((c, i) => `<tr class="${c === P ? 'me' : ''}"><td class="n">${i + 1}</td><td>${c === P ? 'TI' : c.name}</td><td>${c.def.name}</td>` +
+    (pts ? `<td>${c.hitsN}</td><td>${c.score}</td>` : `<td>${fmtTime(c.est)}${c.finished ? '' : '*'}</td><td>${c.fans}</td>`) + '</tr>').join('');
+  if (pts) {
+    const key = String(SET.ptsMin), prev = SET.pbest[key] || 0, best = Math.max(prev, P.score);
+    UI.$('res-best').textContent = `Pikët e tua: ${P.score} · Rekordi (${SET.ptsMin} min): ${best}`;
+    SET.pbest[key] = best; SET.fans += Math.round(P.score / 10); saveSettings(); UI.updateTotals();
+  } else {
+    const prev = SET.best[city.id];
+    const best = { place: Math.min(prev ? prev.place : 9, place), lap: Math.min(prev && prev.lap ? prev.lap : Infinity, P.bestLap) };
+    UI.$('res-best').textContent = `Xhiroja jote më e mirë: ${fmtTime(P.bestLap)} · Rekordi në ${city.name}: ${fmtTime(best.lap)}${rows.some(c => !c.finished) ? ' · * kohë e parashikuar' : ''}`;
+    SET.best[city.id] = best; SET.fans += P.fans; saveSettings(); UI.buildCities(); UI.updateTotals();
+  }
   UI.show('scr-res');
 }
 function render(dt) {

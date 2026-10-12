@@ -13,9 +13,13 @@ Every push to `main` builds a new APK automatically (Actions → *Build APK*) an
 - `src/` — the game (plain JavaScript + three.js r128). `shell.html` is the UI markup and styles.
 - `build.py` — bundles `src/` into `www/` with local three.js, bloom post-processing and fonts.
 - `android/` — Capacitor 8 Android wrapper (full-screen landscape, screen kept on).
-- `test/` — `race.js` simulates every race headlessly; `shots.js` renders screenshots in headless Chromium.
+- `test/` — `race.js` simulates every race headlessly; `points.js` runs the 2- and 3-minute points mode; `shots.js` renders screenshots in headless Chromium.
 
 Local build: `npm ci && python3 build.py && npx cap sync android && cd android && ./gradlew assembleRelease`.
+
+## Modes
+- **Garë:** the usual race through the cities, laps and power-ups.
+- **Pikë (2 or 3 min):** no race. Six cars in the Sheshi, a walled square. Ram the others: the harder the hit, the more points. Hits in a row multiply your points up to ×5, and wrecking a car adds a bonus. Power-ups are off in this mode.
 
 ## Controls
 - **Phone:** tilt to steer · hold the right half for gas, the left half for brakes (brake + turn = drift) · GJUAJ in the middle fires · PRAPA fires backwards · tap the small power-up icons to switch. Touch steering is in Settings.

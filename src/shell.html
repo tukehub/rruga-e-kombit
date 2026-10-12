@@ -142,6 +142,11 @@ table.res td.n { font: 900 22px/1 var(--f-display); width: 1%; }
 #h-speed { font: 900 34px/1 var(--f-display); }
 #h-speed small, #h-fans small { font: 700 10px/1 var(--f-ui); letter-spacing: 0.16em; color: var(--mute); margin-left: 4px; }
 #h-fans { font: 700 italic 16px/1 var(--f-ui); color: var(--amber); }
+/* points mode: no power-ups to fire */
+#hud.pts #h-slots, #hud.pts #h-slotname, #hud.pts #t-fire, #hud.pts #t-back { display: none !important; }
+.arena-info { margin: 18px 4vw 0; padding: 18px 20px; max-width: 640px; border-left: 3px solid var(--kuq); background: rgba(13,10,16,0.6); font: 600 15px/1.45 var(--f-ui); }
+.arena-info .nm { font: 900 34px/1 var(--f-display); margin-bottom: 10px; text-transform: uppercase; }
+.arena-info p { margin: 0; }
 #fx-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, var(--fc, rgba(228,30,32,0.85)) 100%); transition: opacity .35s; }
 #fx-speed { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255,255,255,0.0) 0deg 4deg, rgba(220,255,230,0.10) 4deg 5deg); -webkit-mask: radial-gradient(ellipse at 50% 55%, transparent 35%, #000 75%); mask: radial-gradient(ellipse at 50% 55%, transparent 35%, #000 75%); transition: opacity .25s; }
 /* touch controls */
@@ -237,8 +242,10 @@ table.res td.n { font: 900 22px/1 var(--f-display); width: 1%; }
     <div class="topbar">
       <div><div class="eyebrow">Hapi 1 nga 2</div><h2 class="h-l">Zgjidh qytetin</h2></div>
       <div><div class="eyebrow" style="margin-bottom:6px">Vështirësia</div><div class="seg" id="diffseg"></div></div>
+      <div><div class="eyebrow" style="margin-bottom:6px">Mënyra</div><div class="seg" id="modeseg"></div></div>
     </div>
     <div class="grid" id="citygrid"></div>
+    <div class="arena-info" id="arena-info" hidden></div>
     <div class="bottombar"><button class="btn ghost" id="b-city-back">Kthehu</button><button class="btn go" id="b-city-next">Vazhdo</button></div>
   </section>
 

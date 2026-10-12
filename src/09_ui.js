@@ -6,8 +6,15 @@ const QUALITY = [
   { name: 'E lartë', pr: 1.75, terrainStep: 10, density: 1, rows: 3, trees: 1, particles: 900, neon: true, beams: true, weather: 1, trailSeg: 28, fogMul: 1.1, msaa: 4, shadows: 2048, bloom: 0.5 },
 ];
 const SKEY = 'kafshimAsfalti.v1';
-const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {} };
-function loadSettings() { try { const s = JSON.parse(localStorage.getItem(SKEY) || '{}'); Object.assign(SET, s); } catch (e) { } SET.best = SET.best || {}; SET.seen = SET.seen || {}; if (!(SET.city >= 0 && SET.city < CITIES.length)) SET.city = 0; if (!(SET.car >= 0 && SET.car < CARS.length)) SET.car = 0; }
+const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {}, mode: 'race', ptsMin: 2, pbest: {} };
+function loadSettings() {
+  let s = {}; try { s = JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { }
+  // first run on a weak phone starts on the lighter graphics tier
+  if (s.quality == null) SET.quality = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 ? 1 : 2;
+  Object.assign(SET, s); SET.best = SET.best || {}; SET.seen = SET.seen || {}; SET.pbest = SET.pbest || {};
+  if (!(SET.city >= 0 && SET.city < CITIES.length)) SET.city = 0; if (!(SET.car >= 0 && SET.car < CARS.length)) SET.car = 0;
+  if (SET.mode !== 'points') SET.mode = 'race'; if (SET.ptsMin !== 3) SET.ptsMin = 2;
+}
 function saveSettings() { try { localStorage.setItem(SKEY, JSON.stringify(SET)); } catch (e) { } }
 const Q = () => QUALITY[clamp(SET.quality | 0, 0, 2)];
 
@@ -112,6 +119,16 @@ const UI = {
     const seg = $('diffseg');
     DIFFS.forEach((d) => { const b = document.createElement('button'); b.textContent = d.name; b.setAttribute('aria-pressed', String(SET.diff === d.id)); b.onclick = () => { SET.diff = d.id; saveSettings(); [...seg.children].forEach((x, i) => x.setAttribute('aria-pressed', String(i === d.id))); AUD.play('ui'); }; seg.appendChild(b); });
     this.buildCities();
+    // mode: a normal race, or points in the roundabout for 2 or 3 minutes
+    const MODES = [{ mode: 'race', label: 'Garë' }, { mode: 'points', min: 2, label: 'Pikë · 2 min' }, { mode: 'points', min: 3, label: 'Pikë · 3 min' }];
+    const ms = $('modeseg');
+    MODES.forEach((m) => { const b = document.createElement('button'); b.textContent = m.label; b.onclick = () => { SET.mode = m.mode; if (m.min) SET.ptsMin = m.min; saveSettings(); this.paintMode(); AUD.play('ui'); }; ms.appendChild(b); });
+    this.paintMode = () => {
+      const pts = SET.mode === 'points';
+      [...ms.children].forEach((b, i) => b.setAttribute('aria-pressed', String(MODES[i].mode === SET.mode && (!MODES[i].min || MODES[i].min === SET.ptsMin))));
+      $('citygrid').hidden = pts; $('arena-info').hidden = !pts;
+      if (pts) $('arena-info').innerHTML = `<div class="nm">${ARENA.name}</div><p>Pa garë dhe pa xhiro. Goditi makinat e tjera: sa më fort përplasesh, aq më shumë pikë. Goditjet e shpejta radhazi shumëzojnë pikët deri ×5, dhe goditja që e bën një makinë copë jep bonus. Kur të mbarojë koha, fiton ai me më shumë pikë.</p><p class="muted" style="margin:10px 0 0">Kohëzgjatja: ${SET.ptsMin} minuta.</p>`;
+    };
     // cars + paints
     const cl = $('carlist');
     const norm = (v, a, b) => clamp((v - a) / (b - a), 0.08, 1);
@@ -150,7 +167,7 @@ const UI = {
     $('b-nextcity').onclick = () => { SET.city = (SET.city + 1) % CITIES.length; saveSettings(); this.buildCities(); startRace(); };
     $('b-menu').onclick = () => { toMenu(); };
     this.slots = [...$('h-slots').children]; this.slotState = '';
-    this.syncTouch(); this.updateTotals();
+    this.syncTouch(); this.updateTotals(); this.paintMode();
   },
   buildCities() {
     const grid = this.$('citygrid'); grid.innerHTML = '';
@@ -216,6 +233,18 @@ const UI = {
   last: {},
   set(id, v, html) { if (this.last[id] === v) return; this.last[id] = v; const e = this.$(id); if (html) e.innerHTML = v; else e.textContent = v; },
   updateHud(race, p) {
+    if (race.points) {
+      // points mode: score up front, combo and rank on the lap line, time left on the clock, hits in the fans slot
+      this.set('h-pos', `${p.score}<small>PIKË</small>`, true);
+      this.set('h-lap', `KOMBO ×${p.combo} · ${p.place}/${race.cars.length}`);
+      const left = Math.max(0, race.timeLimit - race.time), m = Math.floor(left / 60), s = Math.floor(left % 60);
+      this.set('h-time', `${m}:${String(s).padStart(2, '0')}`);
+      this.set('h-fans', `${p.hitsN}<small>GODITJE</small>`, true);
+      const hp = clamp(p.health / p.maxHp, 0, 1), hk = Math.round(hp * 50);
+      if (this.last.hp !== hk) { this.last.hp = hk; const b = this.$('h-health').firstChild; b.style.width = (hp * 100) + '%'; b.style.background = hp > 0.5 ? 'var(--good)' : hp > 0.25 ? 'var(--warn)' : 'var(--bad)'; }
+      this.set('h-speed', `${Math.round(Math.abs(p.v) * 3.6)}<small>KM/H</small>`, true);
+      return;
+    }
     this.set('h-pos', `${p.place}<small>/${race.cars.length}</small>`, true);
     const lap = clamp(p.lap + 1, 1, race.laps);
     this.set('h-lap', p.finished ? 'MBËRRITE' : `XHIRO ${lap}/${race.laps}`);
