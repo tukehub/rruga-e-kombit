@@ -1,6 +1,6 @@
-# Rruga e Kombit
+# Kafshim asfalti
 
-Blur-style combat racing through 11 cities in Albania, Kosovo and Tetovë. Five rivals (Artur, Ritvan, Desantin, Eno, Erlin), eight power-ups, neon, light trails, wrecks.
+Blur-style combat racing through 11 cities in Albania, Kosovo and Tetovë. Six real-ish 2020 cars (Benxi GT, Kali i Egër, Golfi GTI, Uragani, Gelendvagen, Sprinteri), five rivals (Artur, Ritvan, Desantin, Eno, Erlin), eight power-ups, neon, light trails, wrecks.
 
 ## Install on Android
 Open this link on the phone and install the APK (allow "install unknown apps" for the browser the first time):
@@ -18,6 +18,6 @@ Every push to `main` builds a new APK automatically (Actions → *Build APK*) an
 Local build: `npm ci && python3 build.py && npx cap sync android && cd android && ./gradlew assembleRelease`.
 
 ## Controls
-- **Touch:** slide on the left pad to steer · GJUAJ fires · PRAPA fires backwards · FRENA brakes (with steering = drift) · tap the power-up icons to switch.
+- **Phone:** tilt to steer · hold the right half for gas, the left half for brakes (brake + turn = drift) · GJUAJ in the middle fires · PRAPA fires backwards · tap the small power-up icons to switch. Touch steering is in Settings.
 - **Keyboard:** ←/→ steer · ↑ gas · ↓ brake/drift · Space fire · Shift fire back · Q/E switch · P pause.
 - **Gamepad:** left stick · RT gas · LT brake · X fire · Y fire back · LB switch.

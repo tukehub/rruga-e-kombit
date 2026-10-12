@@ -75,14 +75,10 @@ function sidewalkTex() {
 }
 function barrierTex(neon) {
   return canvasTex(512, 64, (g, w, h) => {
-    g.fillStyle = '#16131a'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#d0161b'; g.fillRect(0, 0, w / 2, h);
-    g.fillStyle = '#16131a'; g.fillRect(0, h - 6, w, 6);
-    let fs = 40; g.font = `900 ${fs}px ${FONT_D}`; g.textBaseline = 'middle'; g.textAlign = 'center';
-    while (g.measureText('RRUGA E KOMBIT').width > 236 && fs > 18) { fs -= 2; g.font = `900 ${fs}px ${FONT_D}`; }
-    g.fillStyle = '#ffffff'; g.fillText('RRUGA E KOMBIT', w * 0.25, h / 2);
-    drawEagle(g, w * 0.62, h / 2, 50, '#d0161b');
-    g.font = `900 34px ${FONT_D}`; g.fillStyle = neon; g.fillText('HAJDE!', w * 0.85, h / 2);
+    // plain carbon-dark barrier, no lettering: thin red pinstripes only
+    g.fillStyle = '#121015'; g.fillRect(0, 0, w, h);
+    for (let x = -h; x < w; x += 6) { g.strokeStyle = (x / 6) % 2 ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.25)'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, h); g.lineTo(x + h, 0); g.stroke(); }
+    g.fillStyle = '#b0141a'; g.fillRect(0, 10, w, 3); g.fillRect(0, h - 13, w, 3);
   }, { repeat: true });
 }
 // facade styles: map (light wall + dark windows, tinted by vertex colour) and emissive window map

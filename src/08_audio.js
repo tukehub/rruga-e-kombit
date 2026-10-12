@@ -19,7 +19,6 @@ const AUD = {
     // wall scrape
     this.scrGain = c.createGain(); this.scrGain.gain.value = 0; const sf = c.createBiquadFilter(); sf.type = 'bandpass'; sf.frequency.value = 1800; sf.Q.value = 1.2;
     const sn = c.createBufferSource(); sn.buffer = this.noise; sn.loop = true; sn.connect(sf); sf.connect(this.scrGain); this.scrGain.connect(this.sfx); sn.start();
-    this.startMusic();
   },
   setOn(v) { this.on = v; if (this.master) this.master.gain.setTargetAtTime(v ? 0.9 : 0, this.ctx.currentTime, 0.05); },
   setMusic(v) { this.musicOn = v; if (this.mus) this.mus.gain.setTargetAtTime(v ? 0.24 : 0, this.ctx.currentTime, 0.1); },

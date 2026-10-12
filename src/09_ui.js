@@ -5,8 +5,8 @@ const QUALITY = [
   { name: 'Mesatare', pr: 1.35, terrainStep: 12, density: 0.85, rows: 2, trees: 0.75, particles: 620, neon: true, beams: true, weather: 0.8, trailSeg: 22, fogMul: 1, msaa: 2, shadows: 1024, bloom: 0.5 },
   { name: 'E lartë', pr: 1.75, terrainStep: 10, density: 1, rows: 3, trees: 1, particles: 900, neon: true, beams: true, weather: 1, trailSeg: 28, fogMul: 1.1, msaa: 4, shadows: 2048, bloom: 0.5 },
 ];
-const SKEY = 'rrugaKombit.v2';
-const SET = { sound: true, music: true, autoGas: IS_TOUCH, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {} };
+const SKEY = 'kafshimAsfalti.v1';
+const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {} };
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem(SKEY) || '{}'); Object.assign(SET, s); } catch (e) { } SET.best = SET.best || {}; SET.seen = SET.seen || {}; if (!(SET.city >= 0 && SET.city < CITIES.length)) SET.city = 0; if (!(SET.car >= 0 && SET.car < CARS.length)) SET.car = 0; }
 function saveSettings() { try { localStorage.setItem(SKEY, JSON.stringify(SET)); } catch (e) { } }
 const Q = () => QUALITY[clamp(SET.quality | 0, 0, 2)];
@@ -42,6 +42,14 @@ function initInput() {
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
   };
   hold('t-brake', 'brakeT'); hold('t-gas', 'gasT');
+  const zone = (id, key) => {
+    const el = document.getElementById(id), ids = new Set();
+    const on = (e) => { e.preventDefault(); ids.add(e.pointerId); try { el.setPointerCapture(e.pointerId); } catch (_) { } IN[key] = true; el.classList.add('on'); markTouch(e); };
+    const off = (e) => { ids.delete(e.pointerId); if (!ids.size) { IN[key] = false; el.classList.remove('on'); } };
+    el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('lostpointercapture', off);
+  };
+  zone('z-brake', 'brakeT'); zone('z-gas', 'gasT');
+  initTilt();
   const tap = (id, key) => { const b = document.getElementById(id); b.addEventListener('pointerdown', (e) => { e.preventDefault(); IN[key] = true; b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 120); try { navigator.vibrate && navigator.vibrate(12); } catch (_) { } markTouch(e); }); };
   tap('t-fire', 'fireQ'); tap('t-back', 'backQ');
   document.getElementById('h-slots').addEventListener('pointerdown', (e) => { e.preventDefault(); IN.cycleQ = true; });
@@ -61,9 +69,32 @@ function pollGamepad() {
   edge(2, 'fireQ'); edge(5, 'fireQ'); edge(3, 'backQ'); edge(4, 'cycleQ');
   const st = b(9); if (st && !IN.gpPrev[9]) togglePause(); IN.gpPrev[9] = st;
 }
+// ---------- tilt steering (phone held like a wheel) ----------
+const TILT = { roll: 0, steer: 0, ok: false, t: 0 };
+function initTilt() {
+  addEventListener('devicemotion', (e) => {
+    const g = e.accelerationIncludingGravity; if (!g || g.x == null || g.y == null) return;
+    let ang = 0;
+    try { ang = screen.orientation && screen.orientation.angle != null ? screen.orientation.angle : (window.orientation || 0); } catch (_) { ang = window.orientation || 0; }
+    ang = ((ang % 360) + 360) % 360;
+    // component of gravity along the screen's horizontal axis -> roll angle, independent of how far the phone leans back
+    const lat = ang === 90 ? g.y : ang === 270 ? -g.y : ang === 180 ? g.x : -g.x;
+    const mag = Math.hypot(g.x, g.y, g.z || 0) || 9.81;
+    TILT.roll = Math.asin(clamp(lat / mag, -1, 1)) * (SET.tiltInv ? -1 : 1);
+    TILT.ok = true;
+  });
+}
+function tiltActive() { return SET.steer === 'tilt' && !UI.$('touch').hidden; }
+function tiltSteer() {
+  const now = performance.now(), dt = Math.min(0.1, (now - (TILT.t || now)) / 1000); TILT.t = now;
+  const full = [32, 23, 15][SET.tiltSens | 0] * Math.PI / 180, dead = 2.2 * Math.PI / 180, r = TILT.roll;
+  const target = Math.abs(r) < dead ? 0 : clamp((r - Math.sign(r) * dead) / (full - dead), -1, 1);
+  TILT.steer += (target - TILT.steer) * Math.min(1, dt * 14);
+  return TILT.steer;
+}
 function readControls(car) {
   const kbS = (IN.kb.right ? 1 : 0) - (IN.kb.left ? 1 : 0);
-  car.ctrl.steer = kbS || IN.steerT || IN.gp.steer;
+  car.ctrl.steer = kbS || (tiltActive() ? tiltSteer() : IN.steerT) || IN.gp.steer;
   car.ctrl.brake = !!(IN.kb.brake || IN.brakeT || IN.gp.brake);
   car.ctrl.gas = SET.autoGas ? true : !!(IN.kb.gas || IN.gasT || IN.gp.gas);
   if (IN.fireQ) car.ctrl.fire = true; if (IN.backQ) car.ctrl.back = true; if (IN.cycleQ) car.ctrl.cycle = true;
@@ -77,7 +108,6 @@ const UI = {
   $(id) { return document.getElementById(id); },
   init() {
     const $ = (id) => this.$(id);
-    drawLogo($('logo-eagle'));
     // city grid + difficulty
     const seg = $('diffseg');
     DIFFS.forEach((d) => { const b = document.createElement('button'); b.textContent = d.name; b.setAttribute('aria-pressed', String(SET.diff === d.id)); b.onclick = () => { SET.diff = d.id; saveSettings(); [...seg.children].forEach((x, i) => x.setAttribute('aria-pressed', String(i === d.id))); AUD.play('ui'); }; seg.appendChild(b); });
@@ -97,7 +127,7 @@ const UI = {
     // help legend
     const lg = $('legend');
     PW_KEYS.forEach((k) => { const d = document.createElement('div'); d.innerHTML = `<img alt="" src="${TEX.icons[k].url}"><b style="color:${PW[k].col}">${PW[k].name}</b><span>${PW[k].desc}</span>`; lg.appendChild(d); });
-    $('help-keys').innerHTML = `<b>Me prekje:</b> rrëshqit gishtin majtas-djathtas në pjesën e timonit · <kbd>GJUAJ</kbd> përdor fuqinë · <kbd>PRAPA</kbd> e gjuan pas · <kbd>FRENA</kbd> frenon, dhe bashkë me timonin bën drift · prek fuqitë poshtë për t’i ndërruar.<br>
+    $('help-keys').innerHTML = `<b>Me telefon:</b> anoje telefonin majtas-djathtas për të kthyer · mbaj gishtin në gjysmën e <kbd>djathtë</kbd> për gaz dhe në të <kbd>majtën</kbd> për frena (frena + kthesë = drift) · <kbd>GJUAJ</kbd> në mes përdor fuqinë · <kbd>PRAPA</kbd> e gjuan pas · prek fuqitë e vogla për t’i ndërruar. Në Cilësimet mund të zgjedhësh timonin me prekje.<br>
       <b>Me tastierë:</b> <kbd>←</kbd><kbd>→</kbd> ose <kbd>A</kbd><kbd>D</kbd> timoni · <kbd>↑</kbd>/<kbd>W</kbd> gazi · <kbd>↓</kbd>/<kbd>S</kbd> frena dhe drift · <kbd>Hapësirë</kbd> gjuaj · <kbd>Shift</kbd> ose <kbd>X</kbd> gjuaj prapa · <kbd>Q</kbd>/<kbd>E</kbd> ndërro fuqinë · <kbd>P</kbd> pauzë.<br>
       <b>Me levë:</b> leva e majtë timoni · RT gazi · LT frena · X gjuaj · Y gjuaj prapa · LB ndërro.`;
     this.buildSettings();
@@ -152,7 +182,9 @@ const UI = {
       list.appendChild(row);
     };
     tog('sound', 'Zëri', 'Motori, goditjet dhe Shqiponja.', () => AUD.setOn(SET.sound));
-    tog('music', 'Muzika', 'Valle në 7/8 me klarinetë sintetike.', () => AUD.setMusic(SET.music));
+    choice('steer', 'Timoni', 'Anim: anoje telefonin si timon. Prekje: rrëshqit gishtin majtas-djathtas.', [['tilt', 'Anim'], ['pad', 'Prekje']], () => this.syncTouch());
+    choice('tiltSens', 'Ndjeshmëria e animit', 'Sa shumë duhet ta anosh telefonin për kthesë të plotë.', [[0, 'E butë'], [1, 'Normale'], [2, 'E fortë']]);
+    tog('tiltInv', 'Animi i kundërt', 'Ndize nëse makina kthen në anën e gabuar.');
     tog('autoGas', 'Gaz automatik', 'Makina e shtyp gazin vetë. Ti drejton dhe gjuan.');
     tog('assist', 'Ndihmë në timon', 'Makina drejtohet pak vetë pas kthesës.');
     choice('quality', 'Grafika', 'E larta për telefona të rinj. Hije dhe dritat ndryshojnë në garën tjetër.', QUALITY.map((q, i) => [i, q.name]), () => applyQuality());
@@ -161,6 +193,7 @@ const UI = {
   syncTouch() {
     const show = SET.touch === 'on' || (SET.touch === 'auto' && (IS_TOUCH || IN.usedTouch));
     this.$('touch').hidden = !show; this.$('t-gas').hidden = !show || SET.autoGas;
+    this.$('app').classList.toggle('tilt', show && SET.steer === 'tilt');
     this.$('rotate').classList.toggle('can', show);
   },
   updateTotals() {

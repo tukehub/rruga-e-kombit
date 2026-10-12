@@ -10,7 +10,7 @@ const W = +(process.env.W || 844), H = +(process.env.H || 390);
   const errs = [];
   page.on('pageerror', e => errs.push('PAGEERROR ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 5).join('\n')));
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.type() + ': ' + m.text().slice(0, 300)); });
-  await page.addInitScript((q) => { window.__noAdapt = true; try { localStorage.setItem('rrugaKombit.v2', JSON.stringify({ quality: q })); } catch (e) { } }, quality);
+  await page.addInitScript((q) => { window.__noAdapt = true; try { localStorage.setItem('kafshimAsfalti.v1', JSON.stringify({ quality: q })); } catch (e) { } }, quality);
   await page.goto('file://' + path.join(__dirname, '../www/index.html'));
   await page.waitForTimeout(2500);
   if (!only) {

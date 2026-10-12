@@ -164,12 +164,12 @@ const CITIES = [
 ];
 
 const CARS = [
-  { id: 'arberi', name: 'Arbëri GT', style: 'gt', vmax: 58, acc: 17, grip: 1.0, hp: 100, mass: 1.0, color: '#e41e20', desc: 'I balancuar. Si dreka e së dielës te gjyshja.' },
-  { id: 'dardani', name: 'Dardani V8', style: 'muscle', vmax: 62, acc: 15.5, grip: 0.9, hp: 110, mass: 1.15, color: '#26262c', desc: 'Shpejt në vijë të drejtë. Kthesat janë opinion personal.' },
-  { id: 'ilira', name: 'Ilira RS', style: 'hatch', vmax: 55, acc: 19, grip: 1.16, hp: 90, mass: 0.85, color: '#f2c230', desc: 'E vogël, e shkathët dhe gjithmonë e nervozuar.' },
-  { id: 'teuta', name: 'Teuta S', style: 'sleek', vmax: 60, acc: 18, grip: 1.03, hp: 85, mass: 0.9, color: '#f1eee8', desc: 'Mbretëresha e nxitimit. E bukur, por e brishtë.' },
-  { id: 'xhipi', name: 'Xhipi 4x4', style: 'jeep', vmax: 54, acc: 15, grip: 0.96, hp: 140, mass: 1.35, color: '#3f6d3b', desc: 'Ka kaluar 30 vjet gropa. Gropat e tua s’i bëjnë gjë.' },
-  { id: 'furgoni', name: 'Furgoni', style: 'van', vmax: 51, acc: 13.5, grip: 0.88, hp: 175, mass: 1.7, color: '#f3f3ee', desc: 'Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do.' },
+  { id: 'benxi', name: 'Benxi GT', style: 'gt', vmax: 58, acc: 17, grip: 1.0, hp: 100, mass: 1.0, color: '#e41e20', desc: 'Kapot i gjatë, motor V8, dhe gjithmonë i parkuar te kafeneja.' },
+  { id: 'kali', name: 'Kali i Egër GT', style: 'muscle', vmax: 62, acc: 15.5, grip: 0.9, hp: 110, mass: 1.15, color: '#26262c', desc: 'Kalë amerikan. Shpejt në vijë të drejtë, kthesat janë opinion personal.' },
+  { id: 'golfi', name: 'Golfi GTI', style: 'hatch', vmax: 55, acc: 19, grip: 1.16, hp: 90, mass: 0.85, color: '#f2c230', desc: 'Makina kombëtare. I vogël, i shkathët, dhe gjithmonë me xhamat poshtë.' },
+  { id: 'uragani', name: 'Uragani V10', style: 'sleek', vmax: 60, acc: 18, grip: 1.03, hp: 85, mass: 0.9, color: '#f1eee8', desc: 'Pykë italiane. E bukur, e shpejtë, dhe kushton sa një pallat në Bllok.' },
+  { id: 'gelendvagen', name: 'Gelendvagen G', style: 'jeep', vmax: 54, acc: 15, grip: 0.96, hp: 140, mass: 1.35, color: '#2a2a2e', desc: 'Kutia e zezë e çdo dasme. Gropat e tua s’i bëjnë gjë.' },
+  { id: 'sprinteri', name: 'Sprinteri i Linjës', style: 'van', vmax: 51, acc: 13.5, grip: 0.88, hp: 175, mass: 1.7, color: '#f3f3ee', desc: 'Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do.' },
 ];
 const PAINTS = ['#e41e20', '#26262c', '#f1eee8', '#f2c230', '#2a6fdb', '#3f6d3b', '#ff6a1a', '#8e44ad'];
 

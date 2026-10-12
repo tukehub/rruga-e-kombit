@@ -35,7 +35,7 @@ def main():
             shutil.copy(os.path.join(NM, '@fontsource', pkg, 'files', fn), os.path.join(W, 'fonts', fn))
             css.append(f"@font-face{{font-family:'{fam}';font-style:{st};font-weight:{wt};font-display:swap;src:url(fonts/{fn}) format('woff2')}}")
     with open(os.path.join(W, 'fonts.css'), 'w') as f: f.write('\n'.join(css) + '\n')
-    for icon in ('icon-192.png', 'icon-512.png'):
+    for icon in ('icon-192.png', 'icon-512.png', 'logo-ui.png'):
         p = os.path.join(R, 'assets', icon)
         if os.path.exists(p): shutil.copy(p, W)
     # strip the Google Fonts tags from the shell; the app uses the bundled copies

@@ -47,7 +47,7 @@ function applyQuality() { G.pr = Math.min(window.devicePixelRatio || 1, Q().pr);
 function initGarage() {
   const sc = new THREE.Scene(); sc.background = new THREE.Color('#0d0a10'); sc.fog = new THREE.Fog('#0d0a10', 16, 46);
   const fl = new THREE.CircleGeometry(40, 48); fl.rotateX(-Math.PI / 2);
-  const floor = new THREE.Mesh(fl, new THREE.MeshStandardMaterial({ color: 0x141016, roughness: 0.4, metalness: 0.3, envMapIntensity: 0.25 })); floor.receiveShadow = true; sc.add(floor);
+  const floor = new THREE.Mesh(fl, new THREE.MeshStandardMaterial({ color: 0x141016, roughness: 0.62, metalness: 0.2, envMapIntensity: 0.2 })); floor.receiveShadow = true; sc.add(floor);
   const grid = new THREE.GridHelper(80, 40, 0x3c2b36, 0x221a22); grid.position.y = 0.01; sc.add(grid);
   const rg = new THREE.RingGeometry(4.2, 4.4, 96); rg.rotateX(-Math.PI / 2);
   const ring = new THREE.Mesh(rg, glowMat('#e41e20', 4)); ring.position.y = 0.03; sc.add(ring);
@@ -57,12 +57,13 @@ function initGarage() {
   sc.add(new THREE.HemisphereLight(0x9c8aa8, 0x1a1012, 0.5));
   const d1 = new THREE.DirectionalLight(0xfff1e0, 1.4); d1.position.set(5, 9, 6); d1.castShadow = true; d1.shadow.mapSize.set(1024, 1024);
   Object.assign(d1.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 }); d1.shadow.camera.updateProjectionMatrix(); d1.shadow.bias = -0.0008; sc.add(d1);
-  const d2 = new THREE.DirectionalLight(0xff3040, 1.1); d2.position.set(-6, 3, -8); sc.add(d2);
+  const d2 = new THREE.DirectionalLight(0xff3040, 0.55); d2.position.set(-6, 3, -8); sc.add(d2);
+  const d3 = new THREE.DirectionalLight(0xb8c8ff, 0.6); d3.position.set(-7, 5, 6); sc.add(d3);
   const envRT = makeEnvMap(renderer, ENV.night, '#e41e20'); sc.environment = envRT.texture;
   const ec = mkCanvas(256, 256), eg = ec.getContext('2d'); drawEagle(eg, 128, 132, 230, '#ffffff');
   const et = new THREE.CanvasTexture(ec);
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(26, 26), new THREE.MeshBasicMaterial({ map: et, color: 0x5a1216, transparent: true, depthWrite: false, fog: false }));
-  wall.position.set(0, 9, -18); sc.add(wall);
+  wall.position.set(0, 9, -18); wall.visible = false; sc.add(wall);
   linearize(sc); sc.fog.color.convertSRGBToLinear(); sc.background.convertSRGBToLinear();
   G.garage = { scene: sc, view: null, t: 0, wall };
   garageCar();
@@ -460,11 +461,11 @@ function loop(ts) {
   }
   if (st === 'intro') {
     G.introT += dt; introCam(dt);
-    if (G.introT > 2.8) { G.state = 'countdown'; G.cdT = 3.2; G.cdN = 4; }
+    if (G.introT > 2.8) { G.state = 'countdown'; G.cdT = 3.2; G.cdN = 4; if (tiltActive()) UI.feed('Anoje telefonin për të kthyer · djathtas GAZ · majtas FRENA', '#ffb547', 4.5); }
   } else if (st === 'countdown') {
     G.cdT -= dt; const n = Math.ceil(G.cdT);
     if (n !== G.cdN && n >= 1 && n <= 3) { G.cdN = n; UI.center(String(n), 0.9); AUD.play('beep'); }
-    if (G.cdT <= 0) { G.race.started = true; G.state = 'race'; UI.center('Hajde!', 1.0); AUD.play('go'); G.acc = 0; }
+    if (G.cdT <= 0) { G.race.started = true; G.state = 'race'; UI.center('Hajde!', 1.0); AUD.play('go'); G.acc = 0; if (tiltActive() && !TILT.ok) UI.feed('Animi nuk po lexohet. Cilësimet → Timoni: Prekje', '#ff8080', 6); }
     AUD.engine(0.12 + (SET.autoGas || IN.kb.gas ? 0.25 : 0), true, true, 0);
     chaseCam(dt);
   } else {
@@ -492,7 +493,7 @@ function loop(ts) {
 // ---------- boot ----------
 function boot(data) {
   if (G.booted) return; G.booted = true;
-  loadSettings(); AUD.on = SET.sound; AUD.musicOn = SET.music;
+  loadSettings(); AUD.on = SET.sound; AUD.musicOn = false;
   try { if (document.fonts && document.fonts.load) { document.fonts.load('900 40px "Big Shoulders Display"'); document.fonts.load('700 20px "Chakra Petch"'); } } catch (e) { }
   initTextures(); initRenderer(); initGarage(); UI.init(); initInput();
   const scr = data && data.scr; UI.show(['scr-city', 'scr-car', 'scr-help', 'scr-set'].includes(scr) ? scr : 'scr-title');

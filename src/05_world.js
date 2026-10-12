@@ -277,7 +277,7 @@ class World {
       // barrier: inner face (banner), top, outer face
       const bt = this.barrierT || (this.barrierT = barrierTex(c.neon));
       const inner = sd > 0 ? [[hw + 0.12, -0.45], [hw + 0.12, 1.05]] : [[-hw - 0.12, 1.05], [-hw - 0.12, -0.45]];
-      this.ribbon(() => inner, (r, s) => [-s / 12 * sd, (sd > 0 ? r : 1 - r) ? 1 : -0.5], new THREE.MeshStandardMaterial({ map: bt, emissive: 0xffffff, emissiveMap: bt, emissiveIntensity: env.win > 0.5 ? 0.55 : 0.08, roughness: 0.5 }));
+      this.ribbon(() => inner, (r, s) => [-s / 12 * sd, (sd > 0 ? r : 1 - r) ? 1 : -0.5], new THREE.MeshStandardMaterial({ map: bt, emissive: 0xffffff, emissiveMap: bt, emissiveIntensity: env.win > 0.5 ? 0.25 : 0.04, roughness: 0.5 }));
       const top = sd > 0 ? [[hw + 0.12, 1.05], [hw + 0.42, 1.05], [hw + 0.42, -0.4]] : [[-hw - 0.42, -0.4], [-hw - 0.42, 1.05], [-hw - 0.12, 1.05]];
       this.ribbon(() => top, () => [0, 0], new THREE.MeshStandardMaterial({ color: 0x2a2630, roughness: 0.4, metalness: 0.6 }));
       // neon reflected on the asphalt (fake wet-street reflection)
@@ -310,7 +310,7 @@ class World {
     const gl = new GB(false); gl.box(F, 0, 8.4, 0.25, hw * 2 + 2, 0.18, 0.18, [1, 1, 1]); gl.box(F, 0, 8.4, -0.25, hw * 2 + 2, 0.18, 0.18, [1, 1, 1]);
     for (const sd of [-1, 1]) gl.box(F, sd * (hw + 0.45), 4.5, 0, 0.12, 8, 0.12, [1, 1, 1]);
     sc.add(new THREE.Mesh(gl.build(), glowMat(c.neon, 4, { vertexColors: true })));
-    const st = signTex('RRUGA E KOMBIT', c.name.toUpperCase() + ' · ' + REGIONS[c.region].toUpperCase(), '#141016', '#ffffff');
+    const st = signTex('KAFSHIM ASFALTI', c.name.toUpperCase() + ' · ' + REGIONS[c.region].toUpperCase(), '#141016', '#ffffff');
     const sm = new THREE.MeshBasicMaterial({ map: st, toneMapped: false }); sm.userData.hdr = 1.15;
     for (const fz of [-0.52, 0.52]) {
       const sg = new THREE.PlaneGeometry(hw * 2 + 2, 3.2); const s = new THREE.Mesh(sg, sm);
@@ -441,13 +441,13 @@ class World {
     const night = env.win;
     for (const st in this.bgb) {
       const ft = TEX.facade[st];
-      const mat = new THREE.MeshStandardMaterial({ map: ft.map, vertexColors: true, emissive: 0xffffff, emissiveMap: ft.em, emissiveIntensity: night * 1.6, roughness: st === 'modern' ? 0.35 : 0.85, metalness: st === 'modern' ? 0.4 : 0 });
+      const mat = new THREE.MeshStandardMaterial({ map: ft.map, vertexColors: true, emissive: 0xffffff, emissiveMap: ft.em, emissiveIntensity: night * 0.5, roughness: st === 'modern' ? 0.35 : 0.85, metalness: st === 'modern' ? 0.4 : 0 });
       const bm = new THREE.Mesh(this.bgb[st].build(), mat); bm.castShadow = true; bm.receiveShadow = true; this.scene.add(bm);
     }
     if (this.roofGB) { const rm = new THREE.Mesh(this.roofGB.build(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 })); rm.castShadow = true; this.scene.add(rm); }
-    if (this.bandGB && this.bandGB.count) this.scene.add(new THREE.Mesh(this.bandGB.build(), glowMat('#ffffff', 3.2, { vertexColors: true })));
+    if (this.bandGB && this.bandGB.count) this.scene.add(new THREE.Mesh(this.bandGB.build(), glowMat('#ffffff', 1.5, { vertexColors: true })));
     if (this.neonGB && this.neonGB.count) {
-      const nm = new THREE.MeshBasicMaterial({ map: TEX.neonAtlas, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }); nm.userData.hdr = 3;
+      const nm = new THREE.MeshBasicMaterial({ map: TEX.neonAtlas, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }); nm.userData.hdr = 1.6;
       this.scene.add(new THREE.Mesh(this.neonGB.build(), nm)); this.neonMats.push(nm);
     }
   }
@@ -489,7 +489,7 @@ class World {
       const A = tp(F, -4, 5, 0), B = tp(F, 4, 5, 0), Cc = tp(F, 4, 9, 0), D = tp(F, -4, 9, 0);
       bb.face([A, B, Cc, D], [1, 1, 1], [[u0, v0], [u0 + 0.25, v0], [u0 + 0.25, v1], [u0, v1]]);
     }
-    if (bb.count) { const at = TEX.ads; this.scene.add(new THREE.Mesh(bb.build(), new THREE.MeshStandardMaterial({ map: at, emissive: 0xffffff, emissiveMap: at, emissiveIntensity: env.win * 1.3, side: THREE.DoubleSide, roughness: 0.5 }))); }
+    if (bb.count) { const at = TEX.ads; this.scene.add(new THREE.Mesh(bb.build(), new THREE.MeshStandardMaterial({ map: at, emissive: 0xffffff, emissiveMap: at, emissiveIntensity: env.win * 0.55, side: THREE.DoubleSide, roughness: 0.5 }))); }
     // trees: sidewalk rows + scattered
     const treeKind = c.trees || 'deciduous';
     const addTree = (x, z, scale) => {

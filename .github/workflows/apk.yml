@@ -58,6 +58,6 @@ jobs:
         run: |
           tag="v1.0.${{ github.run_number }}"
           gh release create "$tag" rruga-e-kombit.apk \
-            --title "Rruga e Kombit $tag" \
+            --title "Kafshim asfalti $tag" \
             --notes "Hape këtë faqe në telefon, shkarko rruga-e-kombit.apk dhe instaloje." \
             --latest
