@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Rruga e Kombit</string>
+    <string name="title_activity_main">Rruga e Kombit</string>
+    <string name="package_name">al.tukehub.rruga</string>
+    <string name="custom_url_scheme">al.tukehub.rruga</string>
+</resources>

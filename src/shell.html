@@ -1,0 +1,276 @@
+<title>Rruga e Kombit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&display=swap">
+<style>
+/* Layout: full-bleed WebGL stage; HUD hugs the corners; menus are left-weighted, cut-corner slabs over a live garage scene. */
+:root {
+  --night: #0d0a10;
+  --slab: rgba(19, 14, 23, 0.88);
+  --slab-2: rgba(36, 27, 41, 0.92);
+  --ink: #f4ede6;
+  --mute: #a2959f;
+  --kuq: #e41e20;
+  --amber: #ffb547;
+  --line: rgba(244, 237, 230, 0.14);
+  --good: #38ff6a;
+  --warn: #ffd23a;
+  --bad: #ff3b3b;
+  --f-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --f-ui: "Chakra Petch", "Trebuchet MS", Arial, sans-serif;
+  --cut: 14px;
+  color-scheme: dark;
+}
+html, body { height: 100%; background: var(--night); color: var(--ink); overflow: hidden; }
+body { font-family: var(--f-ui); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#app { position: fixed; inset: 0; overflow: hidden; touch-action: none; background: var(--night); }
+#stage, #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+button { font-family: var(--f-ui); color: var(--ink); cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.slab { background: var(--slab); clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+/* ---------- screens ---------- */
+.scr { position: absolute; inset: 0; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) calc(env(safe-area-inset-right, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 18px) calc(env(safe-area-inset-left, 0px) + 20px); }
+.scr-shade { background: linear-gradient(90deg, rgba(13,10,16,0.94) 0%, rgba(13,10,16,0.78) 46%, rgba(13,10,16,0.15) 100%); }
+.eyebrow { font: 600 12px/1.3 var(--f-ui); letter-spacing: 0.22em; text-transform: uppercase; color: var(--amber); }
+.h-xl { font: 900 clamp(52px, min(15vh, 19vw), 150px)/0.84 var(--f-display); letter-spacing: -0.01em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+.h-l { font: 900 clamp(34px, 7vh, 56px)/0.9 var(--f-display); text-transform: uppercase; margin: 0; }
+.h-m { font: 900 26px/1 var(--f-display); text-transform: uppercase; margin: 0; letter-spacing: 0.01em; }
+.muted { color: var(--mute); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btn { font: 700 15px/1 var(--f-ui); letter-spacing: 0.12em; text-transform: uppercase; padding: 14px 22px; border: 0; background: var(--slab-2); color: var(--ink);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); transition: transform .12s ease, background .12s ease; }
+.btn:hover { background: #3b2d42; }
+.btn:active { transform: translateY(1px) scale(0.98); }
+.btn.go { background: var(--kuq); color: #fff; }
+.btn.go:hover { background: #ff3134; }
+.btn.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.btn.sm { padding: 10px 14px; font-size: 13px; }
+/* title */
+#scr-title { display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+.logo { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.logo canvas { width: clamp(60px, 13vh, 120px); height: auto; flex: none; }
+.logo .h-xl span { display: block; }
+.logo .h-xl span:last-child { color: var(--kuq); -webkit-text-stroke: 0; }
+.tag { font: 600 italic 16px/1.4 var(--f-ui); color: var(--ink); max-width: 34ch; }
+.menu-stack { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.foot-note { font: 500 12px/1.4 var(--f-ui); color: var(--mute); max-width: 52ch; }
+/* city grid */
+.topbar { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
+.seg { display: inline-flex; background: var(--slab-2); padding: 3px; gap: 3px; }
+.seg button { border: 0; background: transparent; padding: 9px 12px; font: 700 12px/1 var(--f-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute); }
+.seg button[aria-pressed="true"] { background: var(--kuq); color: #fff; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; padding-bottom: 76px; }
+.card { position: relative; border: 0; text-align: left; padding: 12px 12px 14px; background: var(--slab); display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); transition: background .12s; }
+.card:hover { background: var(--slab-2); }
+.card[aria-pressed="true"] { background: #2a1d24; box-shadow: inset 3px 0 0 var(--kuq); }
+.card canvas { width: 100%; height: 86px; display: block; }
+.card .nm { font: 900 28px/0.9 var(--f-display); text-transform: uppercase; }
+.card .meta { font: 600 11px/1.3 var(--f-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute); display: flex; gap: 8px; flex-wrap: wrap; }
+.card .medal { position: absolute; top: 10px; right: 14px; width: 18px; height: 18px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,0.4); }
+.card .blurb { font: 500 12px/1.35 var(--f-ui); color: var(--ink); opacity: 0.8; }
+.bottombar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  padding: 12px calc(env(safe-area-inset-right, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 12px) calc(env(safe-area-inset-left, 0px) + 20px);
+  background: linear-gradient(0deg, rgba(13,10,16,0.96), rgba(13,10,16,0.0)); }
+/* car select */
+#scr-car .carlist { display: flex; flex-direction: column; gap: 8px; max-width: 420px; padding-bottom: 80px; }
+.carcard { border: 0; text-align: left; background: var(--slab); padding: 10px 14px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; min-width: 0;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+.carcard[aria-pressed="true"] { background: #2a1d24; box-shadow: inset 3px 0 0 var(--kuq); }
+.carcard .nm { font: 900 24px/1 var(--f-display); text-transform: uppercase; }
+.carcard .ds { grid-column: 1 / -1; font: 500 12px/1.35 var(--f-ui); color: var(--mute); }
+.stats { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: center; }
+.stats span { font: 600 10px/1 var(--f-ui); letter-spacing: 0.14em; color: var(--mute); }
+.stats i { display: block; height: 5px; background: rgba(244,237,230,0.12); position: relative; }
+.stats i b { position: absolute; inset: 0 auto 0 0; background: var(--amber); }
+.paints { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.paints button { width: 30px; height: 30px; border: 0; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(0,0,0,0.35); }
+.paints button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--night), 0 0 0 4px var(--amber); }
+/* loading */
+#scr-load { display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; background: radial-gradient(120% 90% at 80% 20%, #2a1620 0%, var(--night) 60%); }
+#scr-load .tip { max-width: 46ch; font: 500 16px/1.45 var(--f-ui); }
+.bar { height: 3px; background: var(--line); max-width: 420px; overflow: hidden; }
+.bar b { display: block; height: 100%; width: 40%; background: var(--kuq); animation: slide 1s linear infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+/* results + pause + settings + help */
+.panel { max-width: 640px; display: flex; flex-direction: column; gap: 14px; padding-bottom: 80px; }
+table.res { width: 100%; border-collapse: collapse; font: 600 14px/1.2 var(--f-ui); font-variant-numeric: tabular-nums; }
+table.res th { font: 600 10px/1 var(--f-ui); letter-spacing: 0.16em; color: var(--mute); text-align: left; padding: 6px 8px; }
+table.res td { padding: 8px; border-top: 1px solid var(--line); white-space: nowrap; }
+table.res tr.me td { background: rgba(228,30,32,0.18); }
+table.res td.n { font: 900 22px/1 var(--f-display); width: 1%; }
+.tablewrap { overflow-x: auto; background: var(--slab); }
+.setrow { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 14px; background: var(--slab); }
+.setrow label { font: 600 14px/1.3 var(--f-ui); }
+.setrow small { display: block; color: var(--mute); font-weight: 500; font-size: 12px; }
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.legend div { display: grid; grid-template-columns: 44px 1fr; gap: 2px 10px; align-items: center; background: var(--slab); padding: 8px 10px; }
+.legend img { width: 44px; height: 44px; grid-row: span 2; }
+.legend b { font: 900 20px/1 var(--f-display); text-transform: uppercase; }
+.legend span { font: 500 12px/1.3 var(--f-ui); color: var(--mute); }
+.keys { font: 500 13px/1.6 var(--f-ui); color: var(--ink); }
+.keys kbd { font: 700 11px/1 var(--f-ui); padding: 3px 6px; background: var(--slab-2); border-radius: 3px; }
+/* ---------- HUD ---------- */
+#hud { position: absolute; inset: 0; pointer-events: none; font-variant-numeric: tabular-nums; }
+.hud-tl { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); left: calc(env(safe-area-inset-left, 0px) + 14px); display: flex; flex-direction: column; gap: 2px; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+#h-pos { font: 900 58px/0.85 var(--f-display); }
+#h-pos small { font-size: 26px; color: var(--mute); margin-left: 2px; }
+#h-lap { font: 700 13px/1.2 var(--f-ui); letter-spacing: 0.16em; color: var(--amber); }
+#h-time { font: 600 italic 15px/1.2 var(--f-ui); }
+.hud-tr { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 12px); display: flex; gap: 8px; align-items: flex-start; }
+#minimap { width: 118px; height: 118px; background: rgba(13,10,16,0.55); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+#b-pause { pointer-events: auto; width: 44px; height: 44px; border: 0; background: rgba(13,10,16,0.6); font: 900 18px/1 var(--f-display); letter-spacing: 0.1em; }
+#h-feed { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; width: min(46vw, 420px); }
+#h-feed div { font: 700 13px/1.2 var(--f-ui); padding: 5px 10px 5px 12px; background: rgba(13,10,16,0.72); border-left: 3px solid var(--c, var(--kuq)); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; animation: feedin .2s ease-out; }
+@keyframes feedin { from { opacity: 0; transform: translateY(-6px); } }
+#h-center { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font: 900 clamp(48px, 13vh, 120px)/0.9 var(--f-display); text-transform: uppercase; text-shadow: 0 0 18px rgba(228,30,32,0.75), 0 4px 0 rgba(0,0,0,0.5); opacity: 0; transition: opacity .15s; }
+#h-center.on { opacity: 1; }
+#h-center small { display: block; font: 700 16px/1.3 var(--f-ui); letter-spacing: 0.2em; text-shadow: 0 2px 6px rgba(0,0,0,0.8); color: var(--amber); }
+.hud-bc { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#h-slots { display: flex; gap: 6px; align-items: flex-end; pointer-events: auto; }
+#h-slots .slot { width: 44px; height: 44px; background: rgba(13,10,16,0.6); position: relative; display: grid; place-items: center; border: 0; padding: 0; }
+#h-slots .slot:first-child { width: 58px; height: 58px; box-shadow: inset 0 0 0 2px var(--kuq); }
+#h-slots .slot img { width: 88%; height: 88%; }
+#h-slots .slot em { position: absolute; right: 2px; bottom: 1px; font: 900 16px/1 var(--f-display); font-style: normal; }
+#h-slotname { font: 700 11px/1 var(--f-ui); letter-spacing: 0.16em; color: var(--ink); min-height: 11px; text-shadow: 0 1px 4px #000; }
+#h-health { width: 190px; height: 7px; background: rgba(13,10,16,0.7); position: relative; }
+#h-health b { position: absolute; inset: 0 auto 0 0; background: var(--good); transition: width .15s, background .2s; }
+#h-health::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(13,10,16,0.9) 18px 20px); }
+.speedrow { display: flex; gap: 14px; align-items: baseline; text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+#h-speed { font: 900 34px/1 var(--f-display); }
+#h-speed small, #h-fans small { font: 700 10px/1 var(--f-ui); letter-spacing: 0.16em; color: var(--mute); margin-left: 4px; }
+#h-fans { font: 700 italic 16px/1 var(--f-ui); color: var(--amber); }
+#fx-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, var(--fc, rgba(228,30,32,0.85)) 100%); transition: opacity .35s; }
+#fx-speed { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255,255,255,0.0) 0deg 4deg, rgba(220,255,230,0.10) 4deg 5deg); -webkit-mask: radial-gradient(ellipse at 50% 55%, transparent 35%, #000 75%); mask: radial-gradient(ellipse at 50% 55%, transparent 35%, #000 75%); transition: opacity .25s; }
+/* touch controls */
+#touch { position: absolute; inset: 0; pointer-events: none; }
+#t-steer { position: absolute; left: calc(env(safe-area-inset-left, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); width: min(36vw, 220px); height: 96px; pointer-events: auto; touch-action: none;
+  background: rgba(13,10,16,0.42); clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); display: flex; justify-content: space-between; align-items: center; padding: 0 18px; }
+#t-steer span { font: 900 34px/1 var(--f-display); opacity: 0.75; }
+#t-knob { position: absolute; top: 18px; bottom: 18px; width: 6px; left: 50%; margin-left: -3px; background: var(--amber); opacity: 0.9; }
+#t-right { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; gap: 10px; align-items: end; pointer-events: none; }
+#t-right button { pointer-events: auto; touch-action: none; border: 0; font: 700 12px/1 var(--f-ui); letter-spacing: 0.12em; color: #fff; display: grid; place-items: center; }
+#t-fire { grid-column: 2; grid-row: 1 / span 2; width: 92px; height: 92px; border-radius: 50%; background: rgba(228,30,32,0.78); position: relative; }
+#t-fire img { width: 56px; height: 56px; position: absolute; inset: 0; margin: auto; opacity: 0.95; }
+#t-fire span { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 10px; }
+#t-back { grid-column: 1; grid-row: 1; width: 64px; height: 50px; background: rgba(13,10,16,0.62); clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+#t-brake { grid-column: 1; grid-row: 2; width: 64px; height: 56px; background: rgba(13,10,16,0.62); clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+#t-gas { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 120px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); width: 64px; height: 110px; pointer-events: auto; background: rgba(56,255,106,0.35); border: 0; }
+#t-right button.on, #t-gas.on { filter: brightness(1.6); transform: scale(0.96); }
+#rotate { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); transform: translateX(-50%); padding: 8px 14px; background: rgba(13,10,16,0.8); font: 600 12px/1.2 var(--f-ui); letter-spacing: 0.1em; display: none; pointer-events: none; white-space: nowrap; }
+@media (orientation: portrait) and (pointer: coarse) { #rotate.can { display: block; } }
+@media (orientation: portrait) {
+  .hud-bc { bottom: calc(env(safe-area-inset-bottom, 0px) + 132px); }
+  #rotate { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 150px); }
+  #t-steer { width: 44vw; height: 92px; }
+  #t-fire { width: 84px; height: 84px; }
+  #h-feed { width: 60vw; top: calc(env(safe-area-inset-top, 0px) + 140px); }
+}
+@media (max-height: 420px) {
+  #h-pos { font-size: 46px; } #minimap { width: 96px; height: 96px; } #h-speed { font-size: 28px; }
+  #h-slots .slot { width: 38px; height: 38px; } #h-slots .slot:first-child { width: 50px; height: 50px; }
+  #t-steer { height: 84px; } #t-fire { width: 82px; height: 82px; } #h-health { width: 150px; }
+}
+@media (prefers-reduced-motion: reduce) { #h-feed div { animation: none; } .bar b { animation-duration: 3s; } }
+</style>
+<div id="app">
+  <div id="stage"></div>
+  <div id="fx-speed"></div>
+  <div id="fx-flash"></div>
+  <div id="hud" hidden>
+    <div class="hud-tl"><div id="h-pos">5<small>/6</small></div><div id="h-lap">XHIRO 1/3</div><div id="h-time">0:00.00</div></div>
+    <div id="h-feed" aria-live="polite"></div>
+    <div id="h-center"></div>
+    <div class="hud-tr"><button id="b-pause" aria-label="Pauzë">II</button><canvas id="minimap" width="236" height="236"></canvas></div>
+    <div class="hud-bc">
+      <div id="h-slotname"></div>
+      <div id="h-slots"><button class="slot" aria-label="Fuqia 1"></button><button class="slot" aria-label="Fuqia 2"></button><button class="slot" aria-label="Fuqia 3"></button></div>
+      <div id="h-health"><b style="width:100%"></b></div>
+      <div class="speedrow"><div id="h-speed">0<small>KM/H</small></div><div id="h-fans">0<small>TIFOZË</small></div></div>
+    </div>
+    <div id="touch" hidden>
+      <div id="t-steer"><span>‹</span><span>›</span><i id="t-knob"></i></div>
+      <button id="t-gas" hidden>GAZ</button>
+      <div id="t-right"><button id="t-back" aria-label="Gjuaj prapa">PRAPA</button><button id="t-brake" aria-label="Frena">FRENA</button><button id="t-fire" aria-label="Gjuaj"><img alt=""><span>GJUAJ</span></button></div>
+    </div>
+    <div id="rotate">Ktheje telefonin horizontalisht</div>
+  </div>
+
+  <section id="scr-title" class="scr scr-shade">
+    <div class="eyebrow">Garë me fuqi · Shqipëri · Kosovë · Tetovë</div>
+    <div class="logo"><canvas id="logo-eagle" width="200" height="200" aria-hidden="true"></canvas><h1 class="h-xl"><span>Rruga</span><span>e Kombit</span></h1></div>
+    <p class="tag" style="margin:0">Pa frena, pa patentë, pa mëshirë. Njëmbëdhjetë qytete, gjashtë shoferë, një Shqiponjë që të ndjek pas.</p>
+    <div class="menu-stack">
+      <button class="btn go" id="b-play">Luaj</button>
+      <div class="row"><button class="btn sm" id="b-help">Si luhet</button><button class="btn sm" id="b-set">Cilësimet</button></div>
+    </div>
+    <p class="foot-note" id="t-total"></p>
+  </section>
+
+  <section id="scr-city" class="scr" hidden style="background: rgba(13,10,16,0.9)">
+    <div class="topbar">
+      <div><div class="eyebrow">Hapi 1 nga 2</div><h2 class="h-l">Zgjidh qytetin</h2></div>
+      <div><div class="eyebrow" style="margin-bottom:6px">Vështirësia</div><div class="seg" id="diffseg"></div></div>
+    </div>
+    <div class="grid" id="citygrid"></div>
+    <div class="bottombar"><button class="btn ghost" id="b-city-back">Kthehu</button><button class="btn go" id="b-city-next">Vazhdo</button></div>
+  </section>
+
+  <section id="scr-car" class="scr scr-shade" hidden>
+    <div class="eyebrow">Hapi 2 nga 2</div>
+    <h2 class="h-l" style="margin-bottom:10px">Zgjidh makinën</h2>
+    <div class="eyebrow" style="color:var(--mute)">Ngjyra</div>
+    <div class="paints" id="paints"></div>
+    <div class="carlist" id="carlist"></div>
+    <div class="bottombar"><button class="btn ghost" id="b-car-back">Kthehu</button><button class="btn go" id="b-start">Nisu!</button></div>
+  </section>
+
+  <section id="scr-load" class="scr" hidden>
+    <div class="eyebrow" id="load-region"></div>
+    <h2 class="h-xl" id="load-city"></h2>
+    <div class="eyebrow" style="margin-top:8px">Këshillë</div>
+    <p class="tip" id="load-tip" style="margin:0"></p>
+    <div class="bar"><b></b></div>
+  </section>
+
+  <section id="scr-pause" class="scr scr-shade" hidden>
+    <div class="panel" style="justify-content:center;min-height:100%;padding-bottom:0">
+      <h2 class="h-xl">Pauzë</h2>
+      <div class="menu-stack">
+        <button class="btn go" id="b-resume">Vazhdo</button>
+        <div class="row"><button class="btn sm" id="b-restart">Rifillo</button><button class="btn sm" id="b-help2">Si luhet</button><button class="btn sm" id="b-set2">Cilësimet</button></div>
+        <button class="btn ghost sm" id="b-quit">Dil nga gara</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="scr-res" class="scr scr-shade" hidden>
+    <div class="panel">
+      <div class="eyebrow" id="res-city"></div>
+      <h2 class="h-xl" id="res-place"></h2>
+      <p class="tag" id="res-msg" style="margin:0"></p>
+      <div class="tablewrap"><table class="res"><thead><tr><th>#</th><th>Shoferi</th><th>Makina</th><th>Koha</th><th>Tifozë</th></tr></thead><tbody id="res-body"></tbody></table></div>
+      <p class="muted" id="res-best" style="margin:0;font-size:13px"></p>
+      <div class="row"><button class="btn go" id="b-again">Përsërit</button><button class="btn" id="b-nextcity">Qyteti tjetër</button><button class="btn ghost" id="b-menu">Menyja</button></div>
+    </div>
+  </section>
+
+  <section id="scr-set" class="scr" hidden style="background: rgba(13,10,16,0.94)">
+    <div class="panel">
+      <h2 class="h-l">Cilësimet</h2>
+      <div id="setlist" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div class="row"><button class="btn go" id="b-set-done">Gati</button></div>
+    </div>
+  </section>
+
+  <section id="scr-help" class="scr" hidden style="background: rgba(13,10,16,0.94)">
+    <div class="panel" style="max-width:860px">
+      <h2 class="h-l">Si luhet</h2>
+      <p class="tag" style="margin:0;max-width:60ch">Mblidh fuqitë që shkëlqejnë në rrugë (deri në tre), godit kundërshtarët dhe mbërri i pari. Kur makina bëhet copë, rikthehesh pas dy sekondash.</p>
+      <div class="keys" id="help-keys"></div>
+      <div class="legend" id="legend"></div>
+      <div class="row"><button class="btn go" id="b-help-done">Kuptova</button></div>
+    </div>
+  </section>
+</div>
