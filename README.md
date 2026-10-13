@@ -18,8 +18,8 @@ Every push to `main` builds a new APK automatically (Actions → *Build APK*) an
 Local build: `npm ci && python3 build.py && npx cap sync android && cd android && ./gradlew assembleRelease`.
 
 ## Modes
-- **Garë:** the usual race through the cities, laps and power-ups. Every city shows its signature landmark on the skyline.
-- **Pikë (2 or 3 min):** no track. Five cars loose in Skanderbeg Square, a walled open arena. Ram the others: the harder the hit, the more points. Hits in a row multiply your points up to ×5, and wrecking a car adds a bonus. Power-ups are off in this mode.
+- **Garë:** the usual race through the cities, laps and power-ups. Every city shows its signature landmark on the skyline. Power-ups come back 2 seconds after somebody takes them.
+- **Pikë (2 or 3 min):** no track. Five cars loose in Skanderbeg Square, a walled open arena. Ram the others: the harder the hit, the more points. Hits in a row multiply your points up to ×5, and wrecking a car adds a bonus. The eight power-ups work here too and score when they land. A live leaderboard shows the standings.
 
 You play as one of the five drivers (Artur, Ritvan, Desantin, Eno, Erlin); the other four are your rivals. Each driver has a colour nobody else uses, on the car, its light trail, its name tag and the minimap.
 

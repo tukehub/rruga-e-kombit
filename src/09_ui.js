@@ -266,6 +266,13 @@ const UI = {
       const left = Math.max(0, race.timeLimit - race.time), m = Math.floor(left / 60), s = Math.floor(left % 60);
       this.set('h-time', `${m}:${String(s).padStart(2, '0')}`);
       this.set('h-fans', `${p.hitsN}<small>GODITJE</small>`, true);
+      // live leaderboard
+      const key = race.order.map(c => c.id + ':' + c.score).join();
+      if (key !== this.last.board) {
+        this.last.board = key;
+        this.$('h-board').innerHTML = race.order.map((c, i) => `<div class="${c === p ? 'me' : ''}"><b>${i + 1}</b><i style="background:${c.color}"></i><span>${c.name}</span><em>${c.score}</em></div>`).join('');
+      }
+      this.slotsHud(p);
       return;
     }
     this.set('h-pos', `${p.place}<small>/${race.cars.length}</small>`, true);
@@ -273,6 +280,9 @@ const UI = {
     this.set('h-lap', p.finished ? 'MBËRRITE' : `XHIRO ${lap}/${race.laps}`);
     this.set('h-time', fmtTime(p.finished ? p.finishTime : race.time));
     this.set('h-fans', `${p.fans}<small>TIFOZË</small>`, true);
+    this.slotsHud(p);
+  },
+  slotsHud(p) {
     const st = p.slots.map(s => s.type + s.ammo).join(',');
     if (st !== this.slotState) {
       this.slotState = st;

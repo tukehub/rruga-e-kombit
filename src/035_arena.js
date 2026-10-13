@@ -1,7 +1,10 @@
 // ---------- Points mode: free driving in an open, walled square. 2D arcade physics, no track. ----------
 // World axes: x/z metres, heading h with forward = (-sin h, cos h) and right = (cos h, sin h), same convention as the race view.
 // The square is a rounded rectangle (half extents AX/AZ, corner radius R) with a round statue island in the middle.
-const ARENA_DEF = { AX: 88, AZ: 62, R: 20, island: 9.5 };
+const ARENA_DEF = { AX: 88, AZ: 62, R: 20, island: 12.5 };
+// power-up stations on the square (x, z), clear of the statue island
+const ARENA_PADS = [[-66, -40], [0, -46], [66, -40], [-66, 40], [0, 46], [66, 40], [-44, 0], [44, 0], [-28, -26], [28, 26], [-28, 26], [28, -26]];
+const ARENA_WPTS = { eagle: 300, bolt: 90, barge: 160, mine: 200, shock: 180 }; // points for landing a power-up on someone
 const CAR_HALF_L = { gt: 2.27, muscle: 2.4, hatch: 2.14, sleek: 2.26, jeep: 2.41, van: 2.8 };
 const ARENA_SPEED = 0.68; // top speeds are scaled down: the square is big, but not 200 km/h big
 
@@ -38,7 +41,7 @@ class ArenaSim {
     this.rng = mulberry32(opt.seed || 1234);
     this.time = 0; this.timeLimit = opt.time || 120; this.over = false; this.started = false;
     this.events = []; this.cars = []; this.order = []; this.pairT = new Map();
-    this.pickups = []; this.projs = []; this.mines = []; this.domes = []; this.laps = 1;
+    this.pickups = []; this.projs = []; this.mines = []; this.domes = []; this.laps = 1; this.nextId = 1;
     const r = this.rng, pi = opt.noPlayer ? -1 : (opt.driver | 0), rivals = rivalsOf(pi, r);
     const roster = opt.noPlayer ? rivals : [DRIVERS[pi] || DRIVERS[0], ...rivals];
     roster.forEach((d, i) => {
@@ -52,6 +55,9 @@ class ArenaSim {
       this.cars.push(c);
     });
     if (!this.player) this.player = null;
+    const wsum = PW_KEYS.reduce((a, k) => a + PW[k].w, 0);
+    this.pickType = () => { let x = r() * wsum; for (const k of PW_KEYS) { x -= PW[k].w; if (x <= 0) return k; } return 'nitro'; };
+    for (const [x, z] of ARENA_PADS) this.pickups.push({ id: this.nextId++, x, z, type: this.pickType(), alive: true, t: 0 });
     this.computeOrder();
   }
   emit(e) { this.events.push(e); }
@@ -72,10 +78,17 @@ class ArenaSim {
     // two passes settle stacks of cars without visible overlap
     this.collide(true); this.collide(false);
     for (const c of this.cars) this.walls(c);
+    for (const c of this.cars) {
+      if (c.ctrl.cycle) { c.ctrl.cycle = false; if (c.slots.length > 1) { c.slots.push(c.slots.shift()); this.emit({ t: 'cycle', car: c }); } }
+      if (c.ctrl.fire) { c.ctrl.fire = false; this.useItem(c, false); }
+      if (c.ctrl.back) { c.ctrl.back = false; this.useItem(c, true); }
+    }
+    this.updatePickups(dt); this.updateProjs(dt); this.updateMines(dt); this.updateDomes(dt);
     this.computeOrder();
   }
   physics(c, dt) {
     c.invulnT = Math.max(0, c.invulnT - dt); c.scrape = Math.max(0, c.scrape - dt * 3);
+    c.shieldT = Math.max(0, c.shieldT - dt); c.nitroT = Math.max(0, c.nitroT - dt); c.stunT = Math.max(0, c.stunT - dt);
     if (c.hop > 0 || c.hopV > 0) { c.hopV -= 30 * dt; c.hop += c.hopV * dt; if (c.hop <= 0) { c.hop = 0; c.hopV = 0; } }
     if (c.wreckT > 0) {
       c.wreckT -= dt; c.vx *= Math.exp(-3 * dt); c.vz *= Math.exp(-3 * dt); c.x += c.vx * dt; c.z += c.vz * dt;
@@ -87,7 +100,8 @@ class ArenaSim {
     let vf = c.vx * fx + c.vz * fz, vl = c.vx * rx + c.vz * rz;
     let steerIn = c.ctrl.steer, gas = c.ctrl.gas, brake = c.ctrl.brake;
     if (!this.started) { gas = false; brake = true; steerIn = 0; }
-    const vmax = def.vmax * ARENA_SPEED * c.vmaxMul, acc = def.acc * 1.15;
+    if (c.spinT > 0) { c.spinT -= dt; steerIn = 0; gas = false; brake = false; }
+    const vmax = def.vmax * ARENA_SPEED * c.vmaxMul * (c.nitroT > 0 ? 1.35 : 1) * (c.stunT > 0 ? 0.55 : 1), acc = def.acc * 1.15 * (c.nitroT > 0 ? 2.1 : 1);
     const drifting = brake && Math.abs(c.steer) > 0.35 && vf > 12;
     c.drift = drifting ? Math.min(1, c.drift + dt * 4) : Math.max(0, c.drift - dt * 3);
     if (gas && !(brake && !drifting)) {
@@ -159,11 +173,7 @@ class ArenaSim {
     const key = att.id < vic.id ? att.id * 100 + vic.id : vic.id * 100 + att.id, last = this.pairT.get(key);
     if (last != null && this.time - last < 0.6) return;
     this.pairT.set(key, this.time);
-    if (this.time - att.comboT > 4) att.comboN = 0;
-    att.comboN++; att.comboT = this.time; att.combo = Math.min(5, 1 + Math.floor(att.comboN / 3));
-    const gain = Math.round(closing * 14) * att.combo;
-    att.score += gain; att.hitsN++;
-    vic.lastHitBy = att; vic.lastHitT = this.time;
+    const gain = this.award(att, vic, Math.round(closing * 14));
     this.emit({ t: 'score', car: att, victim: vic, pts: gain, combo: att.combo, imp: closing, x, z });
     const dmg = Math.max(0, closing - 8) * 1.9;
     if (dmg > 0) { this.damage(vic, dmg); this.damage(att, dmg * 0.25); }
@@ -218,6 +228,190 @@ class ArenaSim {
     if (into > 13) this.damage(c, (into - 13) * 1.2);
     if (into > 4) this.emit({ t: 'wall', car: c, imp: into, x: c.x + nx * 1.4, z: c.z + nz * 1.4 });
   }
+  // points for att landing anything on vic, times att's combo (x1 up to x5, +1 every three hits within 4 s)
+  award(att, vic, base) {
+    if (this.time - att.comboT > 4) att.comboN = 0;
+    att.comboN++; att.comboT = this.time; att.combo = Math.min(5, 1 + Math.floor(att.comboN / 3));
+    const gain = base * att.combo;
+    att.score += gain; att.hitsN++;
+    vic.lastHitBy = att; vic.lastHitT = this.time;
+    return gain;
+  }
+  // ---------------- power-ups: same eight as the races, re-thought for open ground ----------------
+  updatePickups(dt) {
+    for (const p of this.pickups) {
+      if (!p.alive) { p.t -= dt; if (p.t <= 0) { p.alive = true; this.emit({ t: 'pickupBack', p }); } continue; }
+      for (const c of this.cars) {
+        if (c.slots.length >= 3 || c.wreckT > 0) continue;
+        if (Math.hypot(c.x - p.x, c.z - p.z) < 2.9) {
+          p.alive = false; p.t = 2; // back two seconds after somebody takes it
+          c.slots.push({ type: p.type, ammo: PW[p.type].ammo || 1 });
+          this.emit({ t: 'pickup', car: c, type: p.type, p });
+          break;
+        }
+      }
+    }
+  }
+  // the best target in front (or behind): close and well lined up
+  aimAt(c, back, range, minDot) {
+    const k = back ? -1 : 1, fx = -Math.sin(c.h) * k, fz = Math.cos(c.h) * k; let best = null, bs = -Infinity;
+    for (const o of this.cars) {
+      if (o === c || o.wreckT > 0) continue;
+      const dx = o.x - c.x, dz = o.z - c.z, d = Math.hypot(dx, dz); if (d > range) continue;
+      const dot = (dx * fx + dz * fz) / (d || 1); if (dot < (minDot == null ? 0.25 : minDot)) continue;
+      const sc = dot * 2 - d / range; if (sc > bs) { bs = sc; best = o; }
+    }
+    return best;
+  }
+  useItem(c, back) {
+    const it = c.slots[0];
+    if (!it || c.wreckT > 0 || c.spinT > 0 || !this.started || this.over) return;
+    const type = it.type, k = back ? -1 : 1, fx = -Math.sin(c.h), fz = Math.cos(c.h); let used = true;
+    switch (type) {
+      case 'eagle': {
+        const tgt = this.aimAt(c, back, back ? 90 : 220, 0.1) || (back ? null : this.aimAt(c, false, 400, -1));
+        const sp = Math.max(Math.abs(c.v) + 22, 42);
+        this.projs.push({ id: this.nextId++, kind: 'eagle', owner: c, x: c.x + fx * 3.5 * k, z: c.z + fz * 3.5 * k, vx: fx * sp * k, vz: fz * sp * k, target: tgt, life: 6 });
+        break;
+      }
+      case 'bolt': {
+        const sp = Math.max(c.v, 0) * k + 80 * k;
+        this.projs.push({ id: this.nextId++, kind: 'bolt', owner: c, x: c.x + fx * 3 * k, z: c.z + fz * 3 * k, vx: fx * sp, vz: fz * sp, target: null, life: 1.3 });
+        it.ammo--; used = it.ammo <= 0;
+        break;
+      }
+      case 'barge': { // shockwave: everybody close gets thrown away from you
+        for (const o of this.cars) {
+          if (o === c || o.wreckT > 0) continue;
+          const dx = o.x - c.x, dz = o.z - c.z, d = Math.hypot(dx, dz) || 1;
+          if (d < 15) { const f = 1 - d / 15, push = 12 + 14 * f; this.hit(o, c, 'barge', 12 + 12 * f, { slow: 0.9, px: dx / d * push, pz: dz / d * push }); }
+        }
+        this.emit({ t: 'barge', car: c, x: c.x, z: c.z });
+        break;
+      }
+      case 'mine': {
+        if (back) this.mines.push({ id: this.nextId++, owner: c, x: c.x - fx * 4, z: c.z - fz * 4, vx: 0, vz: 0, fly: 0, fly0: 0.6, life: 40, arm: 0.4, born: this.time });
+        else { const sp = Math.max(c.v, 8) + 24; this.mines.push({ id: this.nextId++, owner: c, x: c.x + fx * 3, z: c.z + fz * 3, vx: fx * sp, vz: fz * sp, fly: 0.65, fly0: 0.65, life: 40, arm: 0.4, born: this.time }); }
+        break;
+      }
+      case 'shock': { // three electric domes where the leader is heading
+        const lead = this.order.find(o => o !== c && o.wreckT <= 0 && o.score >= c.score);
+        if (!lead) { used = false; this.emit({ t: 'denied', car: c, why: 'first' }); break; }
+        const bx = lead.x + lead.vx * 1.1, bz = lead.z + lead.vz * 1.1;
+        for (let n = 0; n < 3; n++) {
+          const a = this.rng() * Math.PI * 2, rr = n ? 6 + this.rng() * 5 : 0;
+          let x = bx + Math.cos(a) * rr, z = bz + Math.sin(a) * rr; const w = { nx: 0, nz: 0 }, d = arenaWall(x, z, w);
+          if (d < 5) { x -= w.nx * (5 - d); z -= w.nz * (5 - d); }
+          this.domes.push({ id: this.nextId++, owner: c, x, z, r: 4.8, warn: 0.9, life: 7, hitSet: new Set() });
+        }
+        this.emit({ t: 'shock', car: c, target: lead });
+        break;
+      }
+      case 'nitro': {
+        if (back) { c.vx *= 0.4; c.vz *= 0.4; } else c.nitroT = 2.6;
+        this.emit({ t: 'nitro', car: c, back });
+        break;
+      }
+      case 'shield': c.shieldT = 8; this.emit({ t: 'shield', car: c }); break;
+      case 'repair': {
+        if (c.health >= c.maxHp * 0.97) { used = false; this.emit({ t: 'denied', car: c, why: 'full' }); }
+        else { c.health = c.maxHp; this.emit({ t: 'repair', car: c, x: c.x, z: c.z }); }
+        break;
+      }
+    }
+    if (used || type === 'bolt') this.emit({ t: 'fire', car: c, type, back, x: c.x, z: c.z });
+    if (used) c.slots.shift();
+  }
+  hit(o, by, kind, dmg, fx) {
+    if (o.wreckT > 0) return false;
+    if (o.shieldT > 0 || o.invulnT > 0) { this.emit({ t: 'blocked', car: o, by, kind, x: o.x, z: o.z }); return false; }
+    if (fx.spin) { o.spinT = 1.0; o.w += (this.rng() < 0.5 ? -1 : 1) * 7; o.vx *= 0.35; o.vz *= 0.35; o.hopV = Math.max(o.hopV, 7); }
+    if (fx.slow) { o.vx *= fx.slow; o.vz *= fx.slow; }
+    if (fx.stun) o.stunT = Math.max(o.stunT, fx.stun);
+    if (fx.hop) o.hopV = Math.max(o.hopV, fx.hop);
+    if (fx.px) { o.vx += fx.px; o.vz += fx.pz; }
+    const pts = by && by !== o && !this.over ? this.award(by, o, ARENA_WPTS[kind] || 100) : 0;
+    this.emit({ t: 'hit', car: o, by, kind, dmg, pts, combo: by ? by.combo : 1, x: o.x, z: o.z });
+    this.damage(o, dmg);
+    return true;
+  }
+  updateProjs(dt) {
+    const w = this._pw || (this._pw = { nx: 0, nz: 0 });
+    for (let i = this.projs.length - 1; i >= 0; i--) {
+      const p = this.projs[i]; let dead = false; p.life -= dt;
+      const tg = p.target && p.target.wreckT <= 0 ? p.target : null;
+      if (p.kind === 'eagle') { // homing: turns toward its target and keeps a little faster than it
+        const cur = Math.atan2(p.vz, p.vx), sp = Math.hypot(p.vx, p.vz);
+        const na = tg ? cur + clamp(wrapAng(Math.atan2(tg.z - p.z, tg.x - p.x) - cur), -3.4 * dt, 3.4 * dt) : cur;
+        const nsp = Math.min(sp + 40 * dt, Math.max(50, tg ? Math.hypot(tg.vx, tg.vz) + 18 : 50));
+        p.vx = Math.cos(na) * nsp; p.vz = Math.sin(na) * nsp;
+      }
+      p.x += p.vx * dt; p.z += p.vz * dt;
+      for (const o of this.cars) {
+        if (o === p.owner || o.wreckT > 0 || Math.hypot(o.x - p.x, o.z - p.z) > 2.5) continue;
+        const sp = Math.hypot(p.vx, p.vz) || 1;
+        if (p.kind === 'eagle') this.hit(o, p.owner, 'eagle', 34, { spin: true });
+        else this.hit(o, p.owner, 'bolt', 11, { slow: 0.86, px: p.vx / sp * 4, pz: p.vz / sp * 4 });
+        this.emit({ t: 'boom', kind: p.kind, x: p.x, z: p.z, hitCar: o }); dead = true; break;
+      }
+      if (!dead && (arenaWall(p.x, p.z, w) < 0.4 || Math.hypot(p.x, p.z) < ARENA_DEF.island)) { this.emit({ t: 'boom', kind: p.kind, x: p.x, z: p.z }); dead = true; }
+      if (!dead && p.life <= 0) { this.emit({ t: 'fizzle', kind: p.kind, x: p.x, z: p.z }); dead = true; }
+      if (dead) this.projs.splice(i, 1);
+    }
+  }
+  updateMines(dt) {
+    const w = this._mw || (this._mw = { nx: 0, nz: 0 });
+    for (let i = this.mines.length - 1; i >= 0; i--) {
+      const m = this.mines[i];
+      if (m.fly > 0) {
+        m.fly -= dt; m.x += m.vx * dt; m.z += m.vz * dt;
+        const d = arenaWall(m.x, m.z, w); if (d < 1.5) { m.x -= w.nx * (1.5 - d); m.z -= w.nz * (1.5 - d); m.fly = 0; }
+        continue;
+      }
+      m.life -= dt; m.arm -= dt;
+      if (m.life <= 0) { this.mines.splice(i, 1); continue; }
+      if (m.arm > 0) continue;
+      for (const o of this.cars) {
+        if ((o === m.owner && this.time - m.born < 2.5) || o.wreckT > 0) continue;
+        if (Math.hypot(o.x - m.x, o.z - m.z) < 2.3) {
+          this.hit(o, m.owner, 'mine', 26, { hop: 7.5, slow: 0.5, stun: 1.0 });
+          this.emit({ t: 'boom', kind: 'mine', x: m.x, z: m.z, hitCar: o });
+          this.mines.splice(i, 1); break;
+        }
+      }
+    }
+    if (this.mines.length > 16) this.mines.shift();
+  }
+  updateDomes(dt) {
+    for (let i = this.domes.length - 1; i >= 0; i--) {
+      const dm = this.domes[i];
+      if (dm.warn > 0) { dm.warn -= dt; continue; }
+      dm.life -= dt; if (dm.life <= 0) { this.domes.splice(i, 1); continue; }
+      for (const o of this.cars) {
+        if (dm.hitSet.has(o.id) || o.wreckT > 0) continue;
+        if (Math.hypot(o.x - dm.x, o.z - dm.z) < dm.r) { dm.hitSet.add(o.id); this.hit(o, dm.owner, 'shock', 20, { stun: 2.2, slow: 0.6 }); this.emit({ t: 'zap', dome: dm, car: o, x: o.x, z: o.z }); }
+      }
+    }
+  }
+  aiWeapons(c) {
+    const it = c.slots[0]; if (!it || !this.started) return;
+    const r = this.rng(), aim = this.diff.aim; let fire = false, back = false;
+    switch (it.type) {
+      case 'eagle': if (this.aimAt(c, false, 180, 0.3) && r < 0.8 * aim) fire = true; else if (this.aimAt(c, true, 40, 0.5) && r < 0.3) { fire = true; back = true; } break;
+      case 'bolt': if (this.aimAt(c, false, 55, 0.93) && r < 0.9 * aim) fire = true; break;
+      case 'barge': for (const o of this.cars) if (o !== c && o.wreckT <= 0 && Math.hypot(o.x - c.x, o.z - c.z) < 10) fire = true; break;
+      case 'mine': if (this.aimAt(c, true, 30, 0.5) && r < 0.7) { fire = true; back = true; } else if (this.aimAt(c, false, 35, 0.8) && r < 0.4) fire = true; break;
+      case 'shock': if (c.place > 1 && r < 0.5) fire = true; break;
+      case 'nitro': { const t = c.ai.tgt; if (t && Math.hypot(t.x - c.x, t.z - c.z) > 22 && this.aimAt(c, false, 90, 0.9) === t && r < 0.8) fire = true; break; }
+      case 'shield': {
+        let threat = false; for (const p of this.projs) if (p.target === c || (p.owner !== c && Math.hypot(p.x - c.x, p.z - c.z) < 25)) threat = true;
+        if (threat || (c.health < c.maxHp * 0.5 && r < 0.25) || r < 0.04) fire = true; break;
+      }
+      case 'repair': if (c.health < c.maxHp * 0.45) fire = true; break;
+    }
+    if (fire) this.useItem(c, back);
+    else if (c.slots.length >= 2 && r > 0.9) c.slots.push(c.slots.shift());
+  }
   // ---------------- AI: pick a victim, lead it, ram it, back off, repeat ----------------
   aiDrive(c, dt) {
     const ai = c.ai, r = this.rng, A = ARENA_DEF;
@@ -246,6 +440,12 @@ class ArenaSim {
       const d = Math.hypot(t.x - c.x, t.z - c.z), lead = clamp(d / Math.max(10, Math.abs(c.v) + 6), 0, 1.1);
       px = t.x + t.vx * lead; pz = t.z + t.vz * lead;
     }
+    // nothing in hand and a power-up close by: take it on the way
+    if (c.slots.length < 2) {
+      let bp = null, bd = c.slots.length ? 22 : 38;
+      for (const p of this.pickups) { if (!p.alive) continue; const d = Math.hypot(p.x - c.x, p.z - c.z); if (d < bd) { bd = d; bp = p; } }
+      if (bp && (!t || bd < Math.hypot(t.x - c.x, t.z - c.z) * 0.8)) { px = bp.x; pz = bp.z; }
+    }
     // go round the statue island instead of into it
     const sx = px - c.x, sz = pz - c.z, L2 = sx * sx + sz * sz || 1, t0 = clamp(-(c.x * sx + c.z * sz) / L2, 0, 1);
     const qx = c.x + sx * t0, qz = c.z + sz * t0, qd = Math.hypot(qx, qz);
@@ -259,5 +459,7 @@ class ArenaSim {
     c.ctrl.steer = clamp(dA * 2.4, -1, 1);
     c.ctrl.gas = true;
     c.ctrl.brake = Math.abs(dA) > 1.9 && c.v > 12; // hard about-turn: brake into a drift
+    ai.wT = (ai.wT || 0) - dt;
+    if (ai.wT <= 0) { ai.wT = (0.35 + r() * 0.6) * this.diff.react * ai.react; this.aiWeapons(c); }
   }
 }

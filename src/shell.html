@@ -181,7 +181,13 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
 #h-me { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font: 700 12px/1 var(--f-ui); letter-spacing: 0.12em; text-transform: uppercase; }
 #h-me i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
 /* points mode: no power-ups to fire */
-#hud.pts #h-slots, #hud.pts #h-slotname, #hud.pts #t-fire, #hud.pts #t-back { display: none !important; }
+#h-board { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 96px); left: calc(env(safe-area-inset-left, 0px) + 12px); padding: 6px 8px; display: none; flex-direction: column; gap: 2px; min-width: 150px; font: 600 12px/1.25 var(--f-ui); }
+#hud.pts #h-board { display: flex; }
+#h-board div { display: grid; grid-template-columns: 14px 9px 1fr auto; gap: 7px; align-items: center; padding: 3px 6px; border-radius: 6px; }
+#h-board div.me { background: linear-gradient(90deg, rgba(138,92,255,0.45), rgba(138,92,255,0.08)); }
+#h-board b { font: 900 italic 14px/1 var(--f-display); color: var(--mute); } #h-board div.me b { color: #fff; }
+#h-board i { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+#h-board em { font-style: normal; font-weight: 700; color: var(--ink); }
 #hud.pts #h-lap { color: var(--amber); }
 #fx-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, var(--fc, rgba(255,45,111,0.85)) 100%); transition: opacity .35s; }
 #fx-speed { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255,255,255,0.0) 0deg 4deg, rgba(190,210,255,0.11) 4deg 5deg); -webkit-mask: radial-gradient(ellipse at 50% 55%, transparent 35%, #000 75%); mask: radial-gradient(ellipse at 50% 55%, transparent 35%, #000 75%); transition: opacity .25s; }
@@ -225,6 +231,7 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
   .drivers { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (max-height: 420px) {
+  #h-board { top: calc(env(safe-area-inset-top, 0px) + 84px); font-size: 11px; min-width: 132px; }
   #h-pos { font-size: 44px; } #minimap { width: 96px; height: 96px; }
   .gauge { width: 98px; height: 98px; } #h-speed { font-size: 31px; }
   #h-slots .slot { width: 40px; height: 40px; } #h-slots .slot:first-child { width: 52px; height: 52px; }
@@ -241,6 +248,7 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
   <div id="fx-flash"></div>
   <div id="hud" hidden>
     <div class="hud-tl chip"><div id="h-pos">5<small>/5</small></div><div class="hud-sub"><div id="h-lap">XHIRO 1/3</div><div id="h-time">0:00.00</div></div></div>
+    <div id="h-board" class="chip" aria-label="Renditja"></div>
     <div id="h-feed" aria-live="polite"></div>
     <div id="h-center"></div>
     <div id="h-pop"></div>

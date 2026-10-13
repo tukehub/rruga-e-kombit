@@ -306,7 +306,7 @@ class Race {
       for (const c of this.cars) {
         if (c.slots.length >= 3 || c.wreckT > 0 || c.finished) continue;
         if (Math.abs(T.wrapS(c.s - p.s)) < 3.2 && Math.abs(c.d - p.d) < 2.6) {
-          p.alive = false; p.t = 6;
+          p.alive = false; p.t = 2; // back two seconds after somebody takes it
           c.slots.push({ type: p.type, ammo: PW[p.type].ammo || 1 });
           this.emit({ t: 'pickup', car: c, type: p.type, p });
           break;

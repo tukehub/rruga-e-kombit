@@ -120,6 +120,33 @@ function disposeRace() {
   G.world = G.race = G.track = G.player = null; G.arena = false; G.camH = null; G.views = []; G.ent.clear(); G.trans = []; G.fx = null; G.weather = null; G.trails = null;
   renderer.renderLists.dispose();
 }
+// shared render resources and the pick-up pads (race: placed on the track, arena: on the square)
+function setupPickups(scene, list, pos) {
+  G.res = {
+    ring: (() => { const g = new THREE.RingGeometry(1.25, 1.7, 24); g.rotateX(-Math.PI / 2); return g; })(),
+    pick: {}, pring: {},
+    gm: {}, glow(col) { return this.gm[col] || (this.gm[col] = glowSprite(col, 2.4)); },
+    pillar: (() => { const g = new THREE.CylinderGeometry(0.85, 1.25, 11, 6, 1, true); g.rotateY(Math.PI / 6); g.translate(0, 5.5, 0); return g; })(), ppm: {},
+    hexPad: (() => { const g = new THREE.RingGeometry(1.45, 1.95, 6); g.rotateX(-Math.PI / 2); g.rotateY(Math.PI / 6); return g; })(),
+    hexA: new THREE.TorusGeometry(1.5, 0.065, 6, 6), hexB: new THREE.TorusGeometry(1.12, 0.045, 6, 6), pfm: {},
+  };
+  G.picks = new Map();
+  // pick-ups: a holographic badge inside two spinning hex frames, over a lit hex pad with a light column
+  for (const p of list) {
+    const col = PW[p.type].col;
+    const m = G.res.pick[p.type] || (G.res.pick[p.type] = linMat(Object.assign(new THREE.SpriteMaterial({ map: TEX.icons[p.type].tex, transparent: true, depthWrite: false, toneMapped: false }), { userData: { hdr: 1.25 } })));
+    const rm = G.res.pring[p.type] || (G.res.pring[p.type] = linMat(glowMat(col, 3, { transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })));
+    const pm = G.res.ppm[p.type] || (G.res.ppm[p.type] = linMat(glowMat(col, 0.9, { map: TEX.vgrad, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })));
+    const fm = G.res.pfm[p.type] || (G.res.pfm[p.type] = linMat(glowMat(col, 3.4)));
+    const grp = new THREE.Group(), sp = new THREE.Sprite(m); sp.scale.set(2.3, 2.3, 1); sp.position.y = 1.75;
+    const f1 = new THREE.Mesh(G.res.hexA, fm), f2 = new THREE.Mesh(G.res.hexB, fm); f1.position.y = f2.position.y = 1.75;
+    const pad = new THREE.Mesh(G.res.hexPad, rm), halo = new THREE.Sprite(G.res.glow(col)); pad.position.y = 0.12; halo.scale.set(5.5, 5.5, 1); halo.position.y = 1.75;
+    const pil = new THREE.Mesh(G.res.pillar, pm); pil.position.y = 0.1;
+    grp.add(halo, sp, f1, f2, pad, pil);
+    pos(p, tmpA); grp.position.copy(tmpA); scene.add(grp);
+    G.picks.set(p.id, { grp, sp, f1, f2, pil, ph: Math.random() * 6, pop: 1 });
+  }
+}
 function buildRace(city) {
   if (SET.mode === 'points') return buildArena();
   disposeRace(); lazyTextures();
@@ -135,32 +162,9 @@ function buildRace(city) {
   G.fx = new FX(scene, q); updatePScale();
   G.weather = env.rain ? new Weather(scene, 'rain', q) : env.snow ? new Weather(scene, 'snow', q) : null;
   // pick-ups
-  G.res = {
-    ring: (() => { const g = new THREE.RingGeometry(1.25, 1.7, 24); g.rotateX(-Math.PI / 2); return g; })(),
-    pick: {}, pring: {},
-    gm: {}, glow(col) { return this.gm[col] || (this.gm[col] = glowSprite(col, 2.4)); },
-    pillar: (() => { const g = new THREE.CylinderGeometry(0.85, 1.25, 11, 6, 1, true); g.rotateY(Math.PI / 6); g.translate(0, 5.5, 0); return g; })(), ppm: {},
-    hexPad: (() => { const g = new THREE.RingGeometry(1.45, 1.95, 6); g.rotateX(-Math.PI / 2); g.rotateY(Math.PI / 6); return g; })(),
-    hexA: new THREE.TorusGeometry(1.5, 0.065, 6, 6), hexB: new THREE.TorusGeometry(1.12, 0.045, 6, 6), pfm: {},
-  };
-  G.picks = new Map();
-  // pick-ups: a holographic badge inside two spinning hex frames, over a lit hex pad with a light column
-  for (const p of race.pickups) {
-    const col = PW[p.type].col;
-    const m = G.res.pick[p.type] || (G.res.pick[p.type] = linMat(Object.assign(new THREE.SpriteMaterial({ map: TEX.icons[p.type].tex, transparent: true, depthWrite: false, toneMapped: false }), { userData: { hdr: 1.25 } })));
-    const rm = G.res.pring[p.type] || (G.res.pring[p.type] = linMat(glowMat(col, 3, { transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })));
-    const pm = G.res.ppm[p.type] || (G.res.ppm[p.type] = linMat(glowMat(col, 0.9, { map: TEX.vgrad, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })));
-    const fm = G.res.pfm[p.type] || (G.res.pfm[p.type] = linMat(glowMat(col, 3.4)));
-    const grp = new THREE.Group(), sp = new THREE.Sprite(m); sp.scale.set(2.3, 2.3, 1); sp.position.y = 1.75;
-    const f1 = new THREE.Mesh(G.res.hexA, fm), f2 = new THREE.Mesh(G.res.hexB, fm); f1.position.y = f2.position.y = 1.75;
-    const pad = new THREE.Mesh(G.res.hexPad, rm), halo = new THREE.Sprite(G.res.glow(col)); pad.position.y = 0.12; halo.scale.set(5.5, 5.5, 1); halo.position.y = 1.75;
-    const pil = new THREE.Mesh(G.res.pillar, pm); pil.position.y = 0.1;
-    grp.add(halo, sp, f1, f2, pad, pil);
-    track.pos(p.s, p.d, tmpA); grp.position.copy(tmpA); scene.add(grp);
-    G.picks.set(p.id, { grp, sp, f1, f2, pil, ph: Math.random() * 6, pop: 1 });
-  }
+  setupPickups(scene, race.pickups, (p, out) => track.pos(p.s, p.d, out));
   linearize(scene); G.post.setLook(env); G.lookFor = 'race'; renderer.toneMappingExposure = env.exp || 1;
-  G.acc = 0; G.shake = 0; G.fov = 66; G.camLook = new V3(); G.finT = 0; G.sndT = {};
+  G.acc = 0; G.shake = 0; G.fov = 66; G.camLook = new V3(); G.finT = 0; G.sndT = {}; G.last500 = false;
   G.minimap = (() => { const p = new Path2D(); for (let i = 0; i < track.M; i += 2) { if (i) p.lineTo(track.X[i], track.Z[i]); else p.moveTo(track.X[i], track.Z[i]); } p.closePath(); return p; })();
   camera.clearViewOffset(); camera.fov = 64; camera.updateProjectionMatrix();
   updateViews(0); introCam(0);
@@ -315,8 +319,9 @@ function updateViews(dt) {
     }
   });
 }
+// where a sim object sits in the world: on the track by (s, d), or on the square by (x, z)
+function simPos(o, out) { if (G.arena) return out.set(o.x, 0, o.z); return G.track.pos(o.s, o.d, out); }
 function syncEntities(dt) {
-  if (G.arena) return;
   const race = G.race, T = G.track, sc = G.world.scene, t = G.t, seen = G.seen || (G.seen = new Set());
   seen.clear();
   for (const p of race.projs) {
@@ -335,8 +340,9 @@ function syncEntities(dt) {
       }
       sc.add(obj); G.ent.set(p.id, e);
     }
-    T.pos(p.s, p.d, tmpA); e.obj.position.set(tmpA.x, tmpA.y + 1.1, tmpA.z);
-    T.tangent(p.s, tmpB); tmpC.copy(e.obj.position).addScaledVector(tmpB, p.dir); e.obj.lookAt(tmpC);
+    simPos(p, tmpA); e.obj.position.set(tmpA.x, tmpA.y + 1.1, tmpA.z);
+    if (G.arena) tmpC.set(e.obj.position.x + p.vx, e.obj.position.y, e.obj.position.z + p.vz); else { T.tangent(p.s, tmpB); tmpC.copy(e.obj.position).addScaledVector(tmpB, p.dir); }
+    e.obj.lookAt(tmpC);
     if (p.kind === 'eagle') { G.fx.trail(tmpA.x, tmpA.y + 1.1, tmpA.z, PW.eagle.col, 1.6, 0.45); e.icon.material.rotation = Math.sin(t * 18) * 0.25; }
     else G.fx.trail(tmpA.x, tmpA.y + 1.1, tmpA.z, PW.bolt.col, 0.9, 0.2);
   }
@@ -351,7 +357,7 @@ function syncEntities(dt) {
       const gl = new THREE.Sprite(G.res.glow(PW.mine.col)); gl.scale.set(2.6, 2.6, 1); gl.position.y = 0.4; obj.add(gl);
       sc.add(obj); e = { obj, ring }; G.ent.set(id, e);
     }
-    T.pos(m.s, m.d, tmpA); let y = tmpA.y + 0.1; if (m.fly > 0) y += Math.sin(Math.PI * (1 - m.fly / m.fly0)) * 7;
+    simPos(m, tmpA); let y = tmpA.y + 0.1; if (m.fly > 0) y += Math.sin(Math.PI * (1 - m.fly / m.fly0)) * 7;
     e.obj.position.set(tmpA.x, y, tmpA.z);
     const pulse = 1 + 0.15 * Math.sin(t * 8 + id); e.ring.scale.set(pulse, 1, pulse); e.ring.material.opacity = m.arm > 0 ? 0.3 : 0.85;
   }
@@ -366,7 +372,7 @@ function syncEntities(dt) {
       ring.position.y = 0.1; obj.add(ring);
       sc.add(obj); e = { obj, dome: dm, ring }; G.ent.set(id, e);
     }
-    T.pos(d.s, d.d, tmpA); e.obj.position.copy(tmpA);
+    simPos(d, tmpA); e.obj.position.copy(tmpA);
     if (d.warn > 0) { e.dome.visible = false; e.ring.material.opacity = 0.4 + 0.4 * Math.sin(t * 22); }
     else { e.dome.visible = true; e.dome.material.opacity = 0.22 + 0.12 * Math.random(); e.ring.material.opacity = 0.9; if (Math.random() < 0.35) G.fx.burst('zap', tmpA.x, tmpA.y + 1, tmpA.z); }
   }
@@ -501,6 +507,11 @@ function loop(ts) {
     while (G.acc >= DT && n < 5) { G.race.step(DT); G.acc -= DT; n++; }
     if (n >= 5) G.acc = 0;
     processEvents();
+    // races: a heads-up when the finish line is 500 m away on the last lap
+    if (!G.arena && st === 'race' && !G.last500) {
+      const P = G.player, R = G.race, left = R.laps * R.L - P.progress;
+      if (P.lap === R.laps - 1 && left > 0 && left < 500) { G.last500 = true; UI.center('500 metrat e fundit!', 2); AUD.play('lap'); }
+    }
     if (st === 'race') chaseCam(dt); else orbitCam(dt);
     const P = G.player;
     if (st === 'race' || st === 'finish') AUD.engine(Math.abs(P.v) / P.def.vmax, P.gasOn, P.wreckT <= 0, P.scrape);

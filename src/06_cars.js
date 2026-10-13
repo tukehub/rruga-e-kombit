@@ -190,6 +190,7 @@ function tyreGeo(S) {
   return { tyre: g, inner: mergeGeos([barrel, disc]) };
 }
 const CAR_GEO = {};
+const CAR_WING = { gt: true, sleek: true, muscle: true };
 function carGeo(style) {
   if (CAR_GEO[style]) return CAR_GEO[style];
   const S = CAR_SHAPES[style], hz = S.L / 2, HW = S.W / 2;
@@ -240,8 +241,30 @@ function carGeo(style) {
     const m = new THREE.BoxGeometry(0.17, 0.09, 0.09); m.translate(xm + sx * 0.02, ym - 0.02, zm); paint.push(m);
     const st = new THREE.BoxGeometry(0.12, 0.03, 0.05); st.translate(xm - sx * 0.09, ym - 0.03, zm); dark.push(st);
   }
+  // ---- show-car extras: swan-neck GT wing, twin stripes, neon sills (the neon takes the driver's colour) ----
+  const neon = [], stripe = [], wing = [], hasWing = CAR_WING[style];
+  for (const sx of [-1, 1]) {
+    const z0 = S.zR + S.wr + 0.16, z1 = S.zF - S.wr - 0.16, zm = (z0 + z1) / 2;
+    const b = new THREE.BoxGeometry(0.03, 0.035, z1 - z0); b.translate(sx * (f.half(zm) * HW + 0.018), f.bot(zm) + 0.1, zm); neon.push(b);
+  }
+  if (hasWing) {
+    const z = -hz + 0.45, yTop = f.top(z), span = S.W * 0.94, wy = yTop + 0.36;
+    const plane = new THREE.BoxGeometry(span, 0.04, 0.38); plane.rotateX(0.14); plane.translate(0, wy, z - 0.06); wing.push(plane);
+    for (const sx of [-1, 1]) {
+      const up = new THREE.BoxGeometry(0.04, 0.38, 0.1); up.rotateX(-0.25); up.translate(sx * span * 0.27, yTop + 0.18, z + 0.02); wing.push(up);
+      const ep = new THREE.BoxGeometry(0.025, 0.22, 0.48); ep.translate(sx * span / 2, wy - 0.03, z - 0.06); wing.push(ep);
+    }
+    const lip = new THREE.BoxGeometry(span, 0.025, 0.025); lip.translate(0, wy + 0.01, z - 0.26); neon.push(lip);
+  }
+  // twin stripes laid on the roof and bonnet by casting down onto the body
+  if (!S.van) {
+    const rm = roof ? new THREE.Mesh(roof) : null;
+    for (const sx of [-0.21, 0.21]) for (let z = -hz + 0.1; z < hz - 0.06; z += 0.16) {
+      push(stripe, (rm && stick(rm, sx, 6, z, 0, -1, 0, 0.15, 0.18, 0.008, 0.001)) || stick(bm, sx, 6, z, 0, -1, 0, 0.15, 0.18, 0.008, 0.001));
+    }
+  }
   // spoilers
-  if (S.spoiler === 'duck' || S.spoiler === 'lip') {
+  if ((S.spoiler === 'duck' || S.spoiler === 'lip') && !hasWing) {
     const z = -hz + 0.18, w = S.W * (S.spoiler === 'duck' ? 0.84 : 0.7), sp = new THREE.BoxGeometry(w, 0.035, S.spoiler === 'duck' ? 0.32 : 0.2);
     sp.rotateX(-0.12); sp.translate(0, f.top(z) + 0.03, z); paint.push(sp);
   }
@@ -264,6 +287,8 @@ function carGeo(style) {
     S, f, body, cab, roof, tailPts,
     paint: paint.length ? mergeGeos(paint) : null, dark: mergeGeos(dark), glass: glass.length ? mergeGeos(glass) : null,
     head: mergeGeos(head), tail: mergeGeos(tail), chrome: chrome.length ? mergeGeos(chrome) : null, spare,
+    neon: mergeGeos(neon), stripe: stripe.length ? mergeGeos(stripe) : null, wing: wing.length ? mergeGeos(wing) : null,
+    rimGlow: (() => { const g = new THREE.TorusGeometry(S.wr * 0.67, 0.016, 6, 40); g.rotateY(Math.PI / 2); g.translate(S.tyreW / 2 - 0.012, 0, 0); return g; })(),
     tyre: TG.tyre, inner: TG.inner, rim: rimGeo(S), caliper: S.caliper ? new THREE.BoxGeometry(0.07, S.wr * 0.42, S.wr * 0.34) : null,
     H: Math.max(...S.cab.keys.map(k => k[1])), wx: (z) => f.half(z) * HW - S.tyreW / 2 - 0.035,
   };
@@ -290,6 +315,14 @@ function paintMat(hex) {
   const m = linMat(new THREE.MeshPhysicalMaterial({ color: hex, roughness: 0.22, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.03 }));
   m.envMapIntensity = 2.6; CAR_MATS[key] = m; return m;
 }
+// neon accents glow in the driver's colour; stripes contrast with the paint
+function neonMat(hex) { const key = 'n' + hex; return CAR_MATS[key] || (CAR_MATS[key] = linMat(glowMat(hex, 3.2))); }
+function stripeMat(hex) {
+  const light = new THREE.Color(hex).getHSL({}).l > 0.55 || hex === '#ffc21a', col = light ? '#151519' : '#f4f4f6', key = 's' + col;
+  if (CAR_MATS[key]) return CAR_MATS[key];
+  const m = linMat(new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.25, metalness: 0.3, clearcoat: 1, clearcoatRoughness: 0.04 })); m.envMapIntensity = 2.4;
+  return (CAR_MATS[key] = m);
+}
 function caliperMat(hex) {
   const key = 'c' + hex; if (CAR_MATS[key]) return CAR_MATS[key];
   return (CAR_MATS[key] = linMat(new THREE.MeshStandardMaterial({ color: hex, roughness: 0.35, metalness: 0.3 })));
@@ -303,12 +336,14 @@ class CarView {
     add(G.body, paint, true); add(G.cab, S.van ? paint : M.glass, true); add(G.roof, paint, false); add(G.paint, paint, true);
     add(G.dark, M.trim, false); add(G.glass, M.glass); add(G.chrome, M.chrome); add(G.spare, M.tyre, true);
     add(G.head, M.head); this.tailMesh = add(G.tail, M.tail);
+    add(G.neon, neonMat(car.color)); add(G.stripe, stripeMat(car.color)); add(G.wing, M.trim, true);
     this.wheels = [];
     const rimM = M['rim_' + (S.rim.col || 'silver')];
     for (const z of [S.zF, S.zR]) for (const sx of [-1, 1]) {
       const holder = new THREE.Group(); holder.position.set(sx * G.wx(z), S.wr, z); holder.rotation.order = 'YXZ'; if (sx < 0) holder.scale.x = -1;
       const spin = new THREE.Group(); holder.add(spin);
       add(G.tyre, M.tyre, true, spin); add(G.rim, rimM, false, spin); add(G.inner, M.inner, false, spin);
+      add(G.rimGlow, neonMat(car.color), false, holder);
       if (G.caliper) { const c = add(G.caliper, caliperMat(S.caliper), false, holder); c.position.set(0.0, S.wr * 0.34, -S.wr * 0.3); c.rotation.x = 0.7; }
       this.body.add(holder); this.wheels.push({ g: holder, spin, front: z > 0 });
     }
