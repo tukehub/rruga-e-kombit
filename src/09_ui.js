@@ -19,7 +19,7 @@ function saveSettings() { try { localStorage.setItem(SKEY, JSON.stringify(SET));
 const Q = () => QUALITY[clamp(SET.quality | 0, 0, 2)];
 
 // ---------- input ----------
-const IN = { kb: {}, steerT: 0, brakeT: false, gasT: false, fireQ: false, backQ: false, cycleQ: false, gp: { steer: 0, gas: false, brake: false }, gpPrev: {}, usedTouch: false };
+const IN = { kb: {}, steerT: 0, brakeT: false, gasT: false, fireQ: false, backQ: false, cycleQ: false, selQ: 0, fgPtrs: new Set(), gp: { steer: 0, gas: false, brake: false }, gpPrev: {}, usedTouch: false };
 const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'gas', KeyW: 'gas', ArrowDown: 'brake', KeyS: 'brake' };
 function initInput() {
   addEventListener('keydown', (e) => {
@@ -57,9 +57,22 @@ function initInput() {
   };
   zone('z-brake', 'brakeT'); zone('z-gas', 'gasT');
   initTilt();
-  const tap = (id, key) => { const b = document.getElementById(id); b.addEventListener('pointerdown', (e) => { e.preventDefault(); IN[key] = true; b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 120); try { navigator.vibrate && navigator.vibrate(12); } catch (_) { } markTouch(e); }); };
-  tap('t-fire', 'fireQ'); tap('t-back', 'backQ');
-  document.getElementById('h-slots').addEventListener('pointerdown', (e) => { e.preventDefault(); IN.cycleQ = true; });
+  // fire buttons sit where the right thumb drives: while a finger is on one, the gas stays on too
+  const tap = (id, key, gas) => {
+    const b = document.getElementById(id);
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); IN[key] = true; b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 120);
+      if (gas) { IN.fgPtrs.add(e.pointerId); try { b.setPointerCapture(e.pointerId); } catch (_) { } }
+      try { navigator.vibrate && navigator.vibrate(12); } catch (_) { } markTouch(e);
+    });
+    if (gas) for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, (e) => IN.fgPtrs.delete(e.pointerId));
+  };
+  tap('t-fire', 'fireQ', true); tap('t-back', 'backQ', true); tap('t-cycle', 'cycleQ', false);
+  // tap a power-up to bring it to the front (tapping the front one cycles)
+  document.getElementById('h-slots').addEventListener('pointerdown', (e) => {
+    e.preventDefault(); const sl = e.target.closest('.slot'), i = sl ? UI.slots.indexOf(sl) : -1;
+    if (i > 0) IN.selQ = i; else IN.cycleQ = true;
+  });
   document.getElementById('b-pause').addEventListener('click', () => togglePause());
   addEventListener('touchstart', () => markTouch(), { passive: true });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -103,8 +116,9 @@ function readControls(car) {
   const kbS = (IN.kb.right ? 1 : 0) - (IN.kb.left ? 1 : 0);
   car.ctrl.steer = kbS || (tiltActive() ? tiltSteer() : IN.steerT) || IN.gp.steer;
   car.ctrl.brake = !!(IN.kb.brake || IN.brakeT || IN.gp.brake);
-  car.ctrl.gas = SET.autoGas ? true : !!(IN.kb.gas || IN.gasT || IN.gp.gas);
-  if (IN.fireQ) car.ctrl.fire = true; if (IN.backQ) car.ctrl.back = true; if (IN.cycleQ) car.ctrl.cycle = true;
+  car.ctrl.gas = SET.autoGas ? true : !!(IN.kb.gas || IN.gasT || IN.gp.gas || IN.fgPtrs.size);
+  if (IN.fireQ) car.ctrl.fire = true; if (IN.backQ) car.ctrl.back = true; if (IN.cycleQ) car.ctrl.cycle = true; if (IN.selQ) car.ctrl.select = IN.selQ;
+  IN.selQ = 0;
   IN.fireQ = IN.backQ = IN.cycleQ = false;
 }
 function clearQueued() { IN.fireQ = IN.backQ = IN.cycleQ = false; }

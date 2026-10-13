@@ -80,6 +80,7 @@ class ArenaSim {
     for (const c of this.cars) this.walls(c);
     for (const c of this.cars) {
       if (c.ctrl.cycle) { c.ctrl.cycle = false; if (c.slots.length > 1) { c.slots.push(c.slots.shift()); this.emit({ t: 'cycle', car: c }); } }
+      if (c.ctrl.select) { const k = c.ctrl.select; c.ctrl.select = 0; if (k < c.slots.length) { c.slots.unshift(c.slots.splice(k, 1)[0]); this.emit({ t: 'cycle', car: c }); } }
       if (c.ctrl.fire) { c.ctrl.fire = false; this.useItem(c, false); }
       if (c.ctrl.back) { c.ctrl.back = false; this.useItem(c, true); }
     }

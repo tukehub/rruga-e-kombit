@@ -201,13 +201,14 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
   background: rgba(10,9,18,0.4); border: 1px solid var(--edge); border-radius: 48px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; }
 #t-steer span { font: 900 34px/1 var(--f-display); opacity: 0.7; }
 #t-knob { position: absolute; top: 18px; bottom: 18px; width: 6px; left: 50%; margin-left: -3px; border-radius: 3px; background: var(--sweep); box-shadow: 0 0 12px var(--a2); }
-#t-right { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; gap: 10px; align-items: end; pointer-events: none; }
+#t-right { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto auto; gap: 10px; align-items: end; justify-items: center; pointer-events: none; }
 #t-right button { pointer-events: auto; touch-action: none; border: 1px solid var(--edge-2); font: 700 11px/1 var(--f-ui); letter-spacing: 0.14em; color: #fff; display: grid; place-items: center; }
-#t-fire { grid-column: 2; grid-row: 1 / span 2; width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 50% 35%, rgba(255,45,111,0.9), rgba(138,92,255,0.75)); position: relative; box-shadow: 0 0 26px -4px rgba(255,45,111,0.8); }
+#t-fire { grid-column: 2; grid-row: 2 / span 2; width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 50% 35%, rgba(255,45,111,0.9), rgba(138,92,255,0.75)); position: relative; box-shadow: 0 0 26px -4px rgba(255,45,111,0.8); }
 #t-fire img { width: 58px; height: 58px; position: absolute; inset: 0; margin: auto; opacity: 0.95; }
 #t-fire span { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 9px; }
-#t-back { grid-column: 1; grid-row: 1; width: 64px; height: 50px; border-radius: 14px; background: rgba(10,9,18,0.55); }
-#t-brake { grid-column: 1; grid-row: 2; width: 64px; height: 56px; border-radius: 14px; background: rgba(10,9,18,0.55); }
+#t-cycle { grid-column: 2; grid-row: 1; width: 46px; height: 46px; border-radius: 50%; background: rgba(10,9,18,0.62); font: 900 20px/1 var(--f-ui) !important; letter-spacing: 0 !important; }
+#t-back { grid-column: 1; grid-row: 2; width: 64px; height: 50px; border-radius: 14px; background: rgba(10,9,18,0.55); }
+#t-brake { grid-column: 1; grid-row: 3; width: 64px; height: 56px; border-radius: 14px; background: rgba(10,9,18,0.55); }
 #t-gas { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 192px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); width: 64px; height: 110px; pointer-events: auto; border-radius: 16px; background: rgba(43,255,136,0.3); border: 1px solid rgba(43,255,136,0.5); }
 #t-right button.on, #t-gas.on { filter: brightness(1.5); transform: scale(0.95); }
 /* tilt mode: left 40% brakes, right 40% accelerates, fire cluster in the middle */
@@ -220,9 +221,12 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
 #z-gas.on b { background: rgba(43,255,136,0.4); color: #fff; transform: scale(0.96); }
 #app.tilt .zone { display: block; }
 #app.tilt #t-steer, #app.tilt #t-brake, #app.tilt #t-gas { display: none !important; }
-#app.tilt #t-right { right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); grid-template-columns: auto auto; grid-template-rows: auto; align-items: center; z-index: 2; }
-#app.tilt #t-back { grid-column: 1; grid-row: 1; width: 58px; height: 46px; }
-#app.tilt #t-fire { grid-column: 2; grid-row: 1; width: 78px; height: 78px; }
+/* tilt: the fire cluster sits at the inner edge of the gas zone, in one row; holding fire keeps the gas on */
+#app.tilt #t-right { right: auto; left: calc(60% + 8px); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); grid-template-columns: auto auto auto; grid-template-rows: auto; align-items: center; z-index: 2; }
+#app.tilt #t-cycle { grid-column: 1; grid-row: 1; }
+#app.tilt .hud-br { left: 37%; } /* keep the gauge clear of the fire cluster on the right */
+#app.tilt #t-back { grid-column: 2; grid-row: 1; width: 58px; height: 46px; }
+#app.tilt #t-fire { grid-column: 3; grid-row: 1; width: 78px; height: 78px; }
 #app.tilt #h-slotname { display: none; }
 #rotate { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); transform: translateX(-50%); padding: 9px 14px; border-radius: 10px; background: rgba(10,9,18,0.8); font: 600 12px/1.2 var(--f-ui); letter-spacing: 0.1em; display: none; pointer-events: none; white-space: nowrap; }
 @media (orientation: portrait) and (pointer: coarse) { #rotate.can { display: block; } }
@@ -238,7 +242,7 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
   .gauge { width: 98px; height: 98px; } #h-speed { font-size: 31px; }
   #h-slots .slot { width: 36px; height: 36px; } #h-slots .slot:first-child { width: 46px; height: 46px; }
   .hud-bc { top: calc(env(safe-area-inset-top, 0px) + 114px); }
-  #app.tilt #t-right { bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); }
+  #app.tilt #t-right { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
   #t-steer { height: 84px; } #t-fire { width: 82px; height: 82px; }
   .wordmark { font-size: clamp(64px, 19vh, 150px); }
 }
@@ -279,7 +283,7 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
       <div id="z-gas" class="zone"><b>GAZ</b></div>
       <div id="t-steer"><span>‹</span><span>›</span><i id="t-knob"></i></div>
       <button id="t-gas" hidden>GAZ</button>
-      <div id="t-right"><button id="t-back" aria-label="Gjuaj prapa">PRAPA</button><button id="t-brake" aria-label="Frena">FRENA</button><button id="t-fire" aria-label="Gjuaj"><img alt=""><span>GJUAJ</span></button></div>
+      <div id="t-right"><button id="t-cycle" aria-label="Ndërro fuqinë">⇄</button><button id="t-back" aria-label="Gjuaj prapa">PRAPA</button><button id="t-brake" aria-label="Frena">FRENA</button><button id="t-fire" aria-label="Gjuaj"><img alt=""><span>GJUAJ</span></button></div>
     </div>
     <div id="rotate">Ktheje telefonin horizontalisht</div>
   </div>

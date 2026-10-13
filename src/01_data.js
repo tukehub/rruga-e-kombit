@@ -59,7 +59,7 @@ const CITIES = [
     pts: [[-370, -120], [-382, 80], [-340, 260], [-220, 372], [-50, 362], [56, 262], [40, 128], [124, 26], [262, -18], [306, -150], [232, -280], [70, -332], [-110, -270], [-250, -330], [-344, -270]],
   },
   {
-    hero: { type: 'castle', height: 150, r: 52 },
+    hero: { type: 'castle', height: 150, r: 20 },
     id: 'shkoder', name: 'Shkodër', region: 'al', env: 'dusk', laps: 3, neon: '#4ee0ff', road: 'asphalt',
     blurb: 'Liqeni, Rozafa dhe një mijë biçikleta që s’të lënë rrugë.',
     styles: [['old', 5], ['soviet', 4], ['painted', 1]], hRange: [8, 26], tall: 0.04, ground: 'grass', amp: 4, tscale: 400,
@@ -74,7 +74,7 @@ const CITIES = [
     pts: [[0, -352], [150, -330], [282, -250], [334, -100], [302, 60], [342, 222], [262, 352], [100, 382], [-60, 332], [-150, 222], [-160, 62], [-222, -80], [-202, -232], [-120, -330]],
   },
   {
-    hero: { type: 'castle', height: 150, r: 40 },
+    hero: { type: 'castle', height: 150, r: 20 },
     id: 'berat', scale: 1.2, name: 'Berat', region: 'al', env: 'dusk', laps: 3, neon: '#ffb347', road: 'cobble',
     blurb: 'Qyteti i një mbi një dritareve. Të gjitha të shohin kur humb.',
     styles: [['old', 7], ['soviet', 2]], hRange: [7, 15], tall: 0, ground: 'grass', amp: 9, tscale: 360,
@@ -89,7 +89,7 @@ const CITIES = [
     pts: [[0, -252], [102, -262], [182, -200], [202, -90], [150, 2], [202, 102], [182, 222], [80, 282], [-42, 252], [-82, 150], [-162, 110], [-222, 0], [-182, -112], [-100, -202]],
   },
   {
-    hero: { type: 'castle', height: 150, r: 46, clock: true },
+    hero: { type: 'castle', height: 150, r: 20, clock: true },
     id: 'gjirokaster', scale: 1.1, name: 'Gjirokastër', region: 'al', env: 'rain', laps: 3, neon: '#3d9dff', road: 'cobble',
     blurb: 'Gurë, shi dhe kthesa. Qyteti i gurtë nuk fal.',
     styles: [['stone', 8], ['soviet', 1]], hRange: [7, 16], tall: 0, ground: 'grass', amp: 16, tscale: 330,

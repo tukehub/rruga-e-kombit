@@ -670,7 +670,11 @@ class World {
     if (g.count) { const m = new THREE.Mesh(g.build(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, emissive: dark ? 0x7a5c40 : 0x000000 })); grp.add(m); }
     // skyline size: scaled so it stands about h.height metres tall, well above any block in town
     const bb = new THREE.Box3().setFromObject(grp), H0 = Math.max(1, bb.max.y - bb.min.y), k = h.height / H0;
-    grp.scale.setScalar(k); grp.position.set(best.x, this.groundAt(best.x, best.z) - 0.5, best.z);
+    grp.scale.setScalar(k);
+    // never let the footprint reach the road: walk it outward until its whole box is 60 m clear
+    const fr0 = Math.max(-bb.min.x, bb.max.x, -bb.min.z, bb.max.z) * k * 1.42, dir = Math.atan2(best.z - b.cz, best.x - b.cx);
+    for (let it = 0; it < 60 && T.distTo(best.x, best.z) < fr0 + T.halfW + 60; it++) { best.x += Math.cos(dir) * 15; best.z += Math.sin(dir) * 15; }
+    grp.position.set(best.x, this.groundAt(best.x, best.z) - 0.5, best.z);
     this.scene.add(grp); this.hero = grp;
     this.occCircle(best.x, best.z, 12 * k);
     if (dark) { // floodlit at night
