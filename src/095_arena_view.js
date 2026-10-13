@@ -294,7 +294,7 @@ function buildArena() {
   G.arena = true; G.track = null; G.world = world; G.race = race; G.player = race.player; G.city = ARENA; G.env = env;
   UI.$('hud').classList.add('pts');
   G.views = race.cars.map(c => new CarView(c, scene, { beams: q.beams && env.win >= 0.45, tags: true }));
-  G.trails = new Trails(scene, race.cars.length, q.trailSeg); race.cars.forEach((c, i) => G.trails.setColor(i, c.color)); G.trailI = [];
+  G.trails = new Trails(scene, race.cars.length, q.trailSeg); race.cars.forEach((c, i) => G.trails.setColor(i, c.color)); G.trailI = []; G.trails.mesh.visible = SHOW_TRAILS;
   G.fx = new FX(scene, q); updatePScale(); G.weather = null;
   setupPickups(scene, race.pickups, (p, out) => out.set(p.x, 0, p.z));
   linearize(scene); G.post.setLook(env); G.lookFor = 'race'; renderer.toneMappingExposure = env.exp || 1;

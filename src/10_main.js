@@ -158,7 +158,7 @@ function buildRace(city) {
   UI.$('hud').classList.remove('pts');
   G.track = track; G.world = world; G.race = race; G.player = race.player; G.city = city; G.env = env;
   G.views = race.cars.map(c => new CarView(c, scene, { beams: q.beams && env.win >= 0.45, tags: true }));
-  G.trails = new Trails(scene, race.cars.length, q.trailSeg); race.cars.forEach((c, i) => G.trails.setColor(i, c.color)); G.trailI = [];
+  G.trails = new Trails(scene, race.cars.length, q.trailSeg); race.cars.forEach((c, i) => G.trails.setColor(i, c.color)); G.trailI = []; G.trails.mesh.visible = SHOW_TRAILS;
   G.fx = new FX(scene, q); updatePScale();
   G.weather = env.rain ? new Weather(scene, 'rain', q) : env.snow ? new Weather(scene, 'snow', q) : null;
   // pick-ups
@@ -532,7 +532,7 @@ function loop(ts) {
     if (st === 'finish') { G.finT += dt; if (G.finT > 4.2) showResults(); }
   }
   syncEntities(dt); updateViews(dt);
-  G.fx.update(dt); G.trails.update(camera, G.trailI);
+  G.fx.update(dt); if (SHOW_TRAILS) G.trails.update(camera, G.trailI);
   if (G.weather) G.weather.update(dt, camera, null);
   G.world.update(dt, G.t, camera);
   if (G.state === 'race' || G.state === 'finish' || G.state === 'countdown' || G.state === 'intro') {

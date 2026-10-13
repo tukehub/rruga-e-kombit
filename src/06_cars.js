@@ -378,6 +378,8 @@ class CarView {
   dispose(scene) { scene.remove(this.root); }
 }
 // ---------- light trails (camera-facing ribbons from the tail lights; HDR so they bloom) ----------
+// switched off: behind the neon-free cars they read as busy. Flip to bring them back.
+const SHOW_TRAILS = false;
 class Trails {
   constructor(scene, n, seg) {
     this.n = n; this.seg = seg; const R = n * 2, V = R * seg * 2;
