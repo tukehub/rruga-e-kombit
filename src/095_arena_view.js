@@ -320,7 +320,7 @@ function arenaUpdateViews(dt) {
     v.body.visible = !(c.invulnT > 0 && Math.floor(t * 12) % 2 === 0);
     v.shield.visible = c.shieldT > 0 && !wrecked;
     if (v.shield.visible) { v.shield.material.opacity = 0.11 + 0.05 * Math.sin(t * 9); const s = 1 + 0.03 * Math.sin(t * 13); v.shield.scale.set(s, s * 0.8, s); }
-    v.under.material.opacity = c.nitroT > 0 ? 0.95 : 0.55;
+    v.under.material.opacity = c.nitroT > 0 || c.ramT > 0 ? 0.95 : 0.55;
     root.updateMatrixWorld(true);
     for (let k = 0; k < 2; k++) { tl.fromArray(v.tail[k]); v.body.localToWorld(tl); G.trails.push(i, k, tl.x, tl.y, tl.z); }
     G.trailI[i] = wrecked ? 0 : clamp((Math.abs(c.v) - 10) / 20, 0, 1);
@@ -334,7 +334,7 @@ function arenaUpdateViews(dt) {
       if ((c.drift > 0.4 || Math.abs(c.lat || 0) > 6) && Math.abs(c.v) > 8) { fx.burst('dust', tl.x, tl.y - 0.5, tl.z); fx.burst('dust', tmpC.x, tmpC.y - 0.5, tmpC.z); }
       if (c.health < c.maxHp * 0.35) { tmpA.set(0, 1.0, v.L * 0.35); v.body.localToWorld(tmpA); fx.burst('smoke', tmpA.x, tmpA.y, tmpA.z); }
       if (c.scrape > 0.4) fx.burst('spark', c.x, 0.4, c.z, 0.5);
-      if (c.nitroT > 0) { fx.flame(tl.x, tl.y - 0.15, tl.z, -fwx * 12, 0.5, -fwz * 12); fx.flame(tmpC.x, tmpC.y - 0.15, tmpC.z, -fwx * 12, 0.5, -fwz * 12); }
+      if (c.nitroT > 0 || c.ramT > 0) { fx.flame(tl.x, tl.y - 0.15, tl.z, -fwx * 12, 0.5, -fwz * 12); fx.flame(tmpC.x, tmpC.y - 0.15, tmpC.z, -fwx * 12, 0.5, -fwz * 12); }
     }
     if (v.tag) {
       const cd = camera.position.distanceToSquared(root.position); v.tag.visible = !wrecked && cd > 6 * 6 && cd < 150 * 150;
@@ -392,7 +392,7 @@ function arenaEvents() {
         if (c === P) {
           fx.burst('hit', e.x, 0.2, e.z, { col: e.combo > 1 ? '#ffe03a' : P.color });
           UI.feed(`+${e.pts}${e.combo > 1 ? `  ×${e.combo}` : ''}  ·  ${e.victim.name}`, e.combo > 1 ? '#ffe03a' : P.color, 1.4); AUD.play('hit', 1);
-          UI.pop(`+${e.pts}`, e.combo);
+          UI.pop(e.ram ? `DASHI +${e.pts}` : `+${e.pts}`, e.combo);
         } else if (e.victim === P) { UI.flash('rgba(228,30,32,0.55)', 0.6); UI.feed(`${c.name} → ${P.name}`, c.color, 1.2); }
         break;
       }
@@ -415,7 +415,7 @@ function arenaEvents() {
       }
       case 'pickupBack': { const v = G.picks.get(e.p.id); if (v) { v.grp.visible = true; v.pop = 0; } break; }
       case 'fire': {
-        const snd = { eagle: 'eagle', bolt: 'bolt', barge: 'barge', mine: 'mine', shock: 'shock', nitro: e.back ? 'brake' : 'nitro', shield: 'shield', repair: 'repair' }[e.type];
+        const snd = { eagle: 'eagle', bolt: 'bolt', barge: 'barge', mine: 'mine', shock: 'shock', nitro: e.back ? 'brake' : 'nitro', shield: 'shield', repair: 'repair', ram: 'nitro', cluster: 'bolt' }[e.type];
         AUD.play(snd, arenaNear(e.x, e.z));
         break;
       }
@@ -443,6 +443,7 @@ function arenaEvents() {
       }
       case 'shock': if (e.target === P) { UI.center('Stuhia!<small>Kupola elektrike rreth teje</small>', 1.6); UI.feed(`${c.name} lëshoi Stuhinë`, PW.shock.col); } else if (c === P) UI.feed(`Stuhia për ${e.target.name}`, PW.shock.col); break;
       case 'nitro': if (c === P && !e.back) UI.flash('rgba(56,255,106,0.5)', 0.5); break;
+      case 'ram': if (c === P) { UI.flash('rgba(255,61,154,0.55)', 0.5); UI.feed('Dashi! Godit dikë tani', PW.ram.col, 1.6); } break;
       case 'repair': fx.burst('repair', e.x, 0.5, e.z); if (c === P) UI.feed('Usta Ramizi e rregulloi', PW.repair.col); if (G.views[c.id]) G.views[c.id].updateTag(); break;
       case 'denied': if (c === P) { AUD.play('denied'); UI.feed(e.why === 'first' ? 'Je i pari. S’ka kë të godasë Stuhia.' : 'Makina s’ka asnjë gërvishtje. Ende.', '#a2959f'); } break;
       case 'cycle': if (c === P) AUD.play('cycle'); break;

@@ -1,6 +1,6 @@
 # Vortex
 
-Vortex: Blur-style combat racing through 11 cities in Albania, Kosovo and Tetovë. Six real-ish 2020 cars (Benxi GT, Kali i Egër, Golfi GTI, Uragani, Gelendvagen, Sprinteri), five rivals (Artur, Ritvan, Desantin, Eno, Erlin), eight power-ups, neon, light trails, wrecks.
+Vortex: Blur-style combat racing through 11 cities in Albania, Kosovo and Tetovë. Six made-up 2020-style cars (Furia GT, Fajkoi V8, Flaka RS, Fati V10, Furtuna 4x4, Fitili 2.2D), five rivals (Artur, Ritvan, Desantin, Eno, Erlin), eight power-ups, neon, light trails, wrecks.
 
 ## Install on Android
 Open this link on the phone and install the APK (allow "install unknown apps" for the browser the first time):
@@ -19,7 +19,7 @@ Local build: `npm ci && python3 build.py && npx cap sync android && cd android &
 
 ## Modes
 - **Garë:** the usual race through the cities, laps and power-ups. Every city shows its signature landmark on the skyline. Power-ups come back 2 seconds after somebody takes them.
-- **Pikë (2 or 3 min):** no track. Five cars loose in Skanderbeg Square, a walled open arena. Ram the others: the harder the hit, the more points. Hits in a row multiply your points up to ×5, and wrecking a car adds a bonus. The eight power-ups work here too and score when they land. A live leaderboard shows the standings.
+- **Pikë (2 or 3 min):** no track. Five cars loose in Skanderbeg Square, a walled open arena. Ram the others: the harder the hit, the more points. Hits in a row multiply your points up to ×5, and wrecking a car adds a bonus. The power-ups here are attack-only (no nitro, shield or repair), plus two of the square's own: Dashi, a ram charge, and Breshëria, a five-dart fan. They score when they land. A live leaderboard shows the standings.
 
 You play as one of the five drivers (Artur, Ritvan, Desantin, Eno, Erlin); the other four are your rivals. Each driver has a colour nobody else uses, on the car, its light trail, its name tag and the minimap.
 

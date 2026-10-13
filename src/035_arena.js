@@ -1,12 +1,12 @@
 // ---------- Points mode: free driving in an open, walled square. 2D arcade physics, no track. ----------
 // World axes: x/z metres, heading h with forward = (-sin h, cos h) and right = (cos h, sin h), same convention as the race view.
 // The square is a rounded rectangle (half extents AX/AZ, corner radius R) with a round statue island in the middle.
-const ARENA_DEF = { AX: 88, AZ: 62, R: 20, island: 12.5 };
+const ARENA_DEF = { AX: 120, AZ: 84, R: 26, island: 12.5 };
 // power-up stations on the square (x, z), clear of the statue island
-const ARENA_PADS = [[-66, -40], [0, -46], [66, -40], [-66, 40], [0, 46], [66, 40], [-44, 0], [44, 0], [-28, -26], [28, 26], [-28, 26], [28, -26]];
-const ARENA_WPTS = { eagle: 300, bolt: 90, barge: 160, mine: 200, shock: 180 }; // points for landing a power-up on someone
+const ARENA_PADS = [[-92, -56], [0, -64], [92, -56], [-92, 56], [0, 64], [92, 56], [-60, 0], [60, 0], [-96, 0], [96, 0], [-38, -36], [38, 36], [-38, 36], [38, -36], [0, -32], [0, 32]];
+const ARENA_WPTS = { eagle: 300, bolt: 90, barge: 160, mine: 200, shock: 180, cluster: 90 }; // points for landing a power-up on someone
 const CAR_HALF_L = { gt: 2.27, muscle: 2.4, hatch: 2.14, sleek: 2.26, jeep: 2.41, van: 2.8 };
-const ARENA_SPEED = 0.68; // top speeds are scaled down: the square is big, but not 200 km/h big
+const ARENA_SPEED = 0.74; // top speeds are scaled down: the square is big, but not 200 km/h big
 
 class ArenaCar {
   constructor(id, def, name, isPlayer, color) {
@@ -18,7 +18,7 @@ class ArenaCar {
     this.wreckT = 0; this.spinT = 0; this.spinDir = 1; this.invulnT = 0; this.shieldT = 0; this.nitroT = 0; this.stunT = 0;
     this.scrape = 0; this.braking = false; this.gasOn = false; this.finished = false; this.place = 0; this.fans = 0;
     this.score = 0; this.combo = 1; this.comboN = 0; this.comboT = -99; this.hitsN = 0; this.wrecks = 0; this.kills = 0;
-    this.lastHitBy = null; this.lastHitT = -99; this.vmaxMul = 1; this.ai = null; this.autopilot = false; this.est = 0;
+    this.lastHitBy = null; this.lastHitT = -99; this.vmaxMul = 1; this.ramT = 0; this.ai = null; this.autopilot = false; this.est = 0;
     const hl = CAR_HALF_L[def.style] || 2.3; this.cr = 1.02; this.co = hl - this.cr; // two circles along the body
   }
 }
@@ -55,8 +55,8 @@ class ArenaSim {
       this.cars.push(c);
     });
     if (!this.player) this.player = null;
-    const wsum = PW_KEYS.reduce((a, k) => a + PW[k].w, 0);
-    this.pickType = () => { let x = r() * wsum; for (const k of PW_KEYS) { x -= PW[k].w; if (x <= 0) return k; } return 'nitro'; };
+    const wsum = PW_ARENA.reduce((a, k) => a + PW[k].w, 0);
+    this.pickType = () => { let x = r() * wsum; for (const k of PW_ARENA) { x -= PW[k].w; if (x <= 0) return k; } return 'bolt'; };
     for (const [x, z] of ARENA_PADS) this.pickups.push({ id: this.nextId++, x, z, type: this.pickType(), alive: true, t: 0 });
     this.computeOrder();
   }
@@ -88,7 +88,7 @@ class ArenaSim {
   }
   physics(c, dt) {
     c.invulnT = Math.max(0, c.invulnT - dt); c.scrape = Math.max(0, c.scrape - dt * 3);
-    c.shieldT = Math.max(0, c.shieldT - dt); c.nitroT = Math.max(0, c.nitroT - dt); c.stunT = Math.max(0, c.stunT - dt);
+    c.shieldT = Math.max(0, c.shieldT - dt); c.nitroT = Math.max(0, c.nitroT - dt); c.ramT = Math.max(0, c.ramT - dt); c.stunT = Math.max(0, c.stunT - dt);
     if (c.hop > 0 || c.hopV > 0) { c.hopV -= 30 * dt; c.hop += c.hopV * dt; if (c.hop <= 0) { c.hop = 0; c.hopV = 0; } }
     if (c.wreckT > 0) {
       c.wreckT -= dt; c.vx *= Math.exp(-3 * dt); c.vz *= Math.exp(-3 * dt); c.x += c.vx * dt; c.z += c.vz * dt;
@@ -101,7 +101,8 @@ class ArenaSim {
     let steerIn = c.ctrl.steer, gas = c.ctrl.gas, brake = c.ctrl.brake;
     if (!this.started) { gas = false; brake = true; steerIn = 0; }
     if (c.spinT > 0) { c.spinT -= dt; steerIn = 0; gas = false; brake = false; }
-    const vmax = def.vmax * ARENA_SPEED * c.vmaxMul * (c.nitroT > 0 ? 1.35 : 1) * (c.stunT > 0 ? 0.55 : 1), acc = def.acc * 1.15 * (c.nitroT > 0 ? 2.1 : 1);
+    const boost = c.ramT > 0 ? 1.45 : c.nitroT > 0 ? 1.35 : 1;
+    const vmax = def.vmax * ARENA_SPEED * c.vmaxMul * boost * (c.stunT > 0 ? 0.55 : 1), acc = def.acc * 1.15 * (c.ramT > 0 ? 2.6 : c.nitroT > 0 ? 2.1 : 1);
     const drifting = brake && Math.abs(c.steer) > 0.35 && vf > 12;
     c.drift = drifting ? Math.min(1, c.drift + dt * 4) : Math.max(0, c.drift - dt * 3);
     if (gas && !(brake && !drifting)) {
@@ -173,10 +174,16 @@ class ArenaSim {
     const key = att.id < vic.id ? att.id * 100 + vic.id : vic.id * 100 + att.id, last = this.pairT.get(key);
     if (last != null && this.time - last < 0.6) return;
     this.pairT.set(key, this.time);
-    const gain = this.award(att, vic, Math.round(closing * 14));
-    this.emit({ t: 'score', car: att, victim: vic, pts: gain, combo: att.combo, imp: closing, x, z });
-    const dmg = Math.max(0, closing - 8) * 1.9;
-    if (dmg > 0) { this.damage(vic, dmg); this.damage(att, dmg * 0.25); }
+    // a ram charge doubles the points, hits far harder, throws the victim away and costs the rammer nothing
+    const ram = att.ramT > 0;
+    const gain = this.award(att, vic, Math.round(closing * 14) * (ram ? 2 : 1));
+    this.emit({ t: 'score', car: att, victim: vic, pts: gain, combo: att.combo, imp: closing, ram, x, z });
+    const dmg = Math.max(0, closing - 8) * 1.9 * (ram ? 2.5 : 1) + (ram ? 12 : 0);
+    if (ram) {
+      const dx = vic.x - att.x, dz = vic.z - att.z, d = Math.hypot(dx, dz) || 1;
+      vic.vx += dx / d * 16; vic.vz += dz / d * 16; vic.hopV = Math.max(vic.hopV, 6); vic.w += (this.rng() < 0.5 ? -1 : 1) * 4;
+    }
+    if (dmg > 0) { this.damage(vic, dmg); if (!ram) this.damage(att, dmg * 0.25); }
     if (closing > 16) vic.hopV = Math.max(vic.hopV, Math.min(7, closing * 0.3));
   }
   damage(c, dmg) {
@@ -307,6 +314,15 @@ class ArenaSim {
         this.emit({ t: 'shock', car: c, target: lead });
         break;
       }
+      case 'ram': c.ramT = 1.6; this.emit({ t: 'ram', car: c, x: c.x, z: c.z }); break;
+      case 'cluster': { // five darts in a fan
+        const sp = Math.max(c.v, 0) + 72;
+        for (let i = -2; i <= 2; i++) {
+          const a = c.h + i * 0.13, dx = -Math.sin(a), dz = Math.cos(a);
+          this.projs.push({ id: this.nextId++, kind: 'bolt', wk: 'cluster', owner: c, x: c.x + dx * 3, z: c.z + dz * 3, vx: dx * sp, vz: dz * sp, target: null, life: 1.2 });
+        }
+        break;
+      }
       case 'nitro': {
         if (back) { c.vx *= 0.4; c.vz *= 0.4; } else c.nitroT = 2.6;
         this.emit({ t: 'nitro', car: c, back });
@@ -351,7 +367,7 @@ class ArenaSim {
         if (o === p.owner || o.wreckT > 0 || Math.hypot(o.x - p.x, o.z - p.z) > 2.5) continue;
         const sp = Math.hypot(p.vx, p.vz) || 1;
         if (p.kind === 'eagle') this.hit(o, p.owner, 'eagle', 34, { spin: true });
-        else this.hit(o, p.owner, 'bolt', 11, { slow: 0.86, px: p.vx / sp * 4, pz: p.vz / sp * 4 });
+        else this.hit(o, p.owner, p.wk || 'bolt', p.wk ? 9 : 11, { slow: 0.86, px: p.vx / sp * 4, pz: p.vz / sp * 4 });
         this.emit({ t: 'boom', kind: p.kind, x: p.x, z: p.z, hitCar: o }); dead = true; break;
       }
       if (!dead && (arenaWall(p.x, p.z, w) < 0.4 || Math.hypot(p.x, p.z) < ARENA_DEF.island)) { this.emit({ t: 'boom', kind: p.kind, x: p.x, z: p.z }); dead = true; }
@@ -408,6 +424,8 @@ class ArenaSim {
         if (threat || (c.health < c.maxHp * 0.5 && r < 0.25) || r < 0.04) fire = true; break;
       }
       case 'repair': if (c.health < c.maxHp * 0.45) fire = true; break;
+      case 'ram': { const t = c.ai.tgt; if (t && t === this.aimAt(c, false, 45, 0.85) && r < 0.9) fire = true; break; }
+      case 'cluster': if (this.aimAt(c, false, 60, 0.75) && r < 0.85 * aim) fire = true; break;
     }
     if (fire) this.useItem(c, back);
     else if (c.slots.length >= 2 && r > 0.9) c.slots.push(c.slots.shift());

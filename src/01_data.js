@@ -178,12 +178,12 @@ const CITIES = [
 const ARENA = { id: 'arena', name: 'Sheshi Skënderbej', short: 'Sheshi', region: 'al', env: 'dusk', neon: '#ff2d6f', blurb: 'Sheshi më i madh i Tiranës, i mbyllur me barriera. Pa rrugë, pa xhiro: vetëm ti dhe katër shoferë.' };
 
 const CARS = [
-  { id: 'benxi', name: 'Benxi GT', style: 'gt', vmax: 58, acc: 17, grip: 1.0, hp: 100, mass: 1.0, color: '#e41e20', desc: 'Kapot i gjatë, motor V8, dhe gjithmonë i parkuar te kafeneja.' },
-  { id: 'kali', name: 'Kali i Egër GT', style: 'muscle', vmax: 62, acc: 15.5, grip: 0.9, hp: 110, mass: 1.15, color: '#26262c', desc: 'Kalë amerikan. Shpejt në vijë të drejtë, kthesat janë opinion personal.' },
-  { id: 'golfi', name: 'Golfi GTI', style: 'hatch', vmax: 55, acc: 19, grip: 1.16, hp: 90, mass: 0.85, color: '#f2c230', desc: 'Makina kombëtare. I vogël, i shkathët, dhe gjithmonë me xhamat poshtë.' },
-  { id: 'uragani', name: 'Uragani V10', style: 'sleek', vmax: 60, acc: 18, grip: 1.03, hp: 85, mass: 0.9, color: '#f1eee8', desc: 'Pykë italiane. E bukur, e shpejtë, dhe kushton sa një pallat në Bllok.' },
-  { id: 'gelendvagen', name: 'Gelendvagen G', style: 'jeep', vmax: 54, acc: 15, grip: 0.96, hp: 140, mass: 1.35, color: '#2a2a2e', desc: 'Kutia e zezë e çdo dasme. Gropat e tua s’i bëjnë gjë.' },
-  { id: 'sprinteri', name: 'Sprinteri i Linjës', style: 'van', vmax: 51, acc: 13.5, grip: 0.88, hp: 175, mass: 1.7, color: '#f3f3ee', desc: 'Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do.' },
+  { id: 'benxi', name: 'Furia GT', style: 'gt', vmax: 58, acc: 17, grip: 1.0, hp: 100, mass: 1.0, color: '#e41e20', desc: 'Kapot i gjatë, motor V8, dhe gjithmonë i parkuar te kafeneja.' },
+  { id: 'kali', name: 'Fajkoi V8', style: 'muscle', vmax: 62, acc: 15.5, grip: 0.9, hp: 110, mass: 1.15, color: '#26262c', desc: 'Kalë amerikan. Shpejt në vijë të drejtë, kthesat janë opinion personal.' },
+  { id: 'golfi', name: 'Flaka RS', style: 'hatch', vmax: 55, acc: 19, grip: 1.16, hp: 90, mass: 0.85, color: '#f2c230', desc: 'Makina kombëtare. I vogël, i shkathët, dhe gjithmonë me xhamat poshtë.' },
+  { id: 'uragani', name: 'Fati V10', style: 'sleek', vmax: 60, acc: 18, grip: 1.03, hp: 85, mass: 0.9, color: '#f1eee8', desc: 'Pykë italiane. E bukur, e shpejtë, dhe kushton sa një pallat në Bllok.' },
+  { id: 'gelendvagen', name: 'Furtuna 4x4', style: 'jeep', vmax: 54, acc: 15, grip: 0.96, hp: 140, mass: 1.35, color: '#2a2a2e', desc: 'Kutia e zezë e çdo dasme. Gropat e tua s’i bëjnë gjë.' },
+  { id: 'sprinteri', name: 'Fitili 2.2D', style: 'van', vmax: 51, acc: 13.5, grip: 0.88, hp: 175, mass: 1.7, color: '#f3f3ee', desc: 'Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do.' },
 ];
 const PAINTS = ['#e41e20', '#26262c', '#f1eee8', '#f2c230', '#2a6fdb', '#3f6d3b', '#ff6a1a', '#8e44ad'];
 
@@ -196,8 +196,13 @@ const PW = {
   nitro:  { name: 'Nitro', col: '#38ff6a', w: 17, desc: 'Shpejtësi e çmendur. Prapa: frenim i menjëhershëm.' },
   shield: { name: 'Mburoja', col: '#dfe9ff', w: 10, desc: 'Të mbron nga çdo sulm për 8 sekonda.' },
   repair: { name: 'Usta', col: '#ff5fc8', w: 9, desc: 'Usta Ramizi ta rregullon makinën. Pa faturë.' },
+  // points mode only: the square is for attacking, so it gets these instead of nitro, shield and repair
+  ram: { name: 'Dashi', col: '#ff3d9a', w: 13, arena: true, desc: 'Vetëm në Shesh: 1.6 sekonda sulm i blinduar. Kë prek, e hedh tej me dëm dhe pikë të dyfishta.' },
+  cluster: { name: 'Breshëria', col: '#00e0c6', w: 13, arena: true, desc: 'Vetëm në Shesh: pesë shigjeta në formë ventilatori.' },
 };
 const PW_KEYS = Object.keys(PW);
+const PW_RACE = PW_KEYS.filter(k => !PW[k].arena);
+const PW_ARENA = ['eagle', 'bolt', 'barge', 'mine', 'shock', 'ram', 'cluster'];
 
 // The five drivers. The player is one of them; the other four are the rivals. Each has a colour nobody else uses.
 const DRIVERS = [

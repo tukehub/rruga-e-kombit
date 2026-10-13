@@ -262,6 +262,8 @@ function iconCanvas(type, size) {
     case 'shock': g.lineWidth = 5; for (const x of [40, 64, 88]) { g.beginPath(); g.arc(x, 82, 12, Math.PI, 0); g.stroke(); } poly([[66, 24], [52, 52], [62, 52], [56, 70], [76, 44], [66, 44], [72, 24]]); break;
     case 'nitro': poly([[34, 40], [58, 64], [34, 88], [46, 88], [70, 64], [46, 40]]); poly([[62, 40], [86, 64], [62, 88], [74, 88], [98, 64], [74, 40]]); break;
     case 'shield': poly([[64, 26], [96, 38], [92, 74], [64, 102], [36, 74], [32, 38]]); g.fillStyle = PW.shield.col === '#dfe9ff' ? '#9db4e0' : '#000'; poly([[64, 36], [86, 45], [83, 72], [64, 92]]); break;
+    case 'ram': poly([[100, 64], [60, 28], [60, 48], [26, 48], [26, 80], [60, 80], [60, 100]]); g.lineWidth = 5; for (const y of [40, 88]) { g.beginPath(); g.moveTo(18, y); g.lineTo(42, y); g.stroke(); } break;
+    case 'cluster': for (let i = -2; i <= 2; i++) { g.save(); g.translate(64, 100); g.rotate(i * 0.36); poly([[0, -74], [9, -52], [3, -52], [3, -24], [-3, -24], [-3, -52], [-9, -52]]); g.restore(); } break;
     case 'repair': g.lineWidth = 12; g.beginPath(); g.moveTo(44, 86); g.lineTo(76, 54); g.stroke(); g.beginPath(); g.arc(82, 46, 16, 0, 7); g.fill(); g.fillStyle = 'rgba(0,0,0,0.9)'; g.beginPath(); g.arc(90, 38, 8, 0, 7); g.fill(); break;
   }
   return c;

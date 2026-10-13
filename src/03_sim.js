@@ -49,8 +49,8 @@ class Race {
     if (!this.player) this.player = null;
     // pick-up stations
     const nSt = clamp(Math.round(this.L / 300), 5, 10);
-    const wsum = PW_KEYS.reduce((a, k) => a + PW[k].w, 0);
-    const pickType = () => { let x = r() * wsum; for (const k of PW_KEYS) { x -= PW[k].w; if (x <= 0) return k; } return 'nitro'; };
+    const wsum = PW_RACE.reduce((a, k) => a + PW[k].w, 0);
+    const pickType = () => { let x = r() * wsum; for (const k of PW_RACE) { x -= PW[k].w; if (x <= 0) return k; } return 'nitro'; };
     for (let k = 0; k < nSt; k++) {
       const s = (k + 0.55) * this.L / nSt + (r() - 0.5) * 30;
       const lanes = [-6.5, 0, 6.5];
