@@ -348,7 +348,7 @@ function arenaCam(dt) {
   // the camera follows the heading with a little lag, so a drift swings the car on screen rather than the world
   if (G.camH == null || !dt || G.snapCam) G.camH = c.h;
   G.camH += wrapAng(c.h - G.camH) * (dt ? 1 - Math.exp(-dt * 7) : 1);
-  const fx = -Math.sin(G.camH), fz = Math.cos(G.camH), back = 4.4 + sp * 0.035, h = 1.5 + sp * 0.012;
+  const fx = -Math.sin(G.camH), fz = Math.cos(G.camH), back = 3.4 + sp * 0.02, h = 1.25 + sp * 0.006;
   tmpA.set(c.x - fx * back, h + c.hop * 0.5, c.z - fz * back);
   tmpC.set(c.x + fx * 8, 0.9 + c.hop, c.z + fz * 8);
   const snap = !dt || G.snapCam; G.snapCam = false;
@@ -373,7 +373,7 @@ function arenaIntroCam(dt) {
     camera.position.set(Math.sin(a) * 28, 4 + k * 5, Math.cos(a) * 28); G.camLook.set(0, 15, 0); camera.lookAt(G.camLook); return;
   }
   const k = (t - 0.5) / 0.5, e = k * k * (3 - 2 * k);
-  arenaOrbit(Math.PI * (1 - e), lerp(12, 4.4, e), lerp(3.4, 1.5, e) + Math.sin(e * Math.PI) * 3, 1);
+  arenaOrbit(Math.PI * (1 - e), lerp(12, 3.4, e), lerp(3.4, 1.25, e) + Math.sin(e * Math.PI) * 3, 1);
 }
 function arenaOrbitCam(dt) { G.orbA = (G.orbA || 0) + dt * 0.35; arenaOrbit(G.orbA, 10, 3.6, 1 - Math.exp(-dt * 3)); }
 // ---------- events → effects, sound, HUD ----------
@@ -475,4 +475,5 @@ function arenaRender(dt) {
   const w = G.world, P = G.player;
   if (w.dl && w.dl.castShadow && P) { tmpA.set(P.x, 0, P.z); w.dl.target.position.copy(tmpA); w.dl.position.copy(tmpA).addScaledVector(w.sunDir, 160); }
   G.post.render(w.scene, camera, dt);
+  renderMirror(w.scene);
 }

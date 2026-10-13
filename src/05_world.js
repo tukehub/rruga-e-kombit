@@ -311,7 +311,7 @@ class World {
     const gl = new GB(false); gl.box(F, 0, 8.4, 0.25, hw * 2 + 2, 0.18, 0.18, [1, 1, 1]); gl.box(F, 0, 8.4, -0.25, hw * 2 + 2, 0.18, 0.18, [1, 1, 1]);
     for (const sd of [-1, 1]) gl.box(F, sd * (hw + 0.45), 4.5, 0, 0.12, 8, 0.12, [1, 1, 1]);
     sc.add(new THREE.Mesh(gl.build(), glowMat(c.neon, 4, { vertexColors: true })));
-    const st = signTex('KAFSHIM ASFALTI', c.name.toUpperCase() + ' · ' + REGIONS[c.region].toUpperCase(), '#141016', '#ffffff');
+    const st = signTex(c.name.toUpperCase(), 'START · FINISH', '#141016', '#ffffff');
     const sm = new THREE.MeshBasicMaterial({ map: st, toneMapped: false }); sm.userData.hdr = 1.15;
     for (const fz of [-0.52, 0.52]) {
       const sg = new THREE.PlaneGeometry(hw * 2 + 2, 3.2); const s = new THREE.Mesh(sg, sm);

@@ -6,7 +6,7 @@ const QUALITY = [
   { name: 'E lartë', pr: 1.75, terrainStep: 10, density: 1, rows: 3, trees: 1, particles: 900, neon: true, beams: true, weather: 1, trailSeg: 28, fogMul: 1.1, msaa: 4, shadows: 2048, bloom: 0.5 },
 ];
 const SKEY = 'kafshimAsfalti.v1';
-const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {}, mode: 'race', ptsMin: 2, pbest: {}, driver: 0 };
+const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {}, mode: 'race', ptsMin: 2, pbest: {}, driver: 0, mirror: true };
 function loadSettings() {
   let s = {}; try { s = JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { }
   // first run on a weak phone starts on the lighter graphics tier
@@ -185,7 +185,7 @@ const UI = {
       const env = ENV[c.env], best = SET.best[c.id];
       const medal = best ? ['#f2c230', '#c9ccd2', '#c47a3a'][best.place - 1] : null;
       b.innerHTML = `${medal ? `<i class="medal" style="background:${medal}" title="Vendi më i mirë: ${best.place}"></i>` : ''}<canvas width="380" height="172"></canvas><div class="nm">${c.name}</div>
-        <div class="meta"><span>${REGIONS[c.region]}</span><span>${env.icon}︎ ${env.label}</span><span>${c.laps} xhiro · ${(trackLen(c) / 1000).toFixed(1)} km</span></div><div class="blurb">${c.blurb}</div>`;
+        <div class="meta"><span>${env.icon}︎ ${env.label}</span><span>${c.laps} xhiro · ${(trackLen(c) / 1000).toFixed(1)} km</span></div><div class="blurb">${c.blurb}</div>`;
       b.onclick = () => { SET.city = i; saveSettings(); [...grid.children].forEach((x, j) => x.setAttribute('aria-pressed', String(i === j))); AUD.play('ui'); };
       b.ondblclick = () => { SET.city = i; this.show('scr-car'); garageCar(); };
       grid.appendChild(b);
@@ -211,6 +211,7 @@ const UI = {
     choice('steer', 'Timoni', 'Anim: anoje telefonin si timon. Prekje: rrëshqit gishtin majtas-djathtas.', [['tilt', 'Anim'], ['pad', 'Prekje']], () => this.syncTouch());
     choice('tiltSens', 'Ndjeshmëria e animit', 'Sa shumë duhet ta anosh telefonin për kthesë të plotë.', [[0, 'E butë'], [1, 'Normale'], [2, 'E fortë']]);
     tog('tiltInv', 'Animi i kundërt', 'Ndize nëse makina kthen në anën e gabuar.');
+    tog('mirror', 'Pasqyra e prapme', 'Pamje e vogël prapa makinës, lart në mes. Fike nëse loja ngadalësohet.', () => this.syncTouch());
     tog('autoGas', 'Gaz automatik', 'Makina e shtyp gazin vetë. Ti drejton dhe gjuan.');
     tog('assist', 'Ndihmë në timon', 'Makina drejtohet pak vetë pas kthesës.');
     choice('quality', 'Grafika', 'E larta për telefona të rinj. Hije dhe dritat ndryshojnë në garën tjetër.', QUALITY.map((q, i) => [i, q.name]), () => applyQuality());
@@ -221,6 +222,7 @@ const UI = {
     this.$('touch').hidden = !show; this.$('t-gas').hidden = !show || SET.autoGas;
     this.$('app').classList.toggle('tilt', show && SET.steer === 'tilt');
     this.$('rotate').classList.toggle('can', show);
+    this.$('hud').classList.toggle('mir', !!SET.mirror);
   },
   updateTotals() {
     const wins = Object.values(SET.best).filter(b => b.place === 1).length;
@@ -280,6 +282,11 @@ const UI = {
     this.set('h-lap', p.finished ? 'MBËRRITE' : `XHIRO ${lap}/${race.laps}`);
     this.set('h-time', fmtTime(p.finished ? p.finishTime : race.time));
     this.set('h-fans', `${p.fans}<small>TIFOZË</small>`, true);
+    const key = race.order.map(c => c.id + (c.finished ? 'f' : '')).join();
+    if (key !== this.last.board) {
+      this.last.board = key;
+      this.$('h-board').innerHTML = race.order.map((c, i) => `<div class="${c === p ? 'me' : ''}"><b>${i + 1}</b><i style="background:${c.color}"></i><span>${c.name}</span><em>${c.finished ? '✓' : ''}</em></div>`).join('');
+    }
     this.slotsHud(p);
   },
   slotsHud(p) {

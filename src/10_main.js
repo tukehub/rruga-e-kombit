@@ -94,7 +94,7 @@ function startRace() {
   const points = SET.mode === 'points', city = points ? ARENA : CITIES[SET.city];
   UI.hud(false); UI.centerOff();
   UI.$('load-city').textContent = city.name;
-  UI.$('load-region').textContent = points ? `Pikë · ${SET.ptsMin} minuta` : REGIONS[city.region] + ' · ' + ENV[city.env].label;
+  UI.$('load-region').textContent = points ? `Pikë · ${SET.ptsMin} minuta` : ENV[city.env].label;
   UI.$('load-tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   UI.show('scr-load');
   G.state = 'loading';
@@ -103,7 +103,7 @@ function startRace() {
     catch (e) { console.error(e); G.state = 'menu'; UI.show('scr-title'); return; }
     G.state = 'intro'; G.introT = 0; G.last = 0;
     UI.show(null); UI.hud(true); UI.slotState = ''; UI.last = {};
-    UI.center(`${city.name}<small>${points ? `Pikë · ${SET.ptsMin} minuta` : `${REGIONS[city.region]} · ${ENV[city.env].label} · ${city.laps} xhiro`}</small>`, 2.6);
+    UI.center(`${city.name}<small>${points ? `Pikë · ${SET.ptsMin} minuta` : `${ENV[city.env].label} · ${city.laps} xhiro`}</small>`, 2.6);
     requestWake();
   }, 90);
 }
@@ -396,7 +396,7 @@ function syncEntities(dt) {
 function chaseCam(dt) {
   if (G.arena) return arenaCam(dt);
   const c = G.player, T = G.track, sp = Math.abs(c.v);
-  const back = 4.5 + sp * 0.026, h = 1.5 + sp * 0.007;
+  const back = 3.5 + sp * 0.018, h = 1.25 + sp * 0.005;
   T.pos(c.s - back, c.d * 0.82, tmpA); tmpA.y += h + c.hop * 0.5;
   T.pos(c.s, c.d, tmpB); tmpB.y += c.hop;
   const psi = T.heading(c.s) + c.yaw * 0.5; T.tangent(c.s, tmpT);
@@ -450,7 +450,7 @@ function showResults() {
   const race = G.race, P = G.player, city = G.city, pts = race.points; race.estimate();
   const rows = pts ? race.cars.slice().sort((x, y) => y.score - x.score) : race.cars.slice().sort((x, y) => x.est - y.est);
   const place = P.place;
-  UI.$('res-city').textContent = pts ? `${ARENA.name} · Pikë · ${SET.ptsMin} minuta` : `${city.name} · ${REGIONS[city.region]} · ${DIFFS[SET.diff].name}`;
+  UI.$('res-city').textContent = pts ? `${ARENA.name} · Pikë · ${SET.ptsMin} minuta` : `${city.name} · ${DIFFS[SET.diff].name}`;
   UI.$('res-place').textContent = ORD[place - 1];
   UI.$('res-msg').textContent = placeMsg(place, race.cars.length);
   const th = document.querySelectorAll('.res thead th'); th[3].textContent = pts ? 'Goditje' : 'Koha'; th[4].textContent = pts ? 'Pikë' : 'Tifozë';
@@ -468,11 +468,25 @@ function showResults() {
   }
   UI.show('scr-res');
 }
+// rear-view mirror: a second, small render of the scene from the roof looking back, into the frame at the top of the screen
+function renderMirror(scene) {
+  const P = G.player, v = P && G.views[P.id];
+  if (!SET.mirror || !v || !(G.state === 'race' || G.state === 'countdown' || G.state === 'finish')) return;
+  const r = UI.$('mirror').getBoundingClientRect(); if (r.width < 10) return;
+  const mc = G.mcam || (G.mcam = new THREE.PerspectiveCamera(42, 3.2, 0.5, 260));
+  mc.aspect = r.width / r.height; mc.updateProjectionMatrix();
+  v.root.localToWorld(mc.position.set(0, v.H + 0.3, -v.L * 0.5)); v.root.localToWorld(tmpB.set(0, 0.9, -40)); mc.lookAt(tmpB);
+  const H = innerHeight;
+  renderer.setScissorTest(true); renderer.setViewport(r.left, H - r.bottom, r.width, r.height); renderer.setScissor(r.left, H - r.bottom, r.width, r.height);
+  renderer.render(scene, mc);
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, H);
+}
 function render(dt) {
   if (G.arena) return arenaRender(dt);
   const w = G.world, P = G.player;
   if (w.dl && w.dl.castShadow && P) { G.track.pos(P.s + 22, 0, tmpA); w.dl.target.position.copy(tmpA); w.dl.position.copy(tmpA).addScaledVector(w.sunDir, 160); }
   G.post.render(w.scene, camera, dt);
+  renderMirror(w.scene);
 }
 
 // ---------- main loop ----------
