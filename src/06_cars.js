@@ -336,21 +336,20 @@ class CarView {
     add(G.body, paint, true); add(G.cab, S.van ? paint : M.glass, true); add(G.roof, paint, false); add(G.paint, paint, true);
     add(G.dark, M.trim, false); add(G.glass, M.glass); add(G.chrome, M.chrome); add(G.spare, M.tyre, true);
     add(G.head, M.head); this.tailMesh = add(G.tail, M.tail);
-    add(G.neon, neonMat(car.color)); add(G.stripe, stripeMat(car.color)); add(G.wing, M.trim, true);
+    add(G.stripe, stripeMat(car.color)); add(G.wing, M.trim, true);
     this.wheels = [];
     const rimM = M['rim_' + (S.rim.col || 'silver')];
     for (const z of [S.zF, S.zR]) for (const sx of [-1, 1]) {
       const holder = new THREE.Group(); holder.position.set(sx * G.wx(z), S.wr, z); holder.rotation.order = 'YXZ'; if (sx < 0) holder.scale.x = -1;
       const spin = new THREE.Group(); holder.add(spin);
       add(G.tyre, M.tyre, true, spin); add(G.rim, rimM, false, spin); add(G.inner, M.inner, false, spin);
-      add(G.rimGlow, neonMat(car.color), false, holder);
       if (G.caliper) { const c = add(G.caliper, caliperMat(S.caliper), false, holder); c.position.set(0.0, S.wr * 0.34, -S.wr * 0.3); c.rotation.x = 0.7; }
       this.body.add(holder); this.wheels.push({ g: holder, spin, front: z > 0 });
     }
     this.tail = G.tailPts; this.L = S.L; this.H = G.H;
     const glowCol = new THREE.Color(car.color); if (glowCol.getHSL({}).l < 0.25 || glowCol.getHSL({}).s < 0.15) glowCol.set('#ff3048');
     const ug = new THREE.Mesh(new THREE.PlaneGeometry(S.W + 1.6, S.L + 1.4), linMat(Object.assign(new THREE.MeshBasicMaterial({ map: TEX.glow, color: glowCol, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), { userData: { hdr: 1.4 } })));
-    ug.rotation.x = -Math.PI / 2; ug.position.y = 0.07; this.body.add(ug); this.under = ug;
+    ug.rotation.x = -Math.PI / 2; ug.position.y = 0.07; ug.visible = false; this.body.add(ug); this.under = ug; // no underglow: it read as dizzy
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(S.W + 0.8, S.L + 0.5), new THREE.MeshBasicMaterial({ map: TEX.glow, color: 0x000000, transparent: true, opacity: 0.7, depthWrite: false }));
     sh.rotation.x = -Math.PI / 2; sh.position.y = 0.05; this.root.add(sh); this.shadow = sh;
     this.shield = new THREE.Mesh(new THREE.SphereGeometry(Math.max(3.3, S.L * 0.7), 20, 12), linMat(Object.assign(new THREE.MeshBasicMaterial({ color: '#7fb0ff', transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), { userData: { hdr: 1.4 } })));

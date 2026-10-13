@@ -14,14 +14,16 @@ const AUD = {
     // a tanh shaper for growl, a body boost, a lowpass that opens with the revs, intake roar and a turbo whistle.
     this.eMix = c.createGain(); this.eMix.gain.value = 0.5;
     this.eShape = c.createWaveShaper(); this.eShape.curve = this.shapeCurve(2.4); this.eShape.oversample = '2x';
-    this.eBody = c.createBiquadFilter(); this.eBody.type = 'peaking'; this.eBody.frequency.value = 160; this.eBody.Q.value = 0.9; this.eBody.gain.value = 7;
+    this.eBody = c.createBiquadFilter(); this.eBody.type = 'peaking'; this.eBody.frequency.value = 130; this.eBody.Q.value = 0.8; this.eBody.gain.value = 10;
+    // a second lift where phone speakers still play, so the depth survives a small speaker
+    this.eLow = c.createBiquadFilter(); this.eLow.type = 'peaking'; this.eLow.frequency.value = 280; this.eLow.Q.value = 1; this.eLow.gain.value = 5;
     this.eFilt = c.createBiquadFilter(); this.eFilt.type = 'lowpass'; this.eFilt.frequency.value = 600; this.eFilt.Q.value = 1.3;
     this.eGain = c.createGain(); this.eGain.gain.value = 0;
-    this.eOsc = [['sawtooth', 1, 0.5], ['sawtooth', 0.5, 0.5], ['square', 1.5, 0.14], ['sine', 0.25, 0.6]].map(([type, mul, g0]) => {
+    this.eOsc = [['sawtooth', 1, 0.5], ['sawtooth', 0.5, 0.6], ['square', 1.5, 0.08], ['sine', 0.25, 0.8]].map(([type, mul, g0]) => {
       const o = c.createOscillator(), g = c.createGain(); o.type = type; o.detune.value = (Math.random() - 0.5) * 10; g.gain.value = g0;
       o.connect(g); g.connect(this.eMix); o.start(); return { o, mul };
     });
-    this.eMix.connect(this.eShape); this.eShape.connect(this.eBody); this.eBody.connect(this.eFilt); this.eFilt.connect(this.eGain); this.eGain.connect(this.sfx);
+    this.eMix.connect(this.eShape); this.eShape.connect(this.eBody); this.eBody.connect(this.eLow); this.eLow.connect(this.eFilt); this.eFilt.connect(this.eGain); this.eGain.connect(this.sfx);
     const ins = c.createBufferSource(); ins.buffer = this.noise; ins.loop = true;
     this.iFilt = c.createBiquadFilter(); this.iFilt.type = 'bandpass'; this.iFilt.Q.value = 0.8; this.iGain = c.createGain(); this.iGain.gain.value = 0;
     ins.connect(this.iFilt); this.iFilt.connect(this.iGain); this.iGain.connect(this.sfx); ins.start();
@@ -39,15 +41,15 @@ const AUD = {
   engine(speed01, gas, active, scrape) {
     if (!this.ctx) return; const t = this.ctx.currentTime, st = this.eSt;
     const sp = clamp(speed01, 0, 1.4), gears = 6, gf = Math.min(gears - 1, Math.floor(sp * gears)), frac = clamp(sp * gears - gf, 0, 1);
-    const rpm = 1150 + frac * 5600 + (gas ? 450 : 0) - gf * 110, f = rpm / 60 * 3;
+    const rpm = 1150 + frac * 5600 + (gas ? 450 : 0) - gf * 110, f = rpm / 60 * 2.2;
     for (const x of this.eOsc) x.o.frequency.setTargetAtTime(f * x.mul, t, 0.045);
-    this.eFilt.frequency.setTargetAtTime(320 + rpm * 0.42 + (gas ? 900 : 0), t, 0.05);
+    this.eFilt.frequency.setTargetAtTime(260 + rpm * 0.3 + (gas ? 700 : 0), t, 0.05);
     this.eMix.gain.setTargetAtTime(gas ? 0.95 : 0.45, t, 0.08);
     if (active && gas && gf > st.gear && t > st.shiftT) { st.shiftT = t + 0.14; this.hiss(0.3, 3200, 900, 0.1, 'bandpass', 0, 1.2); }
     if (active && st.gas && !gas && frac > 0.35 && sp > 0.25 && t > st.popT) { st.popT = t + 0.8; this.crackle(); }
     st.gear = gf; st.gas = gas;
     const shifting = t < st.shiftT;
-    this.eGain.gain.setTargetAtTime(active ? (shifting ? 0.03 : 0.065 + (gas ? 0.05 : 0) + frac * 0.02) : 0, t, shifting ? 0.02 : 0.08);
+    this.eGain.gain.setTargetAtTime(active ? (shifting ? 0.07 : 0.14 + (gas ? 0.09 : 0) + frac * 0.03) : 0, t, shifting ? 0.02 : 0.08);
     this.iFilt.frequency.setTargetAtTime(600 + rpm * 0.35, t, 0.05);
     this.iGain.gain.setTargetAtTime(active ? (gas ? 0.02 + frac * 0.03 : 0.006) : 0, t, 0.08);
     this.turbo.frequency.setTargetAtTime(1700 + rpm * 0.55, t, 0.1);
