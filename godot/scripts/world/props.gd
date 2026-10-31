@@ -1,0 +1,223 @@
+class_name Props
+extends Node3D
+## Street lamps, trees and landmark placeholders from <city>/props.json.
+## Lamps along the track get real OmniLights (nearest N to the player, from
+## the quality preset); the rest are emissive meshes only.
+
+var lamp_mm: MultiMeshInstance3D
+var tree_mm: MultiMeshInstance3D
+var trunk_mm: MultiMeshInstance3D
+var track_lamps: Array = []          # [x,y,z,yaw]
+var lights: Array[OmniLight3D] = []
+var light_slots := 0
+var lamp_emis: StandardMaterial3D
+var night := 1.0
+var landmarks: Array = []
+
+
+func load_city(city_id: String, terrain: Terrain) -> void:
+	var path := "res://assets/cities/%s/props.json" % city_id
+	if not ResourceLoader.exists(path) and not FileAccess.file_exists(path):
+		return
+	var p: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
+	track_lamps = p.get("track_lamps", [])
+	landmarks = p.get("landmarks", [])
+	_build_lamps(p.get("lamps", []), track_lamps)
+	_build_trees(p.get("trees", []), terrain)
+	light_slots = int(Quality.p.lamp_lights)
+	for i in light_slots:
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.82, 0.55)
+		l.light_energy = 0.0
+		l.omni_range = 22.0
+		l.omni_attenuation = 1.6
+		l.shadow_enabled = false
+		l.light_specular = 0.6
+		add_child(l)
+		lights.append(l)
+
+
+func _lamp_mesh() -> ArrayMesh:
+	# pole (thin box) + head (emissive box), built as two surfaces
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_box(st, Vector3(0, 4.0, 0), Vector3(0.14, 8.0, 0.14), Color(0.25, 0.26, 0.28))
+	_box(st, Vector3(0, 8.0, 1.2), Vector3(0.12, 0.12, 2.4), Color(0.25, 0.26, 0.28))
+	var pole_mat := StandardMaterial3D.new()
+	pole_mat.vertex_color_use_as_albedo = true
+	pole_mat.roughness = 0.5
+	pole_mat.metallic = 0.6
+	st.set_material(pole_mat)
+	var mesh := st.commit()
+	var st2 := SurfaceTool.new()
+	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_box(st2, Vector3(0, 7.9, 2.3), Vector3(0.5, 0.22, 0.9), Color(1, 1, 1))
+	lamp_emis = StandardMaterial3D.new()
+	lamp_emis.albedo_color = Color(0.9, 0.85, 0.7)
+	lamp_emis.emission_enabled = true
+	lamp_emis.emission = Color(1.0, 0.82, 0.55)
+	lamp_emis.emission_energy_multiplier = 6.0
+	st2.set_material(lamp_emis)
+	st2.commit(mesh)
+	return mesh
+
+
+static func _box(st: SurfaceTool, c: Vector3, size: Vector3, col: Color) -> void:
+	var h := size * 0.5
+	var faces := [
+		[Vector3(0, 0, 1), [Vector3(-1, -1, 1), Vector3(1, -1, 1), Vector3(1, 1, 1), Vector3(-1, 1, 1)]],
+		[Vector3(0, 0, -1), [Vector3(1, -1, -1), Vector3(-1, -1, -1), Vector3(-1, 1, -1), Vector3(1, 1, -1)]],
+		[Vector3(1, 0, 0), [Vector3(1, -1, 1), Vector3(1, -1, -1), Vector3(1, 1, -1), Vector3(1, 1, 1)]],
+		[Vector3(-1, 0, 0), [Vector3(-1, -1, -1), Vector3(-1, -1, 1), Vector3(-1, 1, 1), Vector3(-1, 1, -1)]],
+		[Vector3(0, 1, 0), [Vector3(-1, 1, 1), Vector3(1, 1, 1), Vector3(1, 1, -1), Vector3(-1, 1, -1)]],
+		[Vector3(0, -1, 0), [Vector3(-1, -1, -1), Vector3(1, -1, -1), Vector3(1, -1, 1), Vector3(-1, -1, 1)]],
+	]
+	for f in faces:
+		var n: Vector3 = f[0]
+		var vs: Array = f[1]
+		var quad: Array[Vector3] = []
+		for v in vs:
+			quad.append(c + Vector3(v.x * h.x, v.y * h.y, v.z * h.z))
+		st.set_normal(n)
+		st.set_color(col)
+		st.add_vertex(quad[0])
+		st.set_normal(n)
+		st.set_color(col)
+		st.add_vertex(quad[1])
+		st.set_normal(n)
+		st.set_color(col)
+		st.add_vertex(quad[2])
+		st.set_normal(n)
+		st.set_color(col)
+		st.add_vertex(quad[0])
+		st.set_normal(n)
+		st.set_color(col)
+		st.add_vertex(quad[2])
+		st.set_normal(n)
+		st.set_color(col)
+		st.add_vertex(quad[3])
+
+
+func _build_lamps(lamps: Array, tl: Array) -> void:
+	var mesh := _lamp_mesh()
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	var all := []
+	for l in lamps:
+		all.append([l[0], l[1], l[2], 0.0])
+	for l in tl:
+		all.append(l)
+	mm.instance_count = all.size()
+	for i in all.size():
+		var l: Array = all[i]
+		var yaw := float(l[3]) if l.size() > 3 else 0.0
+		var t := Transform3D(Basis(Vector3.UP, yaw), Vector3(l[0], l[1], l[2]))
+		mm.set_instance_transform(i, t)
+	lamp_mm = MultiMeshInstance3D.new()
+	lamp_mm.multimesh = mm
+	lamp_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	lamp_mm.visibility_range_end = float(Quality.p.props_dist)
+	lamp_mm.visibility_range_end_margin = 60.0
+	add_child(lamp_mm)
+
+
+func _tree_meshes() -> Array:
+	# low-poly canopy (2 stacked cones) and trunk
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cone := func(base_y: float, h: float, r: float, col: Color) -> void:
+		var segs := 7
+		for i in segs:
+			var a0 := TAU * i / segs
+			var a1 := TAU * (i + 1) / segs
+			var p0 := Vector3(cos(a0) * r, base_y, sin(a0) * r)
+			var p1 := Vector3(cos(a1) * r, base_y, sin(a1) * r)
+			var tip := Vector3(0, base_y + h, 0)
+			var n := (p1 - p0).cross(tip - p0).normalized()
+			for v in [p0, tip, p1]:
+				st.set_normal(n)
+				st.set_color(col)
+				st.add_vertex(v)
+	cone.call(2.2, 3.4, 2.4, Color(0.18, 0.36, 0.14))
+	cone.call(4.2, 3.0, 1.8, Color(0.22, 0.42, 0.16))
+	var canopy_mat := StandardMaterial3D.new()
+	canopy_mat.vertex_color_use_as_albedo = true
+	canopy_mat.roughness = 0.95
+	st.set_material(canopy_mat)
+	var canopy := st.commit()
+	var st2 := SurfaceTool.new()
+	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_box(st2, Vector3(0, 1.2, 0), Vector3(0.4, 2.4, 0.4), Color(0.3, 0.2, 0.12))
+	var trunk_mat := StandardMaterial3D.new()
+	trunk_mat.vertex_color_use_as_albedo = true
+	trunk_mat.roughness = 0.9
+	st2.set_material(trunk_mat)
+	return [canopy, st2.commit()]
+
+
+func _build_trees(trees: Array, terrain: Terrain) -> void:
+	var meshes := _tree_meshes()
+	var keep := int(trees.size() * float(Quality.p.tree_mul))
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = meshes[0]
+	mm.instance_count = keep
+	var mm2 := MultiMesh.new()
+	mm2.transform_format = MultiMesh.TRANSFORM_3D
+	mm2.mesh = meshes[1]
+	mm2.instance_count = keep
+	for i in keep:
+		var t: Array = trees[i]
+		var sc := float(t[3])
+		var y := float(t[1])
+		if terrain:
+			y = terrain.height_at(float(t[0]), float(t[2]))
+		var b := Basis(Vector3.UP, float(i) * 1.37).scaled(Vector3(sc, sc, sc))
+		var tr := Transform3D(b, Vector3(float(t[0]), y, float(t[2])))
+		mm.set_instance_transform(i, tr)
+		mm2.set_instance_transform(i, tr)
+	tree_mm = MultiMeshInstance3D.new()
+	tree_mm.multimesh = mm
+	tree_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if Quality.preset != "low" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	tree_mm.visibility_range_end = float(Quality.p.props_dist) * 1.3
+	tree_mm.visibility_range_end_margin = 80.0
+	add_child(tree_mm)
+	trunk_mm = MultiMeshInstance3D.new()
+	trunk_mm.multimesh = mm2
+	trunk_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	trunk_mm.visibility_range_end = float(Quality.p.props_dist)
+	trunk_mm.visibility_range_end_margin = 60.0
+	add_child(trunk_mm)
+
+
+func set_night(n: float) -> void:
+	night = n
+	if lamp_emis:
+		lamp_emis.emission_energy_multiplier = 6.0 * n
+
+
+## Move the real lights to the nearest lamps ahead of the player.
+func update_lights(player_pos: Vector3, forward: Vector3) -> void:
+	if lights.is_empty() or track_lamps.is_empty():
+		return
+	var cand := []
+	for l in track_lamps:
+		var p := Vector3(l[0], l[1], l[2])
+		var to := p - player_pos
+		var dist := to.length()
+		if dist > 140.0:
+			continue
+		# favour lamps ahead
+		var ahead := to.normalized().dot(forward)
+		cand.append([dist - ahead * 30.0, p])
+	cand.sort_custom(func(a, b): return a[0] < b[0])
+	for i in lights.size():
+		var l := lights[i]
+		if i < cand.size():
+			var p: Vector3 = cand[i][1]
+			l.global_position = p + Vector3(0, 7.7, 0) + Vector3(0, 0, 0)
+			l.light_energy = 2.2 * night
+			l.visible = night > 0.05
+		else:
+			l.visible = false

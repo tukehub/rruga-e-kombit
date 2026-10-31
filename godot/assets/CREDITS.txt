@@ -1,0 +1,28 @@
+[b]Kafshim asfalti[/b]
+Një garë arkade nëpër qytetet shqiptare. Të gjitha makinat, shoferët dhe markat janë të trilluara.
+
+[b]Motorri[/b]
+Godot Engine 4 — MIT License. © Juan Linietsky, Ariel Manzur dhe kontribuesit e Godot Engine.
+
+[b]Hartat dhe rrugët[/b]
+© Kontribuesit e OpenStreetMap — të dhënat janë nën Open Database License (ODbL) 1.0.
+openstreetmap.org/copyright
+
+[b]Terreni (lartësitë)[/b]
+Copernicus DEM GLO-30 — © DLR e.V. 2010–2014 dhe © Airbus Defence and Space GmbH 2014–2018, ofruar nën licencën Copernicus (ESA).
+
+[b]Teksturat dhe qiejt (HDRI)[/b]
+Poly Haven — CC0 1.0 (polyhaven.com).
+
+[b]Shkronjat[/b]
+Big Shoulders Display — Patric King, SIL Open Font License 1.1.
+Chakra Petch — Cadson Demak, SIL Open Font License 1.1.
+
+[b]Tingujt[/b]
+Të gjithë efektet zanore janë të sintetizuara proceduralisht për këtë lojë (tools/gen_sfx.py).
+
+[b]Modelet e makinave[/b]
+Të gjeneruara proceduralisht për këtë lojë (tools/gen_cars.py). Asnjë markë ose model i vërtetë.
+
+[b]Kodi burimor[/b]
+github.com/tukehub/rruga-e-kombit

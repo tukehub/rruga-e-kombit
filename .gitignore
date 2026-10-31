@@ -3,3 +3,13 @@ www/
 dist/
 test/shots/
 .DS_Store
+.idea/
+# Godot
+godot/.godot/
+godot/android/
+*.apk
+*.aab
+# pipeline caches and local tooling
+tools/cache/
+tools/godot/
+tools/godot.zip
