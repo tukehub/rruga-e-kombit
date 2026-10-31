@@ -1,6 +1,6 @@
 # Vortex
 
-Vortex: Blur-style combat racing through 11 cities in Albania, Kosovo and Tetovë. Six cars modelled on the brands every Albanian street knows (Benxi E-Klas, Bimeri M-Kupe, Golfi 4 GTI, Audina RS Quattro, Gelendi 4x4, Furgoni Sprinter), five rivals (Alfie, Reed, Santi, Enzo, Eric), eight power-ups, neon, light trails, wrecks.
+Vortex: Blur-style combat racing through 11 cities in Albania, Kosovo and Tetovë. Six cars modelled on the brands every Albanian street knows (Benxi E-Klas, Bimeri M-Kupe, Golfi 4 GTI, Audi RS Quattro, Gelendi 4x4, Furgoni Sprinter), five rivals (Alfie, Reed, Santi, Enzo, Eric), eight power-ups, neon, light trails, wrecks.
 
 ## Look
 HDR bloom, filmic grade with cool shadows and fine grain, speed-driven radial motion blur and chromatic split at the edges of the frame (stronger on nitro, off via *Turbullim shpejtësie* in Settings). Each car carries its brand cues: chrome three-pointed star, kidney grille with roundel, four rings, VW badge.

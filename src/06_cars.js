@@ -38,7 +38,7 @@ const CAR_SHAPES = {
     head: { type: 'slim', y: 0.77, x: 0.62, w: 0.42, h: 0.07, bar: true }, tail: { type: 'pair', y: 0.94, x: 0.72, w: 0.34, h: 0.08 },
     grille: { y: 0.55, w: 0.72, h: 0.16 }, emblem: 'vw', spoiler: 'roof', exhaust: [-0.6, 0.6], rim: { n: 5, sp: 0.34, col: 'silver' }, caliper: '#e01818',
   },
-  sleek: { // Audina: low wide-body quattro coupé with the single-frame grille
+  sleek: { // Audi: low wide-body quattro coupé with the single-frame grille
     L: 4.52, W: 2.0, wr: 0.36, tyreW: 0.3, zF: 1.23, zR: -1.39, n: 2.7, tumble: 0.16,
     top: [[-2.26, 0.62], [-2.18, 0.84], [-1.8, 0.9], [-1.2, 0.9], [-0.6, 0.86], [0.1, 0.8], [0.8, 0.72], [1.5, 0.62], [2.0, 0.5], [2.26, 0.36]],
     bot: [[-2.26, 0.38], [-2.12, 0.24], [-1.75, 0.13], [1.85, 0.12], [2.18, 0.15], [2.26, 0.2]],

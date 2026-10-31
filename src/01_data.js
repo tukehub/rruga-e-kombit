@@ -182,7 +182,7 @@ const CARS = [
   { id: 'benxi', name: 'Benxi E-Klas', brand: 'Mercedes-Benz', style: 'sedan', vmax: 58, acc: 16.5, grip: 1.0, hp: 115, mass: 1.1, color: '#26262c', desc: 'Makina kombëtare e Shqipërisë. Dizel, ylli në kapot, dhe gjithmonë e parkuar para kafenesë.' },
   { id: 'bimeri', name: 'Bimeri M-Kupe', brand: 'BMW', style: 'muscle', vmax: 62, acc: 16, grip: 0.92, hp: 100, mass: 1.05, color: '#1b4fd6', desc: 'Veshka dyshe përpara, gaz deri në fund. Kthesat i merr me bisht.' },
   { id: 'golfi', name: 'Golfi 4 GTI', brand: 'Volkswagen', style: 'hatch', vmax: 55, acc: 19, grip: 1.16, hp: 90, mass: 0.85, color: '#e41e20', desc: 'Golfi katër: i vogël, i shkathët, dhe gjithmonë me xhamat poshtë e muzikën lart.' },
-  { id: 'audina', name: 'Audina RS Quattro', brand: 'Audi', style: 'sleek', vmax: 60, acc: 18, grip: 1.06, hp: 95, mass: 0.95, color: '#f1eee8', desc: 'Katër unaza, katër rrota që tërheqin. Shkon si në binarë, edhe mbi gropa.' },
+  { id: 'audi', name: 'Audi RS Quattro', brand: 'Audi', style: 'sleek', vmax: 60, acc: 18, grip: 1.06, hp: 95, mass: 0.95, color: '#f1eee8', desc: 'Katër unaza, katër rrota që tërheqin. Shkon si në binarë, edhe mbi gropa.' },
   { id: 'gelendi', name: 'Gelendi 4x4', brand: 'Mercedes-Benz G', style: 'jeep', vmax: 54, acc: 15, grip: 0.96, hp: 140, mass: 1.35, color: '#2a2a2e', desc: 'Kutia e zezë e çdo dasme. Gropat e tua s’i bëjnë gjë.' },
   { id: 'furgoni', name: 'Furgoni Sprinter', brand: 'Mercedes-Benz Sprinter', style: 'van', vmax: 51, acc: 13.5, grip: 0.88, hp: 175, mass: 1.7, color: '#f3f3ee', desc: 'Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do.' },
 ];
