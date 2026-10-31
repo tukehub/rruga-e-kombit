@@ -396,6 +396,11 @@ class CarView {
       const pool = new THREE.Mesh(new THREE.PlaneGeometry(7, 16), linMat(Object.assign(new THREE.MeshBasicMaterial({ map: TEX.glow, color: '#fff0d8', transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), { userData: { hdr: 1 } })));
       pool.rotation.x = -Math.PI / 2; pool.position.set(0, 0.09, S.L / 2 + 8); this.body.add(pool); this.beam = pool;
     }
+    // real lights on the player's car so the asphalt, kerbs and rivals pick up the headlights and tail glow (Blur-style); medium quality and up
+    if (car.isPlayer && opts.beams) {
+      const hl = new THREE.PointLight(0xfff1d6, 2.6, 30, 1.6); hl.position.set(0, 0.9, S.L / 2 + 2.5); this.body.add(hl); this.headLight = hl;
+      const tl = new THREE.PointLight(0xff2a30, 1.1, 10, 1.6); tl.position.set(0, 0.7, -S.L / 2 - 0.6); this.body.add(tl); this.tailLight = tl;
+    }
     if (!car.isPlayer && opts.tags) {
       this.tagCanvas = nameTagCanvas(); this.tagTex = new THREE.CanvasTexture(this.tagCanvas); this.tagTex.encoding = THREE.sRGBEncoding; this.lastHp = -1;
       this.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tagTex, depthWrite: false, transparent: true, sizeAttenuation: false, toneMapped: false }));

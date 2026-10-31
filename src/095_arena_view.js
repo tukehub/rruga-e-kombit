@@ -321,6 +321,7 @@ function arenaUpdateViews(dt) {
     v.shield.visible = c.shieldT > 0 && !wrecked;
     if (v.shield.visible) { v.shield.material.opacity = 0.11 + 0.05 * Math.sin(t * 9); const s = 1 + 0.03 * Math.sin(t * 13); v.shield.scale.set(s, s * 0.8, s); }
     v.under.material.opacity = c.nitroT > 0 || c.ramT > 0 ? 0.95 : 0.55;
+    if (v.tailLight) { const n = c.nitroT > 0 || c.ramT > 0; v.tailLight.color.set(n ? 0x5fb8ff : 0xff2a30); v.tailLight.intensity = wrecked ? 0 : n ? 3.2 : c.braking ? 2.2 : 1.1; }
     root.updateMatrixWorld(true);
     for (let k = 0; k < 2; k++) { tl.fromArray(v.tail[k]); v.body.localToWorld(tl); G.trails.push(i, k, tl.x, tl.y, tl.z); }
     G.trailI[i] = wrecked ? 0 : clamp((Math.abs(c.v) - 10) / 20, 0, 1);

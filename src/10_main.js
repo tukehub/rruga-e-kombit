@@ -296,6 +296,7 @@ function updateViews(dt) {
     v.shield.visible = c.shieldT > 0 && !wrecked;
     if (v.shield.visible) { v.shield.material.opacity = 0.11 + 0.05 * Math.sin(t * 9); const s = 1 + 0.03 * Math.sin(t * 13); v.shield.scale.set(s, s * 0.8, s); }
     v.under.material.opacity = c.nitroT > 0 ? 0.95 : 0.5;
+    if (v.tailLight) { const n = c.nitroT > 0; v.tailLight.color.set(n ? 0x5fb8ff : 0xff2a30); v.tailLight.intensity = wrecked ? 0 : n ? 3.2 : c.braking ? 2.2 : 1.1; if (v.headLight) v.headLight.intensity = wrecked ? 0.3 : 2.6; }
     root.updateMatrixWorld(true);
     for (let k = 0; k < 2; k++) { tl.fromArray(v.tail[k]); v.body.localToWorld(tl); G.trails.push(i, k, tl.x, tl.y, tl.z); }
     G.trailI[i] = wrecked ? 0 : clamp((Math.abs(c.v) - 12) / 26, 0, 1) * (c.nitroT > 0 ? 1.5 : 1);
@@ -517,7 +518,7 @@ function speedFx() {
   if (!on) { G.post.speed(0, 0); return; }
   const sp = Math.abs(P.v), vmax = P.def.vmax || 60, fp = camMode() ? 1.25 : 1, nitro = P.nitroT > 0 ? 1 : 0;
   const k = clamp((sp / vmax - 0.55) / 0.45, 0, 1);
-  G.post.speed((k * 0.45 + nitro * 0.55) * fp, k * 0.35 + nitro * 0.75);
+  G.post.speed((k * 0.32 + nitro * 0.45) * fp, k * 0.3 + nitro * 0.65);
 }
 function render(dt) {
   if (G.arena) return arenaRender(dt);

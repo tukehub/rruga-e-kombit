@@ -63,33 +63,47 @@ function makeEnvMap(renderer, env, neon) {
   return rt;
 }
 
-// Final grade, Blur-style: speed-driven radial blur + chromatic split at the edges, filmic contrast, cool shadows, fine grain, vignette, hit tint
+// Final grade, Blur-style: speed-driven radial blur + chromatic split at the edges, anamorphic streaks on hot lights, sharpen, filmic contrast, split toning, fine grain, vignette, hit tint
 const FINAL_SHADER = {
   uniforms: {
     tDiffuse: { value: null }, uVig: { value: 0.32 }, uSat: { value: 1.1 }, uHit: { value: 0 }, uHitCol: { value: new THREE.Vector3(1, 0.1, 0.1) },
     uSpeed: { value: 0 }, uAber: { value: 0 }, uTime: { value: 0 }, uGrain: { value: 0.028 }, uContrast: { value: 1.1 }, uShadow: { value: new THREE.Vector3(0.0, 0.004, 0.012) }, uCenter: { value: new THREE.Vector2(0.5, 0.56) },
+    uTexel: { value: new THREE.Vector2(1 / 1280, 1 / 720) }, uSharp: { value: 0.22 }, uStreak: { value: 0.0 }, uStreakThr: { value: 1.0 }, uHigh: { value: new THREE.Vector3(0.03, 0.012, -0.012) },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: [
-    'uniform sampler2D tDiffuse; uniform float uVig, uSat, uHit, uSpeed, uAber, uTime, uGrain, uContrast; uniform vec3 uHitCol, uShadow; uniform vec2 uCenter; varying vec2 vUv;',
+    'uniform sampler2D tDiffuse; uniform float uVig, uSat, uHit, uSpeed, uAber, uTime, uGrain, uContrast, uSharp, uStreak, uStreakThr; uniform vec3 uHitCol, uShadow, uHigh; uniform vec2 uCenter, uTexel; varying vec2 vUv;',
     'float hash(vec2 p){ p = fract(p * vec2(443.897, 441.423)); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }',
     'void main(){',
     '  vec2 d = vUv - uCenter; float v = dot(d, d);',
     // radial blur: strong at the edges, sharp around the car
-    '  float blurK = uSpeed * smoothstep(0.03, 0.32, v);',
+    '  float blurK = uSpeed * smoothstep(0.04, 0.3, v);',
     '  vec3 col;',
     '  if (blurK > 0.002) {',
-    '    vec2 step = d * blurK * 0.09; col = vec3(0.0); float wsum = 0.0;',
+    '    vec2 step = d * blurK * 0.065; col = vec3(0.0); float wsum = 0.0;',
     '    for (int i = 0; i < 8; i++) { float t = (float(i) + hash(vUv + float(i) + uTime)) / 8.0; float w = 1.0 - t * 0.5; col += texture2D(tDiffuse, vUv - step * t).rgb * w; wsum += w; }',
     '    col /= wsum;',
-    '  } else col = texture2D(tDiffuse, vUv).rgb;',
+    '  } else {',
+    '    col = texture2D(tDiffuse, vUv).rgb;',
+    // unsharp mask where the frame is not being blurred: crisp edges even at reduced pixel ratio
+    '    vec3 n = texture2D(tDiffuse, vUv + vec2(uTexel.x, 0.0)).rgb + texture2D(tDiffuse, vUv - vec2(uTexel.x, 0.0)).rgb + texture2D(tDiffuse, vUv + vec2(0.0, uTexel.y)).rgb + texture2D(tDiffuse, vUv - vec2(0.0, uTexel.y)).rgb;',
+    '    col = max(col + (col - n * 0.25) * uSharp * (1.0 - smoothstep(0.0, 0.03, uSpeed)), 0.0);',
+    '  }',
     // chromatic aberration: R and B pulled apart along the radius
     '  float ab = uAber * smoothstep(0.02, 0.3, v);',
     '  if (ab > 0.0005) { vec2 o = d * ab * 0.03; col.r = mix(col.r, texture2D(tDiffuse, vUv - o).r, 0.85); col.b = mix(col.b, texture2D(tDiffuse, vUv + o).b, 0.85); }',
+    // anamorphic streaks: hot pixels smeared horizontally, cool-tinted like a cine lens
+    '  if (uStreak > 0.001) {',
+    '    vec3 st = vec3(0.0);',
+    '    for (int i = 1; i <= 6; i++) { float fi = float(i); vec2 o = vec2(uTexel.x * fi * fi * 2.2, 0.0); float w = 1.0 / (1.0 + fi * 0.9);',
+    '      st += (max(texture2D(tDiffuse, vUv + o).rgb - uStreakThr, 0.0) + max(texture2D(tDiffuse, vUv - o).rgb - uStreakThr, 0.0)) * w; }',
+    '    col += st * uStreak * vec3(0.8, 0.9, 1.15);',
+    '  }',
     '  float l = dot(col, vec3(0.2126, 0.7152, 0.0722)); col = max(mix(vec3(l), col, uSat), 0.0);',
-    // filmic contrast around mid-grey, cool lift in the shadows
+    // filmic contrast around mid-grey, cool lift in the shadows, warm push in the highlights
     '  col = max((col - 0.18) * uContrast + 0.18, 0.0);',
     '  col += uShadow * (1.0 - smoothstep(0.0, 0.25, l));',
+    '  col += uHigh * smoothstep(0.45, 1.1, l);',
     '  col *= 1.0 - uVig * v * 2.4;',
     '  col = mix(col, uHitCol, uHit * smoothstep(0.08, 0.35, v));',
     '  vec3 srgb = LinearTosRGB(vec4(col, 1.0)).rgb;',
@@ -120,6 +134,9 @@ class Post {
       this.key = key;
     } else this.rt.setSize(W, H);
     if (this.bloom) this.bloom.setSize(Math.round(W * q.bloom), Math.round(H * q.bloom));
+    this.u.uTexel.value.set(1 / W, 1 / H);
+    // streaks need the HDR headroom to find hot pixels; low quality skips them
+    this.u.uStreak.value = q.msaa ? 0.55 : 0; this.u.uStreakThr.value = this.hdr ? 1.05 : 0.86; this.u.uSharp.value = pr < 1.2 ? 0.3 : 0.18;
   }
   setLook(env) {
     if (this.bloom) { this.bloom.strength = env.bloom == null ? 0.9 : env.bloom; this.bloom.radius = 0.6; }
