@@ -207,11 +207,11 @@ const PW_ARENA = ['eagle', 'bolt', 'barge', 'mine', 'shock', 'ram', 'cluster'];
 
 // The five drivers. The player is one of them; the other four are the rivals. Each has a colour nobody else uses.
 const DRIVERS = [
-  { name: 'Alfie', col: '#ff2a3d', tag: 'Gjithmonë me gaz' },
-  { name: 'Reed', col: '#1fb6ff', tag: 'Ftohtë si Valbona' },
-  { name: 'Santi', col: '#ffc21a', tag: 'Fren? Ç’është ajo?' },
-  { name: 'Enzo', col: '#2bff88', tag: 'Drift në çdo kthesë' },
-  { name: 'Eric', col: '#c46bff', tag: 'Godet i pari, pyet më vonë' },
+  { name: 'Artur', col: '#ff2a3d', tag: 'Gjithmonë me gaz' },
+  { name: 'Ritvan', col: '#1fb6ff', tag: 'Ftohtë si Valbona' },
+  { name: 'Desantin', col: '#ffc21a', tag: 'Fren? Ç’është ajo?' },
+  { name: 'Eno', col: '#2bff88', tag: 'Drift në çdo kthesë' },
+  { name: 'Erlin', col: '#c46bff', tag: 'Godet i pari, pyet më vonë' },
 ];
 // the rivals of driver pi (all five when pi < 0), shuffled
 function rivalsOf(pi, r) {
