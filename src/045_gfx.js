@@ -95,7 +95,7 @@ const FINAL_SHADER = {
     // anamorphic streaks: hot pixels smeared horizontally, cool-tinted like a cine lens
     '  if (uStreak > 0.001) {',
     '    vec3 st = vec3(0.0);',
-    '    for (int i = 1; i <= 6; i++) { float fi = float(i); vec2 o = vec2(uTexel.x * fi * fi * 2.2, 0.0); float w = 1.0 / (1.0 + fi * 0.9);',
+    '    for (int i = 1; i <= 8; i++) { float fi = float(i); vec2 o = vec2(uTexel.x * fi * 4.5, 0.0); float w = 1.0 / (1.0 + fi * 0.55);',
     '      st += (max(texture2D(tDiffuse, vUv + o).rgb - uStreakThr, 0.0) + max(texture2D(tDiffuse, vUv - o).rgb - uStreakThr, 0.0)) * w; }',
     '    col += st * uStreak * vec3(0.8, 0.9, 1.15);',
     '  }',
