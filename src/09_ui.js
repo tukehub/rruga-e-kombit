@@ -6,7 +6,8 @@ const QUALITY = [
   { name: 'E lartë', pr: 1.75, terrainStep: 10, density: 1, rows: 3, trees: 1, particles: 900, neon: true, beams: true, weather: 1, trailSeg: 28, fogMul: 1.1, msaa: 4, shadows: 2048, bloom: 0.5 },
 ];
 const SKEY = 'kafshimAsfalti.v1';
-const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {}, mode: 'race', ptsMin: 2, pbest: {}, driver: 0, mirror: true };
+const SET = { sound: true, steer: 'tilt', tiltSens: 1, tiltInv: false, autoGas: false, assist: true, quality: 2, touch: 'auto', diff: 1, city: 0, car: 0, paint: '#e41e20', best: {}, fans: 0, seen: {}, mode: 'race', ptsMin: 2, pbest: {}, driver: 0, mirror: true, cam: 0, mblur: true };
+const CAM_MODES = ['Ndjekje', 'Kapot', 'Kabinë'];
 function loadSettings() {
   let s = {}; try { s = JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { }
   // first run on a weak phone starts on the lighter graphics tier
@@ -14,6 +15,7 @@ function loadSettings() {
   Object.assign(SET, s); SET.best = SET.best || {}; SET.seen = SET.seen || {}; SET.pbest = SET.pbest || {};
   if (!(SET.city >= 0 && SET.city < CITIES.length)) SET.city = 0; if (!(SET.car >= 0 && SET.car < CARS.length)) SET.car = 0;
   if (SET.mode !== 'points') SET.mode = 'race'; if (SET.ptsMin !== 3) SET.ptsMin = 2; if (!(SET.driver >= 0 && SET.driver < DRIVERS.length)) SET.driver = 0;
+  if (!(SET.cam >= 0 && SET.cam < CAM_MODES.length)) SET.cam = 0;
 }
 function saveSettings() { try { localStorage.setItem(SKEY, JSON.stringify(SET)); } catch (e) { } }
 const Q = () => QUALITY[clamp(SET.quality | 0, 0, 2)];
@@ -31,6 +33,7 @@ function initInput() {
     if (e.code === 'Space' || e.code === 'KeyJ') IN.fireQ = true;
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyX' || e.code === 'KeyK') IN.backQ = true;
     if (e.code === 'KeyQ' || e.code === 'KeyE' || e.code === 'Tab') IN.cycleQ = true;
+    if (e.code === 'KeyC' || e.code === 'KeyV') cycleCam();
     if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
   });
   addEventListener('keyup', (e) => { if (KEYMAP[e.code]) IN.kb[KEYMAP[e.code]] = false; });
@@ -74,6 +77,7 @@ function initInput() {
     if (i > 0) IN.selQ = i; else IN.cycleQ = true;
   });
   document.getElementById('b-pause').addEventListener('click', () => togglePause());
+  document.getElementById('b-cam').addEventListener('click', () => cycleCam());
   addEventListener('touchstart', () => markTouch(), { passive: true });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
 }
@@ -87,6 +91,7 @@ function pollGamepad() {
   IN.gp.gas = b(7) || b(0); IN.gp.brake = b(6) || b(1);
   const edge = (i, k) => { const p = b(i); if (p && !IN.gpPrev[i]) IN[k] = true; IN.gpPrev[i] = p; };
   edge(2, 'fireQ'); edge(5, 'fireQ'); edge(3, 'backQ'); edge(4, 'cycleQ');
+  for (const i of [8, 10]) { const p = b(i); if (p && !IN.gpPrev[i]) cycleCam(); IN.gpPrev[i] = p; }
   const st = b(9); if (st && !IN.gpPrev[9]) togglePause(); IN.gpPrev[9] = st;
 }
 // ---------- tilt steering (phone held like a wheel) ----------
@@ -168,8 +173,8 @@ const UI = {
     const lg = $('legend');
     PW_KEYS.forEach((k) => { const d = document.createElement('div'); d.innerHTML = `<img alt="" src="${TEX.icons[k].url}"><b style="color:${PW[k].col}">${PW[k].name}</b><span>${PW[k].desc}</span>`; lg.appendChild(d); });
     $('help-keys').innerHTML = `<b>Me telefon:</b> anoje telefonin majtas-djathtas për të kthyer · mbaj gishtin në gjysmën e <kbd>djathtë</kbd> për gaz dhe në të <kbd>majtën</kbd> për frena (frena + kthesë = drift) · <kbd>GJUAJ</kbd> në mes përdor fuqinë · <kbd>PRAPA</kbd> e gjuan pas · prek fuqitë e vogla për t’i ndërruar. Në Cilësimet mund të zgjedhësh timonin me prekje.<br>
-      <b>Me tastierë:</b> <kbd>←</kbd><kbd>→</kbd> ose <kbd>A</kbd><kbd>D</kbd> timoni · <kbd>↑</kbd>/<kbd>W</kbd> gazi · <kbd>↓</kbd>/<kbd>S</kbd> frena dhe drift · <kbd>Hapësirë</kbd> gjuaj · <kbd>Shift</kbd> ose <kbd>X</kbd> gjuaj prapa · <kbd>Q</kbd>/<kbd>E</kbd> ndërro fuqinë · <kbd>P</kbd> pauzë.<br>
-      <b>Me levë:</b> leva e majtë timoni · RT gazi · LT frena · X gjuaj · Y gjuaj prapa · LB ndërro.`;
+      <b>Me tastierë:</b> <kbd>←</kbd><kbd>→</kbd> ose <kbd>A</kbd><kbd>D</kbd> timoni · <kbd>↑</kbd>/<kbd>W</kbd> gazi · <kbd>↓</kbd>/<kbd>S</kbd> frena dhe drift · <kbd>Hapësirë</kbd> gjuaj · <kbd>Shift</kbd> ose <kbd>X</kbd> gjuaj prapa · <kbd>Q</kbd>/<kbd>E</kbd> ndërro fuqinë · <kbd>C</kbd> ndërro kamerën (ndjekje / kapot / kabinë) · <kbd>P</kbd> pauzë.<br>
+      <b>Me levë:</b> leva e majtë timoni · RT gazi · LT frena · X gjuaj · Y gjuaj prapa · LB ndërro · Select ose L3 kamera.`;
     this.buildSettings();
     // buttons
     $('b-play').onclick = () => { AUD.init(); AUD.play('ui'); tryFullscreen(); this.show('scr-city'); };
@@ -226,6 +231,8 @@ const UI = {
     choice('tiltSens', 'Ndjeshmëria e animit', 'Sa shumë duhet ta anosh telefonin për kthesë të plotë.', [[0, 'E butë'], [1, 'Normale'], [2, 'E fortë']]);
     tog('tiltInv', 'Animi i kundërt', 'Ndize nëse makina kthen në anën e gabuar.');
     tog('mirror', 'Pasqyra e prapme', 'Pamje e vogël prapa makinës, lart në mes. Fike nëse loja ngadalësohet.', () => this.syncTouch());
+    choice('cam', 'Kamera', 'Ndjekje nga pas, nga kapoti, ose nga kabina e shoferit. Në garë: C ose butoni lart djathtas.', CAM_MODES.map((n, i) => [i, n]), () => applyCamMode());
+    tog('mblur', 'Turbullim shpejtësie', 'Turbullim radial dhe ndarje ngjyrash kur shkon shpejt, si në Blur. Fike nëse të merren mendtë.');
     tog('autoGas', 'Gaz automatik', 'Makina e shtyp gazin vetë. Ti drejton dhe gjuan.');
     tog('assist', 'Ndihmë në timon', 'Makina drejtohet pak vetë pas kthesës.');
     choice('quality', 'Grafika', 'E larta për telefona të rinj. Hije dhe dritat ndryshojnë në garën tjetër.', QUALITY.map((q, i) => [i, q.name]), () => applyQuality());

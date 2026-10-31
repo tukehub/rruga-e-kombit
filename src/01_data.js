@@ -178,12 +178,13 @@ const CITIES = [
 const ARENA = { id: 'arena', name: 'Sheshi Skënderbej', short: 'Sheshi', region: 'al', env: 'dusk', neon: '#ff2d6f', blurb: 'Sheshi më i madh i Tiranës, i mbyllur me barriera. Pa rrugë, pa xhiro: vetëm ti dhe katër shoferë.' };
 
 const CARS = [
-  { id: 'benxi', name: 'Furia GT', style: 'gt', vmax: 58, acc: 17, grip: 1.0, hp: 100, mass: 1.0, color: '#e41e20', desc: 'Kapot i gjatë, motor V8, dhe gjithmonë i parkuar te kafeneja.' },
-  { id: 'kali', name: 'Fajkoi V8', style: 'muscle', vmax: 62, acc: 15.5, grip: 0.9, hp: 110, mass: 1.15, color: '#26262c', desc: 'Kalë amerikan. Shpejt në vijë të drejtë, kthesat janë opinion personal.' },
-  { id: 'golfi', name: 'Flaka RS', style: 'hatch', vmax: 55, acc: 19, grip: 1.16, hp: 90, mass: 0.85, color: '#f2c230', desc: 'Makina kombëtare. I vogël, i shkathët, dhe gjithmonë me xhamat poshtë.' },
-  { id: 'uragani', name: 'Fati V10', style: 'sleek', vmax: 60, acc: 18, grip: 1.03, hp: 85, mass: 0.9, color: '#f1eee8', desc: 'Pykë italiane. E bukur, e shpejtë, dhe kushton sa një pallat në Bllok.' },
-  { id: 'gelendvagen', name: 'Furtuna 4x4', style: 'jeep', vmax: 54, acc: 15, grip: 0.96, hp: 140, mass: 1.35, color: '#2a2a2e', desc: 'Kutia e zezë e çdo dasme. Gropat e tua s’i bëjnë gjë.' },
-  { id: 'sprinteri', name: 'Fitili 2.2D', style: 'van', vmax: 51, acc: 13.5, grip: 0.88, hp: 175, mass: 1.7, color: '#f3f3ee', desc: 'Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do.' },
+  // the cars every Albanian street knows, under the names people actually call them
+  { id: 'benxi', name: 'Benxi E-Klas', brand: 'Mercedes-Benz', style: 'sedan', vmax: 58, acc: 16.5, grip: 1.0, hp: 115, mass: 1.1, color: '#26262c', desc: 'Makina kombëtare e Shqipërisë. Dizel, ylli në kapot, dhe gjithmonë e parkuar para kafenesë.' },
+  { id: 'bimeri', name: 'Bimeri M-Kupe', brand: 'BMW', style: 'muscle', vmax: 62, acc: 16, grip: 0.92, hp: 100, mass: 1.05, color: '#1b4fd6', desc: 'Veshka dyshe përpara, gaz deri në fund. Kthesat i merr me bisht.' },
+  { id: 'golfi', name: 'Golfi 4 GTI', brand: 'Volkswagen', style: 'hatch', vmax: 55, acc: 19, grip: 1.16, hp: 90, mass: 0.85, color: '#e41e20', desc: 'Golfi katër: i vogël, i shkathët, dhe gjithmonë me xhamat poshtë e muzikën lart.' },
+  { id: 'audina', name: 'Audina RS Quattro', brand: 'Audi', style: 'sleek', vmax: 60, acc: 18, grip: 1.06, hp: 95, mass: 0.95, color: '#f1eee8', desc: 'Katër unaza, katër rrota që tërheqin. Shkon si në binarë, edhe mbi gropa.' },
+  { id: 'gelendi', name: 'Gelendi 4x4', brand: 'Mercedes-Benz G', style: 'jeep', vmax: 54, acc: 15, grip: 0.96, hp: 140, mass: 1.35, color: '#2a2a2e', desc: 'Kutia e zezë e çdo dasme. Gropat e tua s’i bëjnë gjë.' },
+  { id: 'furgoni', name: 'Furgoni Sprinter', brand: 'Mercedes-Benz Sprinter', style: 'van', vmax: 51, acc: 13.5, grip: 0.88, hp: 175, mass: 1.7, color: '#f3f3ee', desc: 'Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do.' },
 ];
 const PAINTS = ['#e41e20', '#26262c', '#f1eee8', '#f2c230', '#2a6fdb', '#3f6d3b', '#ff6a1a', '#8e44ad'];
 

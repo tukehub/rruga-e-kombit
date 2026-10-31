@@ -84,7 +84,7 @@ function renderGarage(dt) {
   if (w > h * 1.1 && UI.cur !== 'scr-city') camera.setViewOffset(w, h, -w * 0.2, 0, w, h); else camera.clearViewOffset();
   if (camera.fov !== 50) { camera.fov = 50; camera.updateProjectionMatrix(); }
   if (G.lookFor !== 'garage') { G.lookFor = 'garage'; G.post.setLook({ bloom: 0.85, sat: 1.1 }); renderer.toneMappingExposure = 1.05; }
-  G.post.render(g.scene, camera, dt);
+  G.post.speed(0, 0); G.post.render(g.scene, camera, dt);
 }
 
 // ---------- race lifecycle ----------
@@ -164,9 +164,9 @@ function buildRace(city) {
   // pick-ups
   setupPickups(scene, race.pickups, (p, out) => track.pos(p.s, p.d, out));
   linearize(scene); G.post.setLook(env); G.lookFor = 'race'; renderer.toneMappingExposure = env.exp || 1;
-  G.acc = 0; G.shake = 0; G.fov = 66; G.camLook = new V3(); G.finT = 0; G.sndT = {}; G.last500 = false;
+  G.acc = 0; G.shake = 0; G.fov = 66; G.camLook = new V3(); G.finT = 0; G.sndT = {}; G.last500 = false; G.fpMode = -1;
   G.minimap = (() => { const p = new Path2D(); for (let i = 0; i < track.M; i += 2) { if (i) p.lineTo(track.X[i], track.Z[i]); else p.moveTo(track.X[i], track.Z[i]); } p.closePath(); return p; })();
-  camera.clearViewOffset(); camera.fov = 64; camera.updateProjectionMatrix();
+  camera.clearViewOffset(); camera.fov = 64; camera.near = 0.4; camera.updateProjectionMatrix();
   updateViews(0); introCam(0);
 }
 function toMenu() {
@@ -393,7 +393,37 @@ function syncEntities(dt) {
   }
 }
 // ---------- cameras ----------
+// 0 chase · 1 bonnet · 2 cockpit. First-person modes are applied after the car views move (firstPersonCam), so the camera rides the car exactly.
+function camMode() { return (G.state === 'race' || G.state === 'countdown' || G.state === 'paused') && G.player && G.views ? (SET.cam | 0) : 0; }
+function cycleCam() {
+  if (!(G.state === 'race' || G.state === 'countdown')) return;
+  SET.cam = ((SET.cam | 0) + 1) % CAM_MODES.length; saveSettings(); applyCamMode(); G.snapCam = true;
+  UI.feed('Kamera: ' + CAM_MODES[SET.cam], '#9ad6ff', 1.4); AUD.play('ui');
+}
+function applyCamMode() {
+  const m = camMode(), v = G.player && G.views && G.views[G.player.id];
+  if (v) v.setCockpit(m === 2);
+  const near = m ? 0.06 : 0.4; if (camera.near !== near) { camera.near = near; camera.updateProjectionMatrix(); }
+}
+function firstPersonCam(dt) {
+  const m = camMode(); if (!m) return;
+  const c = G.player, v = G.views[c.id], sp = Math.abs(c.v), src = m === 2 ? v.eye : v.hood; if (!src) return;
+  v.body.localToWorld(tmpA.copy(src));
+  v.body.localToWorld(tmpC.set(src.x * (m === 2 ? 0.75 : 0), src.y + (m === 2 ? -0.35 : 0.25), src.z + 28));
+  const snap = !dt || G.snapCam; G.snapCam = false;
+  camera.position.copy(tmpA); G.camLook.lerp(tmpC, snap ? 1 : 1 - Math.exp(-dt * 22));
+  if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt * 2.5); const s = G.shake * 0.25; camera.position.x += (Math.random() - 0.5) * s; camera.position.y += (Math.random() - 0.5) * s; }
+  camera.lookAt(G.camLook);
+  const fov = (m === 2 ? 72 : 68) + clamp(sp / 60, 0, 1.3) * 10 + (c.nitroT > 0 ? 8 : 0);
+  G.fov += (fov - G.fov) * (snap ? 1 : 1 - Math.exp(-dt * 4));
+  if (Math.abs(camera.fov - G.fov) > 0.05) { camera.fov = G.fov; camera.updateProjectionMatrix(); updatePScale(); }
+}
 function chaseCam(dt) {
+  if (camMode()) { // first person: only the speed overlay and shake decay live here
+    const c = G.player, so = c.nitroT > 0 ? 0.9 : Math.abs(c.v) > 48 ? 0.4 : 0;
+    if (G.speedO !== so) { G.speedO = so; UI.$('fx-speed').style.opacity = so; }
+    return;
+  }
   if (G.arena) return arenaCam(dt);
   const c = G.player, T = G.track, sp = Math.abs(c.v);
   const back = 3.5 + sp * 0.018, h = 1.25 + sp * 0.005;
@@ -481,11 +511,19 @@ function renderMirror(scene) {
   renderer.render(scene, mc);
   renderer.setScissorTest(false); renderer.setViewport(0, 0, innerWidth, H);
 }
+// speed-driven motion blur and chromatic split, Blur-style; stronger from inside the car, off in menus and when the player turned it off
+function speedFx() {
+  const P = G.player, on = SET.mblur && P && G.state === 'race';
+  if (!on) { G.post.speed(0, 0); return; }
+  const sp = Math.abs(P.v), vmax = P.def.vmax || 60, fp = camMode() ? 1.25 : 1, nitro = P.nitroT > 0 ? 1 : 0;
+  const k = clamp((sp / vmax - 0.55) / 0.45, 0, 1);
+  G.post.speed((k * 0.45 + nitro * 0.55) * fp, k * 0.35 + nitro * 0.75);
+}
 function render(dt) {
   if (G.arena) return arenaRender(dt);
   const w = G.world, P = G.player;
   if (w.dl && w.dl.castShadow && P) { G.track.pos(P.s + 22, 0, tmpA); w.dl.target.position.copy(tmpA); w.dl.position.copy(tmpA).addScaledVector(w.sunDir, 160); }
-  G.post.render(w.scene, camera, dt);
+  speedFx(); G.post.render(w.scene, camera, dt);
   renderMirror(w.scene);
 }
 
@@ -532,6 +570,7 @@ function loop(ts) {
     if (st === 'finish') { G.finT += dt; if (G.finT > 4.2) showResults(); }
   }
   syncEntities(dt); updateViews(dt);
+  { const m = camMode(); if (m !== G.fpMode) { G.fpMode = m; applyCamMode(); G.snapCam = true; } if (m) firstPersonCam(dt); }
   G.fx.update(dt); if (SHOW_TRAILS) G.trails.update(camera, G.trailI);
   if (G.weather) G.weather.update(dt, camera, null);
   G.world.update(dt, G.t, camera);

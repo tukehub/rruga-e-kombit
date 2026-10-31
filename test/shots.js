@@ -1,5 +1,5 @@
 // Headless visual check: menus + every (or selected) city mid-race. Usage: node test/shots.js [city,city] [quality]
-const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const { chromium } = require('playwright');
 const path = require('path');
 const only = process.argv[2] && process.argv[2] !== 'all' ? process.argv[2].split(',') : null;
 const quality = process.argv[3] == null ? 2 : +process.argv[3];
@@ -40,3 +40,4 @@ const W = +(process.env.W || 844), H = +(process.env.H || 390);
   console.log('ERRORS:', errs.length ? '\n' + [...new Set(errs)].join('\n') : 'none');
   await b.close();
 })().catch(e => { console.error('FAIL', e); process.exit(1); });
+

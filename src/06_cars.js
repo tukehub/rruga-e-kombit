@@ -11,50 +11,59 @@ const CAR_SHAPES = {
     head: { type: 'slim', y: 0.63, x: 0.64, w: 0.42, h: 0.05 }, tail: { type: 'bar', y: 0.8, h: 0.05 },
     grille: { y: 0.42, w: 0.78, h: 0.2 }, spoiler: 'duck', exhaust: [-0.62, -0.5, 0.5, 0.62], rim: { n: 10, sp: 0.36, col: 'dark' }, caliper: '#e01818',
   },
-  muscle: { // Fajkoi V8: long, wide, flat-nosed fastback
+  sedan: { // Benxi: long three-box executive saloon, upright chrome grille with the star
+    L: 4.93, W: 1.88, wr: 0.35, tyreW: 0.26, zF: 1.47, zR: -1.42, n: 3.6, tumble: 0.08,
+    top: [[-2.465, 0.72], [-2.42, 0.92], [-2.1, 0.97], [-1.5, 0.98], [-0.6, 0.97], [0.3, 0.96], [1.0, 0.94], [1.7, 0.88], [2.2, 0.8], [2.465, 0.62]],
+    bot: [[-2.465, 0.44], [-2.34, 0.3], [-2.0, 0.2], [2.0, 0.19], [2.36, 0.24], [2.465, 0.32]],
+    half: [[-2.465, 0.84], [-2.25, 0.96], [-1.6, 1.0], [-0.6, 0.97], [0.5, 0.96], [1.4, 0.99], [2.1, 0.94], [2.465, 0.78]],
+    cab: { keys: [[-1.55, 0.97], [-1.3, 1.22], [-0.7, 1.42], [-0.1, 1.46], [0.4, 1.4], [0.7, 1.3], [1.15, 0.95]], w0: 0.9, w1: 0.68, n: 3.4, roof: [-1.2, 0.08] },
+    head: { type: 'slim', y: 0.72, x: 0.66, w: 0.4, h: 0.06 }, tail: { type: 'pair', y: 0.86, x: 0.7, w: 0.4, h: 0.07 },
+    grille: { y: 0.55, w: 0.62, h: 0.28, chrome: true }, emblem: 'star', spoiler: 'lip', exhaust: [-0.6, 0.6], rim: { n: 5, sp: 0.4, col: 'silver' }, caliper: '#3a3a40',
+  },
+  muscle: { // Bimeri: long, wide coupé with the twin-kidney nose
     L: 4.79, W: 1.98, wr: 0.37, tyreW: 0.29, zF: 1.43, zR: -1.29, n: 3.5, tumble: 0.08,
     top: [[-2.395, 0.76], [-2.33, 0.96], [-1.9, 0.95], [-1.0, 0.95], [-0.2, 0.97], [0.6, 0.98], [1.4, 0.95], [2.0, 0.9], [2.3, 0.82], [2.395, 0.6]],
     bot: [[-2.395, 0.42], [-2.25, 0.28], [-1.9, 0.19], [1.95, 0.18], [2.3, 0.24], [2.395, 0.3]],
     half: [[-2.395, 0.88], [-2.15, 0.98], [-1.4, 1.0], [-0.6, 0.94], [0.4, 0.94], [1.3, 0.98], [2.1, 0.95], [2.395, 0.86]],
     cab: { keys: [[-2.0, 0.95], [-1.3, 1.12], [-0.6, 1.33], [-0.15, 1.36], [0.1, 1.33], [0.6, 0.97]], w0: 0.85, w1: 0.6, n: 3, roof: [-0.75, 0.0] },
     head: { type: 'slim', y: 0.8, x: 0.7, w: 0.38, h: 0.07 }, tail: { type: 'tri', y: 0.86, h: 0.16 },
-    grille: { y: 0.6, w: 0.64, h: 0.26 }, spoiler: 'lip', exhaust: [-0.66, -0.56, 0.56, 0.66], rim: { n: 10, sp: 0.3, col: 'black' }, caliper: '#d8d8dc',
+    grille: { y: 0.6, w: 0.64, h: 0.26, kidney: true }, emblem: 'roundel', spoiler: 'lip', exhaust: [-0.66, -0.56, 0.56, 0.66], rim: { n: 10, sp: 0.3, col: 'black' }, caliper: '#1b4fd6',
   },
-  hatch: { // Flaka RS: compact hot hatch
+  hatch: { // Golfi: compact hot hatch
     L: 4.28, W: 1.84, wr: 0.34, tyreW: 0.25, zF: 1.26, zR: -1.37, n: 3.3, tumble: 0.1,
     top: [[-2.14, 0.86], [-2.08, 1.0], [-1.7, 1.0], [-0.8, 0.99], [0.2, 0.98], [0.9, 0.94], [1.5, 0.88], [1.95, 0.8], [2.12, 0.66], [2.14, 0.5]],
     bot: [[-2.14, 0.42], [-2.02, 0.28], [-1.75, 0.2], [1.75, 0.19], [2.08, 0.24], [2.14, 0.3]],
     half: [[-2.14, 0.86], [-1.95, 0.97], [-1.4, 1.0], [0.0, 0.97], [1.3, 0.98], [1.9, 0.92], [2.14, 0.8]],
     cab: { keys: [[-2.0, 1.0], [-1.88, 1.3], [-1.55, 1.42], [-0.6, 1.46], [0.1, 1.43], [0.3, 1.37], [0.85, 0.96]], w0: 0.88, w1: 0.64, n: 3.2, roof: [-1.5, 0.12] },
     head: { type: 'slim', y: 0.77, x: 0.62, w: 0.42, h: 0.07, bar: true }, tail: { type: 'pair', y: 0.94, x: 0.72, w: 0.34, h: 0.08 },
-    grille: { y: 0.55, w: 0.72, h: 0.16 }, spoiler: 'roof', exhaust: [-0.6, 0.6], rim: { n: 5, sp: 0.34, col: 'silver' }, caliper: '#e01818',
+    grille: { y: 0.55, w: 0.72, h: 0.16 }, emblem: 'vw', spoiler: 'roof', exhaust: [-0.6, 0.6], rim: { n: 5, sp: 0.34, col: 'silver' }, caliper: '#e01818',
   },
-  sleek: { // Fati V10: mid-engine wedge supercar
+  sleek: { // Audina: low wide-body quattro coupé with the single-frame grille
     L: 4.52, W: 2.0, wr: 0.36, tyreW: 0.3, zF: 1.23, zR: -1.39, n: 2.7, tumble: 0.16,
     top: [[-2.26, 0.62], [-2.18, 0.84], [-1.8, 0.9], [-1.2, 0.9], [-0.6, 0.86], [0.1, 0.8], [0.8, 0.72], [1.5, 0.62], [2.0, 0.5], [2.26, 0.36]],
     bot: [[-2.26, 0.38], [-2.12, 0.24], [-1.75, 0.13], [1.85, 0.12], [2.18, 0.15], [2.26, 0.2]],
     half: [[-2.26, 0.86], [-1.95, 1.0], [-1.3, 1.0], [-0.5, 0.9], [0.4, 0.9], [1.2, 0.98], [1.9, 0.93], [2.26, 0.68]],
     cab: { keys: [[-1.45, 0.9], [-0.95, 1.02], [-0.45, 1.13], [-0.05, 1.15], [0.25, 1.06], [0.95, 0.76]], w0: 0.8, w1: 0.55, n: 2.5, roof: [-0.55, 0.1] },
     head: { type: 'slim', y: 0.48, x: 0.64, w: 0.46, h: 0.04 }, tail: { type: 'pair', y: 0.78, x: 0.62, w: 0.5, h: 0.05 },
-    grille: { y: 0.25, w: 0.86, h: 0.13 }, spoiler: 'duck', exhaust: [-0.12, 0.12], rim: { n: 5, sp: 0.42, col: 'black' }, caliper: '#f2c230',
+    grille: { y: 0.3, w: 0.8, h: 0.24, frame: true }, emblem: 'rings', spoiler: 'duck', exhaust: [-0.62, -0.5, 0.5, 0.62], rim: { n: 5, sp: 0.42, col: 'black' }, caliper: '#e01818',
   },
-  jeep: { // Furtuna 4x4: the box that never dies
+  jeep: { // Gelendi: the box that never dies
     L: 4.82, W: 1.98, wr: 0.43, tyreW: 0.3, zF: 1.6, zR: -1.29, n: 5.2, tumble: 0.05,
     top: [[-2.41, 1.08], [-2.37, 1.24], [-1.0, 1.25], [0.5, 1.27], [1.9, 1.24], [2.33, 1.18], [2.41, 0.95]],
     bot: [[-2.41, 0.58], [-2.3, 0.48], [-1.9, 0.44], [2.0, 0.44], [2.33, 0.5], [2.41, 0.58]],
     half: [[-2.41, 0.93], [-2.32, 0.97], [-1.29, 1.0], [-0.4, 0.96], [0.6, 0.96], [1.6, 1.0], [2.3, 0.97], [2.41, 0.93]],
     cab: { keys: [[-2.34, 1.24], [-2.32, 1.9], [-2.2, 1.96], [0.25, 1.97], [0.42, 1.9], [0.66, 1.26]], w0: 0.94, w1: 0.88, n: 8, roof: [-2.25, 0.3] },
     head: { type: 'round', y: 1.05, x: 0.68, r: 0.12 }, tail: { type: 'square', y: 1.12, x: 0.86, w: 0.14, h: 0.32 },
-    grille: { y: 0.98, w: 0.62, h: 0.3 }, spare: true, bumpers: true, rim: { n: 6, sp: 0.45, col: 'silver' }, caliper: '#3a3a40',
+    grille: { y: 0.98, w: 0.62, h: 0.3, chrome: true }, emblem: 'star', spare: true, bumpers: true, rim: { n: 6, sp: 0.45, col: 'silver' }, caliper: '#3a3a40',
   },
-  van: { // Fitili 2.2D: the national furgon
+  van: { // Furgoni: the national Sprinter
     L: 5.6, W: 2.02, wr: 0.38, tyreW: 0.25, zF: 1.85, zR: -1.62, n: 4.4, tumble: 0.05, van: true,
     top: [[-2.8, 1.2], [-2.76, 1.3], [1.35, 1.32], [1.9, 1.2], [2.5, 1.08], [2.75, 0.95], [2.8, 0.78]],
     bot: [[-2.8, 0.62], [-2.65, 0.46], [2.45, 0.44], [2.75, 0.5], [2.8, 0.6]],
     half: [[-2.8, 0.95], [-2.7, 1.0], [2.3, 0.99], [2.8, 0.86]],
     cab: { keys: [[-2.76, 1.3], [-2.74, 2.55], [0.85, 2.56], [1.15, 2.42], [1.75, 1.33]], w0: 0.99, w1: 0.92, n: 9 },
     head: { type: 'slim', y: 1.08, x: 0.72, w: 0.36, h: 0.12 }, tail: { type: 'square', y: 1.3, x: 0.92, w: 0.12, h: 0.5 },
-    grille: { y: 0.92, w: 0.7, h: 0.3 }, bumpers: true, rim: { steel: true, col: 'silver' }, caliper: null,
+    grille: { y: 0.92, w: 0.7, h: 0.3, chrome: true }, emblem: 'star', bumpers: true, rim: { steel: true, col: 'silver' }, caliper: null,
   },
 };
 
@@ -190,7 +199,7 @@ function tyreGeo(S) {
   return { tyre: g, inner: mergeGeos([barrel, disc]) };
 }
 const CAR_GEO = {};
-const CAR_WING = { gt: true, sleek: true, muscle: true };
+const CAR_WING = { sleek: true, muscle: true };
 function carGeo(style) {
   if (CAR_GEO[style]) return CAR_GEO[style];
   const S = CAR_SHAPES[style], hz = S.L / 2, HW = S.W / 2;
@@ -223,7 +232,35 @@ function carGeo(style) {
     else push(tail, stick(bm, sx * HW * T.x, T.y, -6, 0, 0, 1, T.w, T.h, 0.05));
   }
   // grille, splitter, diffuser, skirts, exhausts
-  if (S.grille) push(dark, stick(bm, 0, S.grille.y, 6, 0, 0, -1, S.grille.w * S.W * 0.5, S.grille.h, 0.05, 0.02));
+  const GR = S.grille;
+  if (GR) {
+    const gw = GR.w * S.W * 0.5;
+    if (GR.kidney) { // twin kidneys, each framed in chrome
+      for (const sx of [-1, 1]) { push(dark, stick(bm, sx * gw * 0.5, GR.y, 6, 0, 0, -1, gw * 0.9, GR.h, 0.05, 0.02)); push(chrome, stick(bm, sx * gw * 0.5, GR.y, 6, 0, 0, -1, gw * 0.98, GR.h + 0.05, 0.035, 0.03)); }
+    } else {
+      push(dark, stick(bm, 0, GR.y, 6, 0, 0, -1, gw, GR.h, 0.05, 0.02));
+      if (GR.chrome) for (let i = -1; i <= 1; i++) push(chrome, stick(bm, 0, GR.y + i * GR.h * 0.32, 6, 0, 0, -1, gw * 0.98, 0.018, 0.06, 0.006));
+      if (GR.frame || GR.chrome) push(chrome, stick(bm, 0, GR.y, 6, 0, 0, -1, gw + 0.05, GR.h + 0.05, 0.03, 0.03));
+    }
+    // brand emblem: a chrome mark that sits proud of the nose
+    const eh = stick(bm, 0, GR.y + (GR.kidney ? GR.h * 0.75 : GR.chrome ? 0 : GR.h * 0.8), 6, 0, 0, -1, 0.01, 0.01, 0.01, 0);
+    if (eh && S.emblem) {
+      const p = eh.userData.p, zc = p.z + 0.015, em = [];
+      if (S.emblem === 'star') {
+        const ring = new THREE.TorusGeometry(0.085, 0.012, 6, 24); ring.translate(0, p.y, zc); em.push(ring);
+        for (let k = 0; k < 3; k++) { const b = new THREE.BoxGeometry(0.02, 0.17, 0.016); b.translate(0, 0.085, 0); b.rotateZ(k * Math.PI * 2 / 3 + Math.PI); b.translate(0, p.y, zc); em.push(b); }
+      } else if (S.emblem === 'roundel') {
+        const ring = new THREE.TorusGeometry(0.075, 0.014, 6, 24); ring.translate(0, p.y, zc); em.push(ring);
+        const disc = new THREE.CylinderGeometry(0.065, 0.065, 0.012, 20); disc.rotateX(Math.PI / 2); disc.translate(0, p.y, zc - 0.004); dark.push(disc);
+      } else if (S.emblem === 'rings') {
+        for (let k = -1.5; k <= 1.5; k++) { const r = new THREE.TorusGeometry(0.07, 0.012, 6, 24); r.translate(k * 0.1, p.y, zc); em.push(r); }
+      } else if (S.emblem === 'vw') {
+        const ring = new THREE.TorusGeometry(0.08, 0.012, 6, 24); ring.translate(0, p.y, zc); em.push(ring);
+        for (const [x0, y0, x1, y1] of [[-0.06, 0.06, -0.03, -0.05], [-0.03, -0.05, 0, 0.03], [0, 0.03, 0.03, -0.05], [0.03, -0.05, 0.06, 0.06]]) { const dx = x1 - x0, dy = y1 - y0, b = new THREE.BoxGeometry(0.016, Math.hypot(dx, dy), 0.014); b.rotateZ(-Math.atan2(dx, dy)); b.translate((x0 + x1) / 2, p.y + (y0 + y1) / 2, zc); em.push(b); }
+      }
+      chrome.push(...em);
+    }
+  }
   push(dark, stick(bm, 0, f.bot(hz - 0.12) + 0.06, 6, 0, 0, -1, S.W * 0.82, 0.05, 0.12, 0.03));
   push(dark, stick(bm, 0, f.bot(-hz + 0.15) + 0.08, -6, 0, 0, 1, S.W * 0.7, 0.12, 0.1, 0.04));
   for (const sx of [-1, 1]) {
@@ -333,7 +370,7 @@ class CarView {
     const G = carGeo(car.def.style), M = carMats(), S = G.S, paint = paintMat(car.color);
     this.root = new THREE.Group(); this.body = new THREE.Group(); this.root.add(this.body);
     const add = (geo, mat, cast, parent) => { if (!geo) return null; const m = new THREE.Mesh(geo, mat); m.castShadow = !!cast; m.receiveShadow = !!cast; (parent || this.body).add(m); return m; };
-    add(G.body, paint, true); add(G.cab, S.van ? paint : M.glass, true); add(G.roof, paint, false); add(G.paint, paint, true);
+    add(G.body, paint, true); this.cabMesh = add(G.cab, S.van ? paint : M.glass, true); this.roofMesh = add(G.roof, paint, false); add(G.paint, paint, true);
     add(G.dark, M.trim, false); add(G.glass, M.glass); add(G.chrome, M.chrome); add(G.spare, M.tyre, true);
     add(G.head, M.head); this.tailMesh = add(G.tail, M.tail);
     add(G.stripe, stripeMat(car.color)); add(G.wing, M.trim, true);
@@ -347,6 +384,7 @@ class CarView {
       this.body.add(holder); this.wheels.push({ g: holder, spin, front: z > 0 });
     }
     this.tail = G.tailPts; this.L = S.L; this.H = G.H;
+    if (car.isPlayer) this.buildCockpit(G, M, paint);
     const glowCol = new THREE.Color(car.color); if (glowCol.getHSL({}).l < 0.25 || glowCol.getHSL({}).s < 0.15) glowCol.set('#ff3048');
     const ug = new THREE.Mesh(new THREE.PlaneGeometry(S.W + 1.6, S.L + 1.4), linMat(Object.assign(new THREE.MeshBasicMaterial({ map: TEX.glow, color: glowCol, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), { userData: { hdr: 1.4 } })));
     ug.rotation.x = -Math.PI / 2; ug.position.y = 0.07; ug.visible = false; this.body.add(ug); this.under = ug; // no underglow: it read as dizzy
@@ -366,9 +404,54 @@ class CarView {
     }
     scene.add(this.root);
   }
+  // driver's seat for the first-person cameras: dash, wheel, pillars and roof liner, all inside the body group
+  buildCockpit(G, M, paint) {
+    const S = G.S, f = G.f, K = S.cab.keys, n = K.length, HW = S.W / 2;
+    const zWinTop = K[n - 2][0], zWinBot = K[n - 1][0], yWinTop = K[n - 2][1], yWinBot = K[n - 1][1], roofY = Math.max(...K.map(k => k[1]));
+    const zDash = zWinBot + 0.05, dashH = 0.2, dashY = yWinBot - 0.2, dashTop = dashY + dashH;
+    const eyeZ = zWinTop - 0.5, eyeY = Math.max(roofY - 0.3, dashTop + 0.22), seatX = -0.37;
+    this.eye = new THREE.Vector3(seatX, eyeY, eyeZ);
+    this.hood = new THREE.Vector3(0, f.top(S.L / 2 - 0.5) + 0.14, S.L / 2 - 0.55);
+    const cp = new THREE.Group(); cp.visible = false; this.body.add(cp); this.cockpit = cp;
+    // a touch of emissive so the interior still reads on unlit night tracks
+    const inner = linMat(new THREE.MeshStandardMaterial({ color: '#1c1d22', roughness: 0.82, metalness: 0.1, emissive: '#2a2c34', emissiveIntensity: 0.35 }));
+    const leather = linMat(new THREE.MeshStandardMaterial({ color: '#111216', roughness: 0.6, metalness: 0.05, emissive: '#1c1d24', emissiveIntensity: 0.3 }));
+    const add = (geo, mat, parent) => { const m = new THREE.Mesh(geo, mat); (parent || cp).add(m); return m; };
+    const dw = f.half(zDash) * HW * 2 * 0.92;
+    const dash = new THREE.BoxGeometry(dw, dashH, 0.55); dash.translate(0, dashY + dashH / 2, zDash); add(dash, inner);
+    const hood = new THREE.BoxGeometry(dw, 0.04, 0.42); hood.rotateX(-0.25); hood.translate(0, dashTop + 0.02, zDash + 0.4); add(hood, leather);
+    const cons = new THREE.BoxGeometry(0.3, dashH * 1.8, 1.4); cons.translate(0, dashY - dashH * 0.6, zDash - 0.7); add(cons, inner);
+    const trim = new THREE.BoxGeometry(dw * 0.96, 0.025, 0.03); trim.translate(0, dashTop - 0.06, zDash - 0.26); add(trim, paint);
+    // instrument cluster and centre screen glow softly so they bloom at night
+    const clus = new THREE.BoxGeometry(0.34, 0.1, 0.02); clus.rotateX(-0.2); clus.translate(seatX, dashTop - 0.07, zDash - 0.2); add(clus, linMat(glowMat('#9ad6ff', 1.3)));
+    const scr = new THREE.BoxGeometry(0.3, 0.14, 0.02); scr.rotateX(-0.2); scr.translate(0.12, dashTop - 0.06, zDash - 0.22); add(scr, linMat(glowMat('#ffb36a', 0.9)));
+    // steering wheel pivots on its own group so steer input turns it
+    const wg = new THREE.Group(); wg.position.set(seatX, dashTop + 0.01, zDash - 0.46); wg.rotation.x = -0.45; cp.add(wg); this.wheelRig = wg;
+    const rim = new THREE.TorusGeometry(0.185, 0.024, 10, 36); add(rim, leather, wg);
+    for (const a of [Math.PI / 2, Math.PI + 0.55, Math.PI * 2 - 0.55]) { const sp = new THREE.BoxGeometry(0.035, 0.17, 0.028); sp.translate(0, 0.095, 0); sp.rotateZ(a - Math.PI / 2); add(sp, inner, wg); }
+    const hub = new THREE.CylinderGeometry(0.06, 0.06, 0.05, 16); hub.rotateX(Math.PI / 2); add(hub, inner, wg);
+    const badge = new THREE.TorusGeometry(0.03, 0.006, 6, 18); badge.translate(0, 0, 0.026); add(badge, M.chrome, wg);
+    const col = new THREE.CylinderGeometry(0.035, 0.045, 0.3, 10); col.rotateX(Math.PI / 2 - 0.45); col.translate(seatX, dashTop - 0.04, zDash - 0.3); add(col, inner);
+    // A-pillars follow the windscreen edges; roof liner hides the sky
+    for (const sx of [-1, 1]) {
+      const a = new THREE.Vector3(sx * f.half(zWinBot) * HW * S.cab.w0 * 0.96, dashTop, zWinBot - 0.1), b = new THREE.Vector3(sx * f.half(zWinTop) * HW * S.cab.w1 * 0.96, yWinTop - 0.03, zWinTop);
+      const d = b.clone().sub(a), len = d.length(), g = new THREE.CylinderGeometry(0.045, 0.055, len, 8);
+      g.applyMatrix4(new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()), new THREE.Vector3(1, 1, 1)));
+      add(g, inner);
+    }
+    const zR = K[1][0], lw = f.half((zR + zWinTop) / 2) * HW * 2 * S.cab.w1 * 0.95;
+    const liner = new THREE.BoxGeometry(lw, 0.03, zWinTop - zR); liner.translate(0, roofY - 0.05, (zR + zWinTop) / 2); add(liner, inner);
+    const seat = new THREE.BoxGeometry(0.5, 0.7, 0.14); seat.translate(seatX, eyeY - 0.55, eyeZ - 0.42); add(seat, leather);
+    const seat2 = new THREE.BoxGeometry(0.5, 0.7, 0.14); seat2.translate(-seatX, eyeY - 0.55, eyeZ - 0.42); add(seat2, leather);
+  }
+  setCockpit(on) {
+    if (!this.cockpit) return;
+    this.cockpit.visible = !!on; this.cabMesh.visible = !on; if (this.roofMesh) this.roofMesh.visible = !on;
+  }
   spin(dt, v, steer) {
     const a = v * dt / CAR_SHAPES[this.car.def.style].wr;
     for (const w of this.wheels) { w.spin.rotation.x += a; if (w.front) w.g.rotation.y = steer * 0.42; }
+    if (this.wheelRig) this.wheelRig.rotation.z = -steer * 1.6;
   }
   updateTag() {
     if (!this.tag) return; const c = this.car, hp = c.health / c.maxHp;

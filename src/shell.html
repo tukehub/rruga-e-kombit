@@ -146,7 +146,8 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
 #h-time { font: 600 italic 14px/1.2 var(--f-ui); color: var(--ink); }
 .hud-tr { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 12px); display: flex; gap: 10px; align-items: flex-start; }
 #minimap { width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, rgba(16,14,28,0.55), rgba(6,6,11,0.8)); border: 2px solid rgba(138,92,255,0.45); }
-#b-pause { pointer-events: auto; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--edge-2); background: rgba(10,9,18,0.6); font: 900 16px/1 var(--f-display); letter-spacing: 0.1em; }
+#b-pause, #b-cam { pointer-events: auto; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--edge-2); background: rgba(10,9,18,0.6); font: 900 16px/1 var(--f-display); letter-spacing: 0.1em; }
+#b-cam { font: 700 18px/1 var(--f-ui); }
 #mirror { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 6px); left: 50%; transform: translateX(-50%); width: min(26vw, 300px); aspect-ratio: 3.2; border-radius: 10px; display: none;
   box-shadow: 0 0 0 2px rgba(10,9,18,0.85), 0 0 0 3px rgba(255,255,255,0.18), 0 6px 18px rgba(0,0,0,0.5); pointer-events: none; }
 #hud.mir #mirror { display: block; }
@@ -259,7 +260,7 @@ table.res .dot { display: inline-block; width: 10px; height: 10px; border-radius
     <div id="h-feed" aria-live="polite"></div>
     <div id="h-center"></div>
     <div id="h-pop"></div>
-    <div class="hud-tr"><button id="b-pause" aria-label="Pauzë">II</button><canvas id="minimap" width="240" height="240"></canvas></div>
+    <div class="hud-tr"><button id="b-cam" aria-label="Ndërro kamerën" title="Kamera (C)">◉</button><button id="b-pause" aria-label="Pauzë">II</button><canvas id="minimap" width="240" height="240"></canvas></div>
     <div class="hud-bc">
       <div id="h-slotname"></div>
       <div id="h-slots"><button class="slot" aria-label="Fuqia 1"></button><button class="slot" aria-label="Fuqia 2"></button><button class="slot" aria-label="Fuqia 3"></button></div>

@@ -298,8 +298,8 @@ function buildArena() {
   G.fx = new FX(scene, q); updatePScale(); G.weather = null;
   setupPickups(scene, race.pickups, (p, out) => out.set(p.x, 0, p.z));
   linearize(scene); G.post.setLook(env); G.lookFor = 'race'; renderer.toneMappingExposure = env.exp || 1;
-  G.acc = 0; G.shake = 0; G.fov = 66; G.camLook = new V3(); G.camH = null; G.finT = 0; G.sndT = {};
-  camera.clearViewOffset(); camera.fov = 64; camera.updateProjectionMatrix();
+  G.acc = 0; G.shake = 0; G.fov = 66; G.camLook = new V3(); G.camH = null; G.finT = 0; G.sndT = {}; G.fpMode = -1;
+  camera.clearViewOffset(); camera.fov = 64; camera.near = 0.4; camera.updateProjectionMatrix();
   arenaUpdateViews(0); arenaIntroCam(0);
 }
 
@@ -474,6 +474,6 @@ function arenaMinimap() {
 function arenaRender(dt) {
   const w = G.world, P = G.player;
   if (w.dl && w.dl.castShadow && P) { tmpA.set(P.x, 0, P.z); w.dl.target.position.copy(tmpA); w.dl.position.copy(tmpA).addScaledVector(w.sunDir, 160); }
-  G.post.render(w.scene, camera, dt);
+  speedFx(); G.post.render(w.scene, camera, dt);
   renderMirror(w.scene);
 }

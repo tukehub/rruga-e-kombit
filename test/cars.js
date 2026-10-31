@@ -1,5 +1,5 @@
 // Garage close-ups of every car (front 3/4 and rear 3/4)
-const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const { chromium } = require('playwright');
 const path = require('path');
 (async () => {
   const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -18,3 +18,4 @@ const path = require('path');
   }
   console.log(errs.length ? errs : 'no errors'); await b.close();
 })();
+
