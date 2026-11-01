@@ -18,7 +18,7 @@ var env: Environment
 var sun: DirectionalLight3D
 var rain: GPUParticles3D
 var snow: GPUParticles3D
-var env_id := "night"
+var env_id := "day"
 var preset: Dictionary
 var wet := 0.0
 var night := 0.0
@@ -63,15 +63,18 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	env.sky = sky
 	env.sky_rotation = Vector3(0, _sky_yaw(id), 0)
 
-	# ambient from sky + a floor so night streets are readable
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_sky_contribution = 1.0
-	env.ambient_light_energy = float(preset.ambient) * (1.4 if is_night else 0.8)
+	# A neutral fill keeps the road and car sides visible in building shadows,
+	# including on low quality where there are no GI or local lamp lights.
+	# Sky-only lighting made the old night preset almost black on a phone.
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.64, 0.70, 0.80) if is_night else Color(0.86, 0.90, 0.97)
+	env.ambient_light_sky_contribution = 0.25
+	env.ambient_light_energy = maxf(float(preset.ambient), 0.48 if is_night else 0.78)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
 	# tonemap + exposure
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = float(preset.exposure)
+	env.tonemap_exposure = maxf(float(preset.exposure), 1.0)
 	env.tonemap_white = 4.0
 
 	# bloom with neon threshold (sunlit white stays below the threshold)
@@ -89,12 +92,12 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
 	env.fog_light_color = Data.col(preset.fog)
 	env.fog_light_energy = 1.0
-	env.fog_density = float(preset.fog_density) * 0.35
+	env.fog_density = float(preset.fog_density) * (0.28 if is_night else 0.12)
 	env.fog_sky_affect = 0.2 if is_night else 0.35
 	env.fog_aerial_perspective = 0.5
 	env.fog_height = -20.0
 	env.fog_height_density = 0.0
-	env.volumetric_fog_density = 0.006 if is_night else 0.0025
+	env.volumetric_fog_density = 0.003 if is_night else 0.0006
 	env.volumetric_fog_albedo = Data.col(preset.fog).lightened(0.3)
 	env.volumetric_fog_emission = Data.col(preset.fog) * 0.02
 	env.volumetric_fog_length = 96.0
@@ -104,26 +107,28 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 
 	# SSAO/SSR/SDFGI from quality
 	env.ssao_radius = 1.5
-	env.ssao_intensity = 2.0
-	env.ssao_power = 1.5
+	env.ssao_intensity = 0.75
+	env.ssao_power = 1.1
 	env.ssao_detail = 0.3
 	env.ssil_enabled = false
 	env.adjustment_enabled = true
 	env.adjustment_saturation = 1.08
-	env.adjustment_contrast = 1.03
+	env.adjustment_contrast = 1.0
 	Quality.apply_env(env, wet > 0.5)
+	# Clear daylight needs no volume pass or haze over the racing corridor.
+	env.volumetric_fog_enabled = env.volumetric_fog_enabled and is_night
 
 	# sun / moon
 	var dir: Vector3 = preset.sun_dir
 	sun.look_at_from_position(dir.normalized() * 100.0, Vector3.ZERO, Vector3.UP)
 	sun.light_color = Data.col(preset.sun_col)
-	sun.light_energy = float(preset.sun_i) * 0.5 * (0.5 if bool(preset.moon) else 1.0)
+	sun.light_energy = float(preset.sun_i) * (0.5 if is_night else 0.75) * (0.5 if bool(preset.moon) else 1.0)
 	sun.light_indirect_energy = 1.0
 	# PCSS penumbra: values >= ~0.3 smear PSSM shadows into nothing at this
 	# shadow distance, so keep the sun disc small (real sun is 0.26 deg)
 	sun.light_angular_distance = 0.15 if not is_night else 0.3
 	sun.shadow_enabled = true
-	sun.shadow_opacity = 0.9 if not is_night else 0.7
+	sun.shadow_opacity = 0.58 if not is_night else 0.5
 	Quality.apply_sun(sun)
 
 	rain.emitting = bool(preset.rain)
@@ -228,7 +233,8 @@ var _sky_blend: ShaderMaterial
 func _snapshot() -> Dictionary:
 	return {"wet": wet, "night": night, "sun_color": sun.light_color,
 		"sun_energy": sun.light_energy, "sun_rotation": sun.quaternion,
-		"ambient": env.ambient_light_energy, "exposure": env.tonemap_exposure,
+		"ambient": env.ambient_light_energy, "ambient_color": env.ambient_light_color,
+		"exposure": env.tonemap_exposure,
 		"fog_color": env.fog_light_color, "fog_density": env.fog_density,
 		"glow": env.glow_intensity}
 
@@ -267,6 +273,7 @@ func advance(dt: float) -> void:
 	sun.light_energy = lerpf(_from.sun_energy, _to.sun_energy, k)
 	sun.quaternion = (_from.sun_rotation as Quaternion).slerp(_to.sun_rotation, k)
 	env.ambient_light_energy = lerpf(_from.ambient, _to.ambient, k)
+	env.ambient_light_color = (_from.ambient_color as Color).lerp(_to.ambient_color, k)
 	env.tonemap_exposure = lerpf(_from.exposure, _to.exposure, k)
 	env.fog_light_color = (_from.fog_color as Color).lerp(_to.fog_color, k)
 	env.fog_density = lerpf(_from.fog_density, _to.fog_density, k)

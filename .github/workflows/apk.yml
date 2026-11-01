@@ -60,5 +60,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create 'v1.0.${{ github.run_number }}' rruga-e-kombit.apk \
-            --title 'Kafshim asfalti 1.0.${{ github.run_number }}' \
+            --title 'Vortex 1.0.${{ github.run_number }}' \
             --notes 'Loja vendase Godot për Android. Shkarko APK-në për ta instaluar.' --latest

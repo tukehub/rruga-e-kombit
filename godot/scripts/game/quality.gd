@@ -17,7 +17,7 @@ const PRESETS := {
 	"medium": {
 		"scale": 0.8, "msaa": Viewport.MSAA_DISABLED, "fxaa": true,
 		"ssao": true, "ssao_q": RenderingServer.ENV_SSAO_QUALITY_VERY_LOW, "sdfgi": false, "ssr": true, "ssr_steps": 24,
-		"vol_fog": true, "glow": true, "glow_levels": 3,
+		"vol_fog": false, "glow": true, "glow_levels": 3,
 		"shadow_size": 2048, "shadow_splits": 2, "shadow_dist": 110.0, "car_shadows": true,
 		"building_dist": 1500.0, "tree_mul": 0.6, "lamp_lights": 6, "probe": true, "wet_reflections": true,
 		"props_dist": 600.0, "anisotropy": 2, "max_fps": 60,

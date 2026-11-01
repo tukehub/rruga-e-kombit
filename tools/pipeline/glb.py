@@ -109,7 +109,7 @@ class GLB:
             root_nodes = list(range(len(self.nodes)))
         bin_blob = b''.join(self.buffers)
         gltf = {
-            'asset': {'version': '2.0', 'generator': 'kafshim-asfalti-pipeline'},
+            'asset': {'version': '2.0', 'generator': 'vortex-pipeline'},
             'scene': 0,
             'scenes': [{'nodes': root_nodes}],
             'nodes': self.nodes,

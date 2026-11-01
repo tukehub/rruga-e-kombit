@@ -1,15 +1,19 @@
-# Kafshim asfalti
+# Vortex
 
 Native Godot **4.4.1**, GDScript, Forward+ / Vulkan combat racer for Android.
 Package: `al.tukehub.rruga`. The fixed release key remains at
 `android/app/rruga.jks`; changing it would break updates to existing installs.
 
-The native game has six real city tracks, six configurable procedural
-cars and drivers, five AI rivals, eight power-ups, Albanian menus/HUD/results,
-tilt/touch controls, SFX mixer, quality presets and smoothly changing weather.
-Tiranë, Vlorë, Berat, Gjirokastër, Shkodër and Tetovë use OSM streets/buildings
-and Copernicus terrain, including side roads and landmark anchors.
-See [milestone status and verification](docs/STATUS.md) for the exact limits.
+This review build focuses on **daylight Tirana**. It has one smooth modern
+Vortex GT shared by all six drivers, six paint choices with identical performance,
+recognizable eagle/lightning/etc power-up badges, larger phone text, explicit
+corner pedals and forward/back shooting buttons, and always-visible translucent
+standings. The middle of the screen stays clear for the road and car.
+
+The main menu starts a Tirana race directly. Other city datasets remain in the
+repository for later review; they are not offered in this focused menu.
+Existing installs receive a one-time daylight/touch-control settings migration.
+See [current status and validation](docs/STATUS.md).
 
 ## Develop and test
 
@@ -22,8 +26,8 @@ godot --path godot
 ```
 
 Tests exercise all available city simulations on three difficulties, load every
-city through the production race scene, and check all six car
-models (25k–60k triangles and four wheels), all eight power-ups and their transient
+city through the production race scene, and check the shared
+car model (42,236 triangles and four wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.

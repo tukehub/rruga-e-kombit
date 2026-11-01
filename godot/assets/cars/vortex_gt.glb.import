@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://y6h5cr7c5xtf"
-path="res://.godot/imported/uragani.glb-435f3df29cdabc8e505568b58c69a2aa.scn"
+uid="uid://bhx2pug0plbsl"
+path="res://.godot/imported/vortex_gt.glb-eba697e348be77620ed87bcb4755aac8.scn"
 
 [deps]
 
-source_file="res://assets/cars/uragani.glb"
-dest_files=["res://.godot/imported/uragani.glb-435f3df29cdabc8e505568b58c69a2aa.scn"]
+source_file="res://assets/cars/vortex_gt.glb"
+dest_files=["res://.godot/imported/vortex_gt.glb-eba697e348be77620ed87bcb4755aac8.scn"]
 
 [params]
 
@@ -33,5 +33,5 @@ animation/remove_immutable_tracks=true
 animation/import_rest_as_RESET=false
 import_script/path=""
 _subresources={}
-gltf/naming_version=1
+gltf/naming_version=2
 gltf/embedded_image_handling=1

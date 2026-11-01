@@ -24,11 +24,11 @@ func _ready() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	mc.add_child(v)
-	v.add_child(UiTheme.label(("%s · %s" % [city.name, Data.ENV[str(r.get("env", city.env))].label]).to_upper(), 15, UiTheme.CYAN))
+	v.add_child(UiTheme.label(("%s · %s" % [city.name, Data.ENV[str(r.get("env", city.env))].label]).to_upper(), 23, UiTheme.CYAN))
 	var ord: String = Data.ORD[clampi(place - 1, 0, Data.ORD.size() - 1)]
 	var col := UiTheme.AMBER if place == 1 else (UiTheme.TEXT if place <= 3 else UiTheme.MUTED)
-	v.add_child(UiTheme.headline(ord, 84, col, HORIZONTAL_ALIGNMENT_LEFT))
-	var msg := UiTheme.label(Data.place_msg(place, n), 19, UiTheme.MUTED)
+	v.add_child(UiTheme.headline(ord, 64, col, HORIZONTAL_ALIGNMENT_LEFT))
+	var msg := UiTheme.label(Data.place_msg(place, n), 25, UiTheme.MUTED)
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(msg)
 	v.add_child(UiTheme.spacer(4))
@@ -39,13 +39,13 @@ func _ready() -> void:
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	panel.add_child(sc)
 	var grid := GridContainer.new()
-	grid.columns = 6
+	grid.columns = 4
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 22)
 	grid.add_theme_constant_override("v_separation", 6)
 	sc.add_child(grid)
-	for h in ["#", "Shoferi", "Makina", "Koha", "Xhiro më e mirë", "Tifozë"]:
-		var l := UiTheme.label(h.to_upper(), 13, UiTheme.MUTED)
+	for h in ["#", "Shoferi", "Koha", "Xhiro më e mirë"]:
+		var l := UiTheme.label(h.to_upper(), 22, UiTheme.MUTED)
 		if h == "Shoferi":
 			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		grid.add_child(l)
@@ -54,7 +54,7 @@ func _ready() -> void:
 		var row: Dictionary = rows[i]
 		var me := bool(row.get("is_player", false))
 		var c := UiTheme.TEXT if me else UiTheme.MUTED
-		grid.add_child(UiTheme.label(str(i + 1), 20, c, true))
+		grid.add_child(UiTheme.label(str(i + 1), 27, c, true))
 		var nm := HBoxContainer.new()
 		nm.add_theme_constant_override("separation", 8)
 		var dot := ColorRect.new()
@@ -62,13 +62,11 @@ func _ready() -> void:
 		dot.custom_minimum_size = Vector2(12, 12)
 		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		nm.add_child(dot)
-		nm.add_child(UiTheme.label(str(row.name) + (" (ti)" if me else ""), 20, c, me))
+		nm.add_child(UiTheme.label(str(row.name) + (" (ti)" if me else ""), 27, c, me))
 		grid.add_child(nm)
-		grid.add_child(UiTheme.label(str(row.car), 17, c))
 		var finished := bool(row.get("finished", false))
-		grid.add_child(UiTheme.label(Game.fmt_time(float(row.time)) if finished else "Pa përfunduar", 18, c))
-		grid.add_child(UiTheme.label(Game.fmt_time(float(row.get("best_lap", INF))), 18, c))
-		grid.add_child(UiTheme.label(str(int(row.get("fans", 0))), 18, c))
+		grid.add_child(UiTheme.label(Game.fmt_time(float(row.time)) if finished else "Pa përfunduar", 25, c))
+		grid.add_child(UiTheme.label(Game.fmt_time(float(row.get("best_lap", INF))), 25, c))
 	var best := float(r.get("best_lap", INF))
 	var record: Dictionary = Settings.stats.best_laps
 	var rec_t := float(record.get(city.id, INF))
@@ -77,21 +75,13 @@ func _ready() -> void:
 		foot += "  ·  REKORD I RI!"
 	elif rec_t < INF:
 		foot += "  ·  Rekordi: %s" % Game.fmt_time(rec_t)
-	v.add_child(UiTheme.label(foot, 15, UiTheme.MUTED))
+	v.add_child(UiTheme.label(foot, 23, UiTheme.MUTED))
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 12)
 	v.add_child(hb)
 	var again := UiTheme.button("Përsërit", UiTheme.PINK.darkened(0.25), 200)
 	again.pressed.connect(func(): Sfx.ui_click(); Game.start_race())
 	hb.add_child(again)
-	var next_id := _next_city(city.id)
-	if next_id != "":
-		var nxt := UiTheme.button("Qyteti tjetër", Color(0, 0, 0, 0), 200)
-		nxt.pressed.connect(func():
-			Sfx.ui_click()
-			Game.race_opts.city = next_id
-			Game.start_race())
-		hb.add_child(nxt)
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hb.add_child(sp)
@@ -100,17 +90,6 @@ func _ready() -> void:
 	hb.add_child(menu)
 	if place == 1:
 		Sfx.play("finish", "UI", -4.0)
-
-
-func _next_city(cur: String) -> String:
-	var ids := []
-	for c in Data.CITIES:
-		if FileAccess.file_exists("res://assets/cities/%s/track.json" % c.id):
-			ids.append(c.id)
-	if ids.size() < 2:
-		return ""
-	var i := ids.find(cur)
-	return ids[(i + 1) % ids.size()]
 
 
 func _unhandled_input(event: InputEvent) -> void:

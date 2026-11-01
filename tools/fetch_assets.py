@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, "tools", "cache", "polyhaven")
 TEX_OUT = os.path.join(ROOT, "godot", "assets", "textures")
 HDRI_OUT = os.path.join(ROOT, "godot", "assets", "hdri")
-UA = {"User-Agent": "kafshim-asfalti-build/1.0 (github.com/tukehub/rruga-e-kombit)"}
+UA = {"User-Agent": "vortex-build/1.0 (github.com/tukehub/rruga-e-kombit)"}
 
 TEXTURES = {
     # slug: short name used by shaders

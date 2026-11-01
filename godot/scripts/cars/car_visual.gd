@@ -90,11 +90,10 @@ static func _mk_simple(col: Color, metal: float, rough: float) -> StandardMateri
 
 static func _mk_glass() -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.05, 0.07, 0.09, 0.78)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.metallic = 0.0
+	m.albedo_color = Color(0.12, 0.20, 0.28)
+	m.metallic = 0.18
 	m.metallic_specular = 0.6
-	m.roughness = 0.08
+	m.roughness = 0.12
 	m.clearcoat_enabled = true
 	m.clearcoat = 0.5
 	m.clearcoat_roughness = 0.05
@@ -107,12 +106,12 @@ func _paint() -> StandardMaterial3D:
 	if mat_paint == null:
 		mat_paint = StandardMaterial3D.new()
 		mat_paint.albedo_color = color
-		mat_paint.metallic = 0.2
+		mat_paint.metallic = 0.35
 		mat_paint.metallic_specular = 0.6
-		mat_paint.roughness = 0.32
+		mat_paint.roughness = 0.24
 		mat_paint.clearcoat_enabled = true
-		mat_paint.clearcoat = 0.6
-		mat_paint.clearcoat_roughness = 0.08
+		mat_paint.clearcoat = 0.9
+		mat_paint.clearcoat_roughness = 0.05
 	return mat_paint
 
 
@@ -124,7 +123,7 @@ func _front() -> StandardMaterial3D:
 		mat_front.metallic = 0.4
 		mat_front.emission_enabled = true
 		mat_front.emission = Color(0.9, 0.95, 1.0)
-		mat_front.emission_energy_multiplier = 0.2
+		mat_front.emission_energy_multiplier = 1.1
 	return mat_front
 
 
@@ -135,7 +134,7 @@ func _rear() -> StandardMaterial3D:
 		mat_rear.roughness = 0.25
 		mat_rear.emission_enabled = true
 		mat_rear.emission = Color(1.0, 0.08, 0.03)
-		mat_rear.emission_energy_multiplier = 0.3
+		mat_rear.emission_energy_multiplier = 0.65
 	return mat_rear
 
 
@@ -195,7 +194,7 @@ func set_night(n: float) -> void:
 		head_l.visible = on
 		head_r.visible = on
 	if mat_front:
-		mat_front.emission_energy_multiplier = 4.0 if on else 0.25
+		mat_front.emission_energy_multiplier = 3.0 if on else 1.1
 
 
 ## Place and animate from the sim state. Call once per rendered frame.
@@ -234,7 +233,7 @@ func apply_state(c: CarState, track: RaceTrack, dt: float) -> void:
 		w.rotation = Vector3(spin * side, (PI if left else 0.0) + (steer_vis if front else 0.0), 0.0)
 	# lights
 	if mat_rear:
-		var base := 0.9 if night > 0.3 else 0.3
+		var base := 0.9 if night > 0.3 else 0.65
 		mat_rear.emission_energy_multiplier = 3.5 if (c.braking or c.v < -0.1) else base
 	# shield
 	for jet in nitro_jets:

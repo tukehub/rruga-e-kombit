@@ -1,23 +1,26 @@
 class_name PickupVisual
 extends Node3D
-## Floating, spinning power-up crates along the track. One MeshInstance3D per
-## pickup station lane; shared mesh + one emissive material per power-up type.
+## Legacy-style floating badges: readable eagle/lightning/etc silhouettes, a
+## slim colored pad, and no solid crates hiding the lane. The badge faces the
+## camera so its symbol remains legible while approaching or overtaking it.
 
-static var _mesh: Mesh
+static var _ring: TorusMesh
 static var _mats: Dictionary = {}
 
 var race: Race
 var track: RaceTrack
-var items: Array[MeshInstance3D] = []
+var items: Array[Node3D] = []
 var _t := 0.0
 
 
-static func _mesh_shared() -> Mesh:
-	if _mesh == null:
-		var m := BoxMesh.new()
-		m.size = Vector3(1.3, 1.3, 1.3)
-		_mesh = m
-	return _mesh
+static func _ring_shared() -> TorusMesh:
+	if _ring == null:
+		_ring = TorusMesh.new()
+		_ring.inner_radius = 0.82
+		_ring.outer_radius = 0.95
+		_ring.rings = 24
+		_ring.ring_segments = 6
+	return _ring
 
 
 static func _mat(type: String) -> StandardMaterial3D:
@@ -25,14 +28,11 @@ static func _mat(type: String) -> StandardMaterial3D:
 		return _mats[type]
 	var col := Color.html(Data.PW[type].col)
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(col, 0.55)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = col
 	m.emission_enabled = true
 	m.emission = col
-	m.emission_energy_multiplier = 2.2
-	m.metallic = 0.2
-	m.roughness = 0.25
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.emission_energy_multiplier = 1.4
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_mats[type] = m
 	return m
 
@@ -41,16 +41,31 @@ func setup(p_race: Race, p_track: RaceTrack) -> void:
 	race = p_race
 	track = p_track
 	for p in race.pickups:
-		var mi := MeshInstance3D.new()
-		mi.mesh = _mesh_shared()
-		mi.material_override = _mat(p.type)
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-		var pos := track.pos(float(p.s), float(p.d))
-		pos.y += 1.3
-		mi.position = pos
-		add_child(mi)
-		items.append(mi)
+		var station := Node3D.new()
+		station.position = track.pos(float(p.s), float(p.d))
+		add_child(station)
+		var badge := Sprite3D.new()
+		badge.name = "Symbol"
+		badge.texture = PowerupIcons.texture(p.type)
+		badge.pixel_size = 0.0086  # 2.2 m wide; compact enough to see the road around it.
+		badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		badge.shaded = false
+		badge.double_sided = true
+		badge.position.y = 1.85
+		badge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		badge.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+		badge.visibility_range_end = 155.0
+		station.add_child(badge)
+		var pad := MeshInstance3D.new()
+		pad.mesh = _ring_shared()
+		pad.material_override = _mat(p.type)
+		pad.position.y = 0.10
+		pad.scale.y = 0.35
+		pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pad.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+		pad.visibility_range_end = 110.0
+		station.add_child(pad)
+		items.append(station)
 
 
 func _process(dt: float) -> void:
@@ -59,12 +74,9 @@ func _process(dt: float) -> void:
 	_t += dt
 	for i in items.size():
 		var p: Dictionary = race.pickups[i]
-		var mi := items[i]
-		mi.visible = bool(p.alive)
-		if not mi.visible:
+		var station := items[i]
+		station.visible = bool(p.alive)
+		if not station.visible:
 			continue
-		var pos := mi.position
-		mi.position.y = track.height(float(p.s)) + 1.3 + sin(_t * 2.0 + i) * 0.15
-		mi.rotation = Vector3(0.6, _t * 1.3 + i, 0.5)
-		mi.position.x = pos.x
-		mi.position.z = pos.z
+		var badge := station.get_node("Symbol") as Sprite3D
+		badge.position.y = 1.85 + sin(_t * 2.0 + i) * 0.12

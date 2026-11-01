@@ -1,12 +1,8 @@
-"""Procedural car generator -> godot/assets/cars/<id>.glb
+"""Generate Vortex's one shared modern fastback, with paint swapped per driver.
 
-Six original, trademark-free cars. Each GLB: a lofted body (paint + glass + lights + trim
-materials, belt-line crease, wheel arches), interior, details, and four wheel nodes
-(wheel_fl/fr/rl/rr) sharing one spoked rim + tyre mesh. ~30-45k triangles per car.
-Forward = -Z (Godot), right = +X, ground contact y = 0.
-
-Materials are swapped by name at runtime (godot/scripts/cars/car_visual.gd):
-  paint glass light_front light_rear trim chrome interior tyre rim brake plate
+Body and four wheel nodes are separate so steering/spin and brake lamps animate.
+Smooth loft surfaces, flush glazing, LED bars and rounded mirrors are original
+procedural geometry. Forward=-Z, ground contact y=0. Run python tools/gen_cars.py.
 """
 import argparse
 import math
@@ -22,71 +18,26 @@ from glb import GLB, face_normals_smooth  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'godot', 'assets', 'cars')
 
-NU = 150   # stations along the body
+NU = 180   # stations along the body
 N1 = 20    # points lower half-section (bottom centre -> belt)
-N2 = 22    # points upper half-section (belt -> roof centre)
+N2 = 26    # points upper half-section (belt -> roof centre)
 
 # u: 0 = front, 1 = rear. All heights in metres (ground = 0).
 CARS = {
-    'benxi': dict(  # big GT coupe
-        L=4.75, W=2.0, wheel_r=0.36, tyre_w=0.27, spokes=5, rim=0.66, tumble=0.42,
-        floor=[(0, .30), (.08, .25), (.5, .21), (.92, .25), (1, .31)],
-        belt=[(0, .60), (.05, .70), (.30, .82), (.5, .86), (.75, .89), (.92, .87), (1, .80)],
-        roof=[(0, .60), (.05, .70), (.30, .82), (.36, .95), (.46, 1.24), (.52, 1.32), (.66, 1.32), (.78, 1.18),
-              (.88, .98), (.93, .88), (1, .80)],
-        hw=[(0, .78), (.04, .92), (.15, 1.0), (.85, 1.0), (.96, .93), (1, .80)],
-        glass=[(.31, .50), (.52, .80), (.82, .91)],
-        wheels=(.17, .80), extras=['lip', 'twin_exhaust', 'mirrors']),
-    'uragani': dict(  # mid-engine supercar
-        L=4.6, W=2.02, wheel_r=0.35, tyre_w=0.30, spokes=7, rim=0.70, tumble=0.5,
-        floor=[(0, .20), (.1, .15), (.5, .13), (.9, .15), (1, .22)],
-        belt=[(0, .40), (.08, .54), (.25, .66), (.40, .72), (.6, .78), (.8, .86), (.95, .88), (1, .82)],
-        roof=[(0, .40), (.08, .54), (.25, .66), (.30, .74), (.40, 1.0), (.48, 1.12), (.58, 1.12), (.68, 1.02),
-              (.78, .90), (.86, .87), (1, .82)],
-        hw=[(0, .70), (.05, .88), (.2, 1.0), (.45, .98), (.7, 1.01), (.9, 1.0), (1, .90)],
-        glass=[(.28, .47), (.49, .66), (.68, .78)],
-        wheels=(.16, .80), extras=['wing', 'quad_exhaust', 'mirrors', 'diffuser']),
-    'kercyesi': dict(  # hot hatch
-        L=4.1, W=1.8, wheel_r=0.32, tyre_w=0.22, spokes=6, rim=0.62, tumble=0.32,
-        floor=[(0, .30), (.08, .25), (.5, .22), (.92, .25), (1, .30)],
-        belt=[(0, .60), (.05, .73), (.25, .84), (.35, .90), (.6, .94), (.9, .96), (1, .94)],
-        roof=[(0, .60), (.05, .73), (.25, .84), (.30, .92), (.40, 1.28), (.47, 1.45), (.75, 1.45), (.85, 1.40),
-              (.93, 1.28), (.97, 1.05), (1, .94)],
-        hw=[(0, .72), (.05, .85), (.15, .90), (.90, .90), (.97, .84), (1, .74)],
-        glass=[(.27, .46), (.48, .70), (.72, .88), (.905, .975)],
-        wheels=(.17, .80), extras=['roof_spoiler', 'twin_exhaust', 'mirrors']),
-    'shigjeta': dict(  # AWD sports sedan
-        L=4.7, W=1.9, wheel_r=0.34, tyre_w=0.25, spokes=10, rim=0.64, tumble=0.36,
-        floor=[(0, .30), (.08, .25), (.5, .22), (.92, .25), (1, .31)],
-        belt=[(0, .60), (.05, .72), (.28, .84), (.5, .90), (.8, .92), (.95, .90), (1, .84)],
-        roof=[(0, .60), (.05, .72), (.28, .84), (.34, .95), (.44, 1.30), (.50, 1.40), (.68, 1.40), (.76, 1.30),
-              (.84, 1.05), (.88, .93), (.95, .90), (1, .84)],
-        hw=[(0, .76), (.04, .88), (.15, .95), (.88, .95), (.96, .89), (1, .78)],
-        glass=[(.29, .48), (.50, .62), (.64, .74), (.77, .87)],
-        wheels=(.16, .80), extras=['lip', 'quad_exhaust', 'mirrors']),
-    'gelendvagen': dict(  # boxy off-roader
-        L=4.65, W=2.0, wheel_r=0.42, tyre_w=0.30, spokes=5, rim=0.58, tumble=0.12,
-        floor=[(0, .48), (.05, .45), (.5, .43), (.95, .45), (1, .48)],
-        belt=[(0, 1.02), (.03, 1.10), (.30, 1.14), (1, 1.14)],
-        roof=[(0, 1.02), (.03, 1.10), (.30, 1.14), (.32, 1.22), (.37, 1.88), (.40, 1.95), (.97, 1.95), (.99, 1.80),
-              (1, 1.14)],
-        hw=[(0, .84), (.02, .95), (.08, 1.0), (.98, 1.0), (1, .95)],
-        glass=[(.33, .39), (.41, .61), (.65, .80), (.83, .96), (.975, .995)],
-        wheels=(.18, .80), extras=['roof_rack', 'spare', 'bullbar', 'steps', 'mirrors', 'single_exhaust']),
-    'sprinteri': dict(  # intercity van
-        L=5.9, W=2.05, wheel_r=0.38, tyre_w=0.24, spokes=8, rim=0.55, tumble=0.08,
-        floor=[(0, .42), (.04, .36), (.5, .34), (.96, .36), (1, .42)],
-        belt=[(0, .72), (.04, .90), (.14, 1.02), (.30, 1.15), (1, 1.15)],
-        roof=[(0, .72), (.04, .90), (.14, 1.02), (.17, 1.25), (.24, 2.2), (.28, 2.5), (.985, 2.5), (.995, 2.4),
-              (1, 1.2)],
-        hw=[(0, .78), (.03, .95), (.1, 1.025), (.98, 1.025), (1, .98)],
-        glass=[(.165, .27), (.29, .42)],
-        wheels=(.17, .78), extras=['mirrors', 'single_exhaust', 'van_stripe']),
+    'vortex_gt': dict(
+        L=4.62, W=1.94, wheel_r=0.36, tyre_w=0.27, spokes=10, rim=0.73, tumble=0.68,
+        floor=[(0, .28), (.07, .21), (.45, .19), (.90, .22), (1, .30)],
+        belt=[(0, .63), (.035, .71), (.18, .80), (.36, .85), (.60, .88), (.82, .88), (1, .82)],
+        roof=[(0, .63), (.035, .71), (.22, .81), (.30, .88), (.36, 1.10), (.43, 1.31),
+              (.51, 1.38), (.62, 1.37), (.72, 1.29), (.82, 1.08), (.92, .91), (1, .82)],
+        hw=[(0, .74), (.035, .86), (.13, .95), (.27, .97), (.52, .955), (.78, .97), (.94, .91), (1, .83)],
+        glass=[(.315, .555), (.578, .795), (.80, .88)],
+        wheels=(.18, .81), extras=['modern']),
 }
 
 MATS = {
-    'paint': dict(color=(0.6, 0.6, 0.65, 1), metallic=0.2, roughness=0.35),
-    'glass': dict(color=(0.1, 0.14, 0.18, 0.55), metallic=0.0, roughness=0.05),
+    'paint': dict(color=(0.55, 0.62, 0.72, 1), metallic=0.35, roughness=0.24),
+    'glass': dict(color=(0.12, 0.20, 0.28, 1), metallic=0.12, roughness=0.10),
     'light_front': dict(color=(0.9, 0.95, 1.0, 1), metallic=0.0, roughness=0.2, emissive=(1, 1, 1)),
     'light_rear': dict(color=(0.6, 0.05, 0.05, 1), metallic=0.0, roughness=0.3, emissive=(1, 0.05, 0.02)),
     'trim': dict(color=(0.05, 0.05, 0.055, 1), metallic=0.0, roughness=0.7),
@@ -268,17 +219,18 @@ def half_section(fy, by, ry, hwb, tumble, arch):
         shoulder = np.array([hws, by + 0.04])
         top_side = np.array([hwr, ry - 0.10])
         roof_c = np.array([0.0, ry])
-        n_glass = N2 - 5
+        n_glass = N2 - 9
         upper = np.vstack([
             np.array([hwb, by]),
             np.linspace(np.array([hwb, by]), shoulder, 3)[1:],
-            np.linspace(shoulder, top_side, n_glass + 1)[1:],
-            bezier(top_side, np.array([hwr, ry - 0.02]), np.array([hwr * 0.6, ry]), roof_c, 3)[1:],
+            bezier(shoulder, shoulder + np.array([-0.015, cab * 0.38]),
+                   top_side + np.array([0.07, -cab * 0.20]), top_side, n_glass + 1)[1:],
+            bezier(top_side, np.array([hwr, ry - 0.02]), np.array([hwr * 0.6, ry]), roof_c, 7)[1:],
         ])
     assert len(upper) == N2, len(upper)
     glass_mask = np.zeros(N2, dtype=bool)
     if cab >= 0.03:
-        glass_mask[3:N2 - 3] = True
+        glass_mask[3:N2 - 6] = True
     return lower, upper, glass_mask
 
 
@@ -309,7 +261,14 @@ def build_body(b: Builder, spec):
         left = right[::-1].copy()
         left[:, 0] *= -1
         ring = np.vstack([right, left[1:-1]])  # closed ring, 2*(N1+N2)-2
-        rings.append(np.column_stack([ring[:, 0], ring[:, 1], np.full(len(ring), z[i])]))
+        # Rounded plan-view corners keep the bumper from reading as a box.
+        zz = np.full(len(ring), z[i])
+        front_round = max(0.0, 1.0 - u[i] / .10) ** 2
+        rear_round = max(0.0, 1.0 - (1.0 - u[i]) / .10) ** 2
+        zz += (.12 * front_round - .10 * rear_round) * (ring[:, 0] / hw[i]) ** 2
+        rings.append(np.column_stack([ring[:, 0], ring[:, 1], zz]))
+        if .315 <= u[i] <= .425 or .795 <= u[i] <= .88:
+            gm[3:] = True
         gmask_ring = np.concatenate([np.zeros(N1, bool), gm, np.concatenate([np.zeros(N1, bool), gm])[::-1][1:-1]])
         glass_rows.append(gmask_ring)
     R = len(rings[0])
@@ -366,92 +325,83 @@ def check_winding(pos, idx):
     return (out > 0).mean()
 
 
-def add_details(b: Builder, spec, geo):
+def ellipsoid(b, center, radii, mat, rings=12, segments=28):
+    """Smooth rounded detail rather than a visibly block-shaped mirror or lamp."""
+    pos = []
+    for i in range(rings + 1):
+        phi = math.pi * i / rings
+        for j in range(segments):
+            theta = 2 * math.pi * j / segments
+            pos.append([math.sin(phi) * math.cos(theta), math.cos(phi), math.sin(phi) * math.sin(theta)])
+    unit = np.array(pos)
+    pos = unit * np.array(radii) + np.array(center)
+    normals = unit / np.array(radii)
+    normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-8)
+    idx = []
+    for i in range(rings):
+        for j in range(segments):
+            a = i * segments + j
+            d = i * segments + (j + 1) % segments
+            c = (i + 1) * segments + j
+            e = (i + 1) * segments + (j + 1) % segments
+            idx.extend([(a, d, c), (d, e, c)])
+    b.add_tris(pos, idx, mat, nrm=normals)
+
+
+def light_ribbon(b, points, height, depth, mat):
+    """A continuous thin LED ribbon following the nose or rear quarter curve."""
+    for p, q in zip(points, points[1:]):
+        delta = np.array(q) - np.array(p)
+        length = float(np.hypot(delta[0], delta[2]))
+        center = (np.array(p) + np.array(q)) / 2
+        # The box length is along X; rotation about Y follows the curved bumper.
+        b.box(center, (length + .004, height, depth), mat, rot_y=-math.atan2(delta[2], delta[0]))
+
+
+def add_modern_details(b, spec, geo):
+    """Original 2020s fastback treatment: thin LEDs, deep grille and flush handles."""
     L, W = spec['L'], spec['W']
-    z, fy, by, ry, hw = geo['z'], geo['fy'], geo['by'], geo['ry'], geo['hw']
-    zf, zr = z[0], z[-1]
-    kind_extras = spec['extras']
-
-    def at(u):
-        i = int(round(u * (NU - 1)))
-        return z[i], fy[i], by[i], ry[i], hw[i]
-
-    # headlights
-    _, f0, b0, _, h0 = at(0.0)
-    lh = max(0.10, (b0 - f0) * 0.22)
-    for s in (-1, 1):
-        b.box((s * (h0 - 0.30), b0 - lh * 0.9, zf - 0.01), (0.42, lh, 0.06), 'light_front')
-        b.box((s * (h0 - 0.30), b0 - lh * 0.9 - 0.02, zf + 0.02), (0.48, lh + 0.06, 0.06), 'trim')
-    # grille + bumper + plate
-    b.box((0, (f0 + b0) * 0.5 - 0.02, zf - 0.005), (h0 * 1.1, (b0 - f0) * 0.34, 0.05), 'trim')
-    b.box((0, f0 + (b0 - f0) * 0.28, zf - 0.02), (0.52, 0.11, 0.02), 'plate')
-    # rear lights + bumper + plate
-    _, f1, b1, _, h1 = at(1.0)
-    rh = max(0.10, (b1 - f1) * 0.20)
-    for s in (-1, 1):
-        b.box((s * (h1 - 0.33), b1 - rh * 0.9, zr + 0.01), (0.46, rh, 0.06), 'light_rear')
-        b.box((s * (h1 - 0.33), b1 - rh * 0.9 - 0.02, zr - 0.02), (0.52, rh + 0.06, 0.06), 'trim')
-    b.box((0, f1 + (b1 - f1) * 0.30, zr + 0.01), (h1 * 2 - 0.2, 0.18, 0.05), 'trim')
-    b.box((0, f1 + (b1 - f1) * 0.55, zr + 0.02), (0.52, 0.11, 0.02), 'plate')
-    # underbody
-    fmin = float(fy.min())
-    b.box((0, fmin + 0.08, (zf + zr) / 2), (W * 0.9, 0.16, L * 0.92), 'trim')
-    # interior: cabin floor, dash, seats (dark)
-    g = spec['glass']
-    if g:
-        u0 = g[0][0]
-        u1 = g[-1][1]
-        zc0, _, bc0, _, _ = at(u0)
-        zc1, _, bc1, _, _ = at(u1)
-        cab_by = float(np.max(by))
-        b.box((0, cab_by - 0.25, (zc0 + zc1) / 2), (W - 0.3, 0.5, abs(zc1 - zc0)), 'interior')
-        b.box((0, cab_by + 0.10, zc0 + 0.55), (W - 0.35, 0.22, 0.6), 'interior')  # dash
-        for s in (-1, 1):
-            b.box((s * (W / 4 - 0.05), cab_by + 0.22, zc0 + 1.45), (0.5, 0.55, 0.12), 'interior')  # seat backs
-    # mirrors
-    if 'mirrors' in kind_extras and g:
-        zm, _, bm, _, hm = at(g[0][1])
-        for s in (-1, 1):
-            b.box((s * (hm + 0.12), bm + 0.10, zm), (0.22, 0.12, 0.16), 'paint')
-            b.box((s * (hm + 0.12), bm + 0.10, zm + 0.085), (0.20, 0.10, 0.01), 'chrome')
-    # exhausts
-    ex = {'single_exhaust': [0.5], 'twin_exhaust': [-0.45, 0.45], 'quad_exhaust': [-0.52, -0.36, 0.36, 0.52]}
-    for k, xs in ex.items():
-        if k in kind_extras:
-            for x in xs:
-                b.cyl_z((x * (W / 2 - 0.1) / 0.5, fmin + 0.12, zr - 0.02), 0.05, 0.14, 'chrome', seg=12)
-    # spoilers / wings
-    if 'wing' in kind_extras:
-        zw = zr - 0.25
-        yw = float(by[-8]) + 0.32
-        b.box((0, yw, zw), (W * 0.92, 0.04, 0.34), 'trim')
-        for s in (-1, 1):
-            b.box((s * W * 0.36, yw - 0.16, zw + 0.04), (0.05, 0.30, 0.22), 'trim')
-    if 'lip' in kind_extras:
-        b.box((0, float(by[-4]) + 0.04, zr - 0.12), (W * 0.8, 0.04, 0.16), 'paint')
-    if 'roof_spoiler' in kind_extras:
-        b.box((0, float(ry.max()) - 0.02, zr - 0.18), (W * 0.78, 0.05, 0.28), 'paint')
-    if 'diffuser' in kind_extras:
-        for x in np.linspace(-0.6, 0.6, 5):
-            b.box((x * (W / 2), fmin + 0.12, zr - 0.15), (0.03, 0.18, 0.4), 'trim')
-    # off-roader bits
-    if 'roof_rack' in kind_extras:
-        yr = float(ry.max()) + 0.06
-        for s in (-1, 1):
-            b.box((s * (W / 2 - 0.18), yr, (zf + zr) / 2 + 0.3), (0.04, 0.05, L * 0.55), 'trim')
-        for k in range(5):
-            zz = (zf + zr) / 2 + 0.3 - L * 0.26 + k * L * 0.13
-            b.box((0, yr, zz), (W - 0.36, 0.035, 0.035), 'trim')
-    if 'bullbar' in kind_extras:
-        b.box((0, (f0 + b0) * 0.55, zf - 0.12), (W * 0.8, 0.05, 0.05), 'chrome')
-        for s in (-1, 1):
-            b.box((s * W * 0.4, (f0 + b0) * 0.55 - 0.15, zf - 0.12), (0.05, 0.4, 0.05), 'chrome')
-    if 'steps' in kind_extras:
-        for s in (-1, 1):
-            b.box((s * (W / 2 + 0.05), fmin + 0.05, 0), (0.14, 0.05, L * 0.42), 'trim')
-    if 'van_stripe' in kind_extras:
-        for s in (-1, 1):
-            b.box((s * (W / 2 + 0.005), float(by.max()) + 0.5, 0.3), (0.01, 0.12, L * 0.6), 'trim')
+    front, rear = -L / 2, L / 2
+    # Slim connected white DRL, then thicker outboard lamp capsules beneath it.
+    xs = np.linspace(-.70, .70, 25)
+    nose = [[x, .585 + .018 * (1 - (x / .70) ** 2), front - .023 + .12 * (x / .74) ** 2] for x in xs]
+    light_ribbon(b, nose, .025, .027, 'light_front')
+    for side in [-1, 1]:
+        ellipsoid(b, (side * .575, .545, front + .048), (.15, .038, .037), 'light_front', rings=8, segments=24)
+        # Vertical end signature in the bumper, visible from a three-quarter angle.
+        b.box((side * .725, .505, front + .086), (.026, .125, .032), 'light_front')
+    # One low grille with close-spaced vanes and a clean body-color bumper beam.
+    b.box((0, .385, front - .007), (1.32, .145, .032), 'trim')
+    for x in np.linspace(-.59, .59, 20):
+        b.box((x, .385, front - .028), (.012, .095, .008), 'chrome')
+    b.box((0, .254, front + .055), (1.55, .034, .15), 'trim')
+    b.box((0, .390, front - .040), (.40, .092, .014), 'plate')
+    # Continuous red rear light blade above the diffuser; a second brake signature.
+    xs = np.linspace(-.79, .79, 30)
+    tail = [[x, .744 + .025 * (1 - (x / .79) ** 2), rear + .019 - .10 * (x / .83) ** 2] for x in xs]
+    light_ribbon(b, tail, .036, .025, 'light_rear')
+    for side in [-1, 1]:
+        b.box((side * .725, .686, rear - .060), (.13, .022, .025), 'light_rear')
+        b.box((side * .91, .300, .10), (.035, .075, 1.68), 'trim')
+    b.box((0, .385, rear + .010), (1.52, .14, .065), 'trim')
+    b.box((0, .499, rear + .028), (.40, .092, .015), 'plate')
+    for x in [-.50, -.25, 0, .25, .50]:
+        b.box((x, .323, rear - .08), (.022, .13, .27), 'trim')
+    # An integrated, understated ducktail rather than a tall racing wing.
+    ellipsoid(b, (0, .888, rear - .13), (.75, .026, .085), 'paint', rings=8, segments=40)
+    # Rounded wing mirrors and narrow metallic stems.
+    for side in [-1, 1]:
+        b.box((side * .955, .926, -.28), (.18, .034, .048), 'trim', rot_y=side * .18)
+        ellipsoid(b, (side * 1.035, .954, -.25), (.125, .060, .125), 'paint')
+        ellipsoid(b, (side * 1.035, .955, -.145), (.099, .042, .015), 'chrome', rings=8, segments=24)
+        # Flush handle cartridges against the side surface, no protruding blocks.
+        for u in [.49, .65]:
+            z = -L / 2 + u * L
+            belt = float(curve(spec['belt'], u))
+            hw = float(curve(spec['hw'], u))
+            b.box((side * (hw + .003), belt - .075, z), (.012, .025, .16), 'chrome')
+    # Underside hidden inside the body; no floating chassis rectangle at the sides.
+    b.box((0, .26, 0), (1.26, .13, 3.50), 'trim')
 
 
 def build_wheel(b: Builder, spec):
@@ -487,7 +437,7 @@ def build_wheel(b: Builder, spec):
 def build_car(cid, spec, out_dir):
     b = Builder()
     geo = build_body(b, spec)
-    add_details(b, spec, geo)
+    add_modern_details(b, spec, geo)
     body_mesh = b.flush('body')
     wheel_mesh = build_wheel(b, spec)
     tris = sum(b.g.accessors[p['indices']]['count'] // 3 for p in b.g.meshes[body_mesh]['primitives'])

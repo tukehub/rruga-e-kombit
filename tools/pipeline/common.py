@@ -9,7 +9,7 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CACHE = os.path.join(ROOT, 'tools', 'cache')
 OUT = os.path.join(ROOT, 'godot', 'assets', 'cities')
-UA = 'kafshim-asfalti-pipeline/1.0 (+https://github.com/tukehub/rruga-e-kombit)'
+UA = 'vortex-pipeline/1.0 (+https://github.com/tukehub/rruga-e-kombit)'
 
 M_PER_DEG_LAT = 110574.0
 

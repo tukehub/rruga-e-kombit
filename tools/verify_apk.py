@@ -14,6 +14,7 @@ tools = sdk / 'build-tools/34.0.0'
 subprocess.run([str(tools / 'apksigner'), 'verify', args.apk], check=True)
 badging = subprocess.check_output([str(tools / 'aapt'), 'dump', 'badging', args.apk], text=True)
 assert "package: name='al.tukehub.rruga'" in badging, 'wrong application identity'
+assert "application-label:'Vortex'" in badging, 'launcher title must be Vortex'
 assert "com.godot.game.GodotApp" in badging, 'native Godot activity missing'
 assert "native-code: 'arm64-v8a'" in badging, 'arm64 export required'
 if args.version_code is not None:

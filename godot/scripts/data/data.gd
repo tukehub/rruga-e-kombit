@@ -3,7 +3,7 @@ extends Node
 ## Everything race-balance related lives here or in sim/race.gd so a new car
 ## or city is a data change only.
 
-const GAME_NAME := "Kafshim asfalti"
+const GAME_NAME := "Vortex"
 
 # ---------------------------------------------------------------- environments
 # Lighting/weather presets. sun_dir points *towards* the sun (Godot world space,
@@ -38,8 +38,8 @@ const ENV_ORDER := ["night", "dusk", "sunset", "day", "golden", "rain", "snow"]
 # Track geometry comes from assets/cities/<id>/ (built by tools/pipeline).
 # horizon: "flat" | "mountains" | "sea" picks the HDRI family and far terrain treatment.
 const CITIES := [
-	{"id": "tirane", "name": "Tiranë", "region": "Shqipëri", "env": "night", "laps": 2, "neon": "#ff2d6f", "horizon": "flat",
-		"hdri": "night", "blurb": "Bulevardi natën: pallate me ngjyra, neon dhe Piramida në krah.",
+	{"id": "tirane", "name": "Tiranë", "region": "Shqipëri", "env": "day", "laps": 2, "neon": "#ff2d6f", "horizon": "flat",
+		"hdri": "day", "blurb": "Bulevardi në dritën e ditës: pallate me ngjyra dhe Piramida në krah.",
 		"landmarks": ["Sheshi Skënderbej", "Piramida", "Blloku", "Sheshi Nënë Tereza"]},
 	{"id": "vlore", "name": "Vlorë", "region": "Shqipëri", "env": "sunset", "laps": 2, "neon": "#ffd23a", "horizon": "sea",
 		"hdri": "sunset", "blurb": "Këtu lindi shteti. Lungomare, det dhe perëndim.",
@@ -59,28 +59,28 @@ const CITIES := [
 ]
 
 # ---------------------------------------------------------------- cars
-# All fictional. model: glb produced by tools/gen_cars.py with nodes
-# body/glass/lights/wheel_fl/wheel_fr/wheel_rl/wheel_rr. Physics numbers are the
-# original Vortex balance (vmax m/s, acc m/s², grip multiplier, hp, mass).
+# One contemporary Vortex GT, six paint choices, identical performance.
+# Legacy IDs remain stable for saved selections. Shared GLB nodes include
+# body/glass/lights/wheel_fl/wheel_fr/wheel_rl/wheel_rr.
 const CARS := [
-	{"id": "benxi", "name": "Benxi GT", "kind": "coupe", "vmax": 58.0, "acc": 16.5, "grip": 1.0, "hp": 115.0, "mass": 1.1, "color": "#26262c",
-		"model": "res://assets/cars/benxi.glb", "size": Vector3(2.0, 1.32, 4.75), "wheel_r": 0.36,
-		"desc": "Kupeja e madhe e rrugëve tona. Rëndë, e qetë, dhe gjithmonë e parkuar para kafenesë."},
-	{"id": "uragani", "name": "Uragani V10", "kind": "super", "vmax": 62.0, "acc": 16.0, "grip": 0.92, "hp": 100.0, "mass": 1.05, "color": "#1b4fd6",
-		"model": "res://assets/cars/uragani.glb", "size": Vector3(2.02, 1.12, 4.6), "wheel_r": 0.35,
-		"desc": "Dhjetë cilindra dhe zero durim. Kthesat i merr me bisht."},
-	{"id": "kercyesi", "name": "Kërcyesi GTI", "kind": "hatch", "vmax": 55.0, "acc": 19.0, "grip": 1.16, "hp": 90.0, "mass": 0.85, "color": "#e41e20",
-		"model": "res://assets/cars/kercyesi.glb", "size": Vector3(1.8, 1.45, 4.1), "wheel_r": 0.32,
-		"desc": "I vogël, i shkathët, dhe gjithmonë me xhamat poshtë e muzikën lart."},
-	{"id": "shigjeta", "name": "Shigjeta RS", "kind": "sedan", "vmax": 60.0, "acc": 18.0, "grip": 1.06, "hp": 95.0, "mass": 0.95, "color": "#f1eee8",
-		"model": "res://assets/cars/shigjeta.glb", "size": Vector3(1.9, 1.4, 4.7), "wheel_r": 0.34,
-		"desc": "Katër rrota që tërheqin. Shkon si në binarë, edhe mbi gropa."},
-	{"id": "gelendvagen", "name": "Murrani 4x4", "kind": "offroad", "vmax": 54.0, "acc": 15.0, "grip": 0.96, "hp": 140.0, "mass": 1.35, "color": "#2a2a2e",
-		"model": "res://assets/cars/gelendvagen.glb", "size": Vector3(2.0, 1.95, 4.65), "wheel_r": 0.42,
-		"desc": "Kutia e zezë e çdo dasme. Gropat e tua s’i bëjnë gjë."},
-	{"id": "sprinteri", "name": "Korrieri i Linjës", "kind": "van", "vmax": 51.0, "acc": 13.5, "grip": 0.88, "hp": 175.0, "mass": 1.7, "color": "#f3f3ee",
-		"model": "res://assets/cars/sprinteri.glb", "size": Vector3(2.05, 2.5, 5.9), "wheel_r": 0.38,
-		"desc": "Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do."},
+	{"id": "benxi", "name": "E kuqe", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#e63138",
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
+		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
+	{"id": "uragani", "name": "Blu", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#246be8",
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
+		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
+	{"id": "kercyesi", "name": "E bardhë", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#e9eff5",
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
+		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
+	{"id": "shigjeta", "name": "Grafit", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#536476",
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
+		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
+	{"id": "gelendvagen", "name": "E verdhë", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#f6c82a",
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
+		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
+	{"id": "sprinteri", "name": "Jeshile", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#26b69b",
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
+		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
 ]
 const PAINTS := ["#e41e20", "#26262c", "#f1eee8", "#f2c230", "#2a6fdb", "#3f6d3b", "#ff6a1a", "#8e44ad"]
 

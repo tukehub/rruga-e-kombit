@@ -12,7 +12,7 @@ const AMBER := Color("ffb547")
 const GREEN := Color("2bff88")
 const RED := Color("ff3b4e")
 const TEXT := Color("f4f1f7")
-const MUTED := Color("a2959f")
+const MUTED := Color("c4d0dd")
 
 static var _display: FontFile
 static var _body: FontFile
@@ -44,9 +44,9 @@ static func theme() -> Theme:
 		return _theme
 	var t := Theme.new()
 	t.default_font = body()
-	t.default_font_size = 20
+	t.default_font_size = 26
 	t.set_font("font", "Button", body_bold())
-	t.set_font_size("font_size", "Button", 22)
+	t.set_font_size("font_size", "Button", 26)
 	t.set_color("font_color", "Button", TEXT)
 	t.set_color("font_hover_color", "Button", Color.WHITE)
 	t.set_color("font_pressed_color", "Button", Color.WHITE)
@@ -92,11 +92,12 @@ static func label(text: String, size: int, col := TEXT, use_display := false, al
 	return l
 
 
-## Headline in the display face with a soft dark outline for readability over 3D.
+## Bold headline with a dark outline for readability on a phone.
 static func headline(text: String, size: int, col := TEXT, align := HORIZONTAL_ALIGNMENT_CENTER) -> Label:
-	var l := label(text, size, col, true, align)
+	var l := label(text, size, col, false, align)
+	l.add_theme_font_override("font", body_bold())
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
-	l.add_theme_constant_override("outline_size", maxi(2, size / 12))
+	l.add_theme_constant_override("outline_size", maxi(2, size / 32))
 	return l
 
 
@@ -104,6 +105,7 @@ static func button(text: String, accent := Color(0, 0, 0, 0), min_w := 0.0) -> B
 	var b := Button.new()
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size.y = 50
 	if min_w > 0.0:
 		b.custom_minimum_size.x = min_w
 	if accent.a > 0.0:

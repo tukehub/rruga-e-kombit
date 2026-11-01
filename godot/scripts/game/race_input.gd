@@ -1,16 +1,17 @@
 class_name RaceInput
 extends Control
-## Touch + tilt controls for the race. Covers the whole screen (mouse_filter
-## PASS so HUD buttons above still work). Right half = gas, left half = brake,
-## centre-bottom button fires forward, a second button fires backwards.
-## Steering: accelerometer roll (phone held like a wheel) or, with
-## Settings.touch_steer, horizontal finger drag on the brake half.
+## Explicit corner pedals and firing buttons leave the road and car unobscured.
+## Each finger owns one control until released. Steering uses tilt or the visible
+## touch pad; touching elsewhere on the screen never accelerates or brakes.
 
 signal fire_pressed(back: bool)
 
 const DEAD_DEG := 2.2
 const TILT_SMOOTH := 14.0
-const PAD_FULL_PX := 160.0
+const EDGE := 20.0
+const PEDAL_SIZE := Vector2(96, 112)
+const FIRE_SIZE := Vector2(164, 64)
+const STEER_SIZE := Vector2(204, 96)
 
 var steer := 0.0
 var gas := false
@@ -22,124 +23,230 @@ var roll_deg := 0.0
 
 var _fire_btn: Button
 var _back_btn: Button
-var _touches := {}           # index -> {"zone": String, "x0": float}
+var _gas_btn: Button
+var _brake_btn: Button
+var _steer_btn: Button
+var _touches := {}           # index -> {"zone": String}
 var _pad_steer := 0.0
 var _kb := false
 var _desktop := false
+var _cycle := false
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_PASS
+	# Input is captured only inside the named rectangles in _input(), so HUD
+	# controls and the open road do not become invisible driving surfaces.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_desktop = OS.get_name() not in ["Android", "iOS"]
-	_fire_btn = _mk_button("GJUAJ", Vector2(0.5, 1.0), Vector2(-70, -150), Vector2(140, 92), Color(0.95, 0.35, 0.1))
-	_fire_btn.button_down.connect(func(): fire = true; fire_pressed.emit(false))
-	_fire_btn.button_up.connect(func(): fire = false)
-	_back_btn = _mk_button("PRAPA", Vector2(0.5, 1.0), Vector2(-50, -48), Vector2(100, 40), Color(0.3, 0.55, 0.95))
-	_back_btn.button_down.connect(func(): back = true; fire_pressed.emit(true))
-	_back_btn.button_up.connect(func(): back = false)
+	_fire_btn = _mk_button("GJUAJ PARA", "fire", Color("ffbc57"))
+	_back_btn = _mk_button("GJUAJ PRAPA", "back", Color("8edbff"))
+	_gas_btn = _mk_button("GAZ", "gas", Color("77e8b0"))
+	_brake_btn = _mk_button("FRENA", "brake", Color("ff9c94"))
+	_steer_btn = _mk_button("‹   TIMONI   ›", "steer", Color("b8d9ef"))
+	_layout_buttons()
+	resized.connect(_layout_buttons)
 
 
 func is_desktop() -> bool:
 	return _desktop
 
 
-func _mk_button(text: String, anchor: Vector2, off: Vector2, size: Vector2, col: Color) -> Button:
+## Public layout contract used by input checks and the HUD safe regions.
+func control_rect(zone: String) -> Rect2:
+	match zone:
+		"gas":
+			return Rect2(Vector2(size.x - EDGE - PEDAL_SIZE.x, size.y - EDGE - PEDAL_SIZE.y), PEDAL_SIZE)
+		"brake":
+			return Rect2(Vector2(EDGE, size.y - EDGE - PEDAL_SIZE.y), PEDAL_SIZE)
+		"fire":
+			return Rect2(Vector2(size.x - EDGE - FIRE_SIZE.x, size.y - 148 - FIRE_SIZE.y), FIRE_SIZE)
+		"back":
+			return Rect2(Vector2(EDGE, size.y - 148 - FIRE_SIZE.y), FIRE_SIZE)
+		"steer":
+			return Rect2(Vector2(132, size.y - 28 - STEER_SIZE.y), STEER_SIZE)
+	return Rect2()
+
+
+func zone_at(local_position: Vector2) -> String:
+	for zone in ["gas", "brake", "fire", "back", "steer"]:
+		if zone == "steer" and not Settings.touch_steer:
+			continue
+		if control_rect(zone).has_point(local_position):
+			return zone
+	return ""
+
+
+func _layout_buttons() -> void:
+	for pair in [[_fire_btn, "fire"], [_back_btn, "back"], [_gas_btn, "gas"], [_brake_btn, "brake"], [_steer_btn, "steer"]]:
+		var b: Button = pair[0]
+		if b == null:
+			continue
+		var rect := control_rect(pair[1])
+		b.position = rect.position
+		b.size = rect.size
+	if _steer_btn != null:
+		_steer_btn.visible = Settings.touch_steer
+
+
+func _mk_button(text: String, zone: String, col: Color) -> Button:
 	var b := Button.new()
+	b.name = zone.capitalize() + "Control"
 	b.text = text
-	b.anchor_left = anchor.x
-	b.anchor_right = anchor.x
-	b.anchor_top = anchor.y
-	b.anchor_bottom = anchor.y
-	b.offset_left = off.x
-	b.offset_top = off.y
-	b.offset_right = off.x + size.x
-	b.offset_bottom = off.y + size.y
 	b.focus_mode = Control.FOCUS_NONE
-	b.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Built-in mouse emulation only supports one touch. We draw with Buttons,
+	# while pointer IDs below handle simultaneous pedal, steering and firing.
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.toggle_mode = true
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(col, 0.55)
-	sb.border_color = Color(col.lightened(0.3), 0.9)
+	sb.bg_color = Color(0.04, 0.075, 0.10, 0.38)
+	sb.border_color = Color(col, 0.72)
 	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(18)
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 5
+	sb.content_margin_right = 5
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
 	b.add_theme_stylebox_override("normal", sb)
-	var sbp := sb.duplicate()
-	sbp.bg_color = Color(col.lightened(0.2), 0.85)
-	b.add_theme_stylebox_override("pressed", sbp)
+	var pressed := sb.duplicate() as StyleBoxFlat
+	pressed.bg_color = Color(col.darkened(0.35), 0.65)
+	pressed.border_color = col.lightened(0.25)
+	b.add_theme_stylebox_override("pressed", pressed)
 	b.add_theme_stylebox_override("hover", sb)
-	b.add_theme_font_size_override("font_size", 26)
+	b.add_theme_stylebox_override("hover_pressed", pressed)
+	b.add_theme_font_override("font", UiTheme.body_bold())
+	b.add_theme_font_size_override("font_size", 22 if zone in ["fire", "back", "steer"] else 24)
 	b.add_theme_color_override("font_color", Color.WHITE)
+	b.add_theme_color_override("font_pressed_color", Color.WHITE)
+	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
+	b.add_theme_constant_override("outline_size", 3)
+	if zone in ["gas", "brake"]:
+		for row in 3:
+			var rib := ColorRect.new()
+			rib.position = Vector2(24, 83 + row * 7)
+			rib.size = Vector2(48, 3)
+			rib.color = Color(col, 0.48)
+			rib.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(rib)
 	add_child(b)
 	return b
 
 
-func set_slot_label(forward: String, backward: String) -> void:
-	_fire_btn.text = forward if forward != "" else "GJUAJ"
-	_back_btn.text = backward if backward != "" else "PRAPA"
+func set_slot_label(_forward: String, _backward: String) -> void:
+	# Action names stay stable. The HUD already shows the selected power-up;
+	# replacing these labels with item names hides which direction they fire.
+	pass
 
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		var local: Vector2 = get_global_transform_with_canvas().affine_inverse() * event.position
+		if _handle_touch(event, local):
+			get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_SPACE:
+				fire = true
+				fire_pressed.emit(false)
+			KEY_SHIFT, KEY_X:
+				back = true
+				fire_pressed.emit(true)
+			KEY_Q, KEY_E:
+				_cycle = true
+			_:
+				return
+		get_viewport().set_input_as_handled()
+
+
+## Kept for direct input harnesses; normal play routes through _input().
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_handle_touch(event, event.position)
+
+
+func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 	if event is InputEventScreenTouch:
-		var st := event as InputEventScreenTouch
-		if st.pressed:
-			var zone := "gas" if st.position.x >= size.x * 0.5 else "brake"
-			_touches[st.index] = {"zone": zone, "x0": st.position.x}
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			var zone := zone_at(local)
+			if zone.is_empty():
+				return false
+			_touches[touch.index] = {"zone": zone}
+			if zone == "fire":
+				fire = true
+				fire_pressed.emit(false)
+			elif zone == "back":
+				back = true
+				fire_pressed.emit(true)
+			elif zone == "steer":
+				_set_pad(local.x)
 		else:
-			_touches.erase(st.index)
+			if not _touches.has(touch.index):
+				return false
+			_touches.erase(touch.index)
 		_recount()
-		accept_event()
-	elif event is InputEventScreenDrag:
-		var sd := event as InputEventScreenDrag
-		if _touches.has(sd.index) and Settings.touch_steer and _touches[sd.index].zone == "brake":
-			_pad_steer = clampf((sd.position.x - float(_touches[sd.index].x0)) / PAD_FULL_PX, -1.0, 1.0)
-		accept_event()
+		return true
+	if event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		if not _touches.has(drag.index):
+			return false
+		if _touches[drag.index].zone == "steer":
+			_set_pad(local.x)
+		return true
+	return false
 
 
-func _recount() -> void:
-	gas = false
-	brake = false
-	for t in _touches.values():
-		if t.zone == "gas":
-			gas = true
-		else:
-			brake = true
-	if not brake and Settings.touch_steer:
+func _set_pad(x: float) -> void:
+	var rect := control_rect("steer")
+	_pad_steer = clampf((x - rect.get_center().x) / (rect.size.x * 0.38), -1.0, 1.0)
+	if absf(_pad_steer) < 0.1:
 		_pad_steer = 0.0
 
 
+func _held(zone: String) -> bool:
+	for touch in _touches.values():
+		if touch.zone == zone:
+			return true
+	return false
+
+
+func _recount() -> void:
+	gas = _held("gas")
+	brake = _held("brake")
+	if not _held("steer"):
+		_pad_steer = 0.0
+	for pair in [[_gas_btn, "gas"], [_brake_btn, "brake"], [_fire_btn, "fire"], [_back_btn, "back"], [_steer_btn, "steer"]]:
+		var button: Button = pair[0]
+		if button != null:
+			button.set_pressed_no_signal(_held(pair[1]))
+
+
 func _process(dt: float) -> void:
-	# keyboard (desktop testing)
+	# Merge keyboard and touch state each frame so neither leaves a stuck pedal.
 	var kb_steer := Input.get_axis("ui_left", "ui_right")
 	var kb_gas := Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W)
 	var kb_brake := Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S)
 	_kb = kb_steer != 0.0 or kb_gas or kb_brake
-	if _desktop:
-		if kb_gas:
-			gas = true
-		elif _touches.is_empty():
-			gas = false
-		if kb_brake:
-			brake = true
-		elif _touches.is_empty():
-			brake = false
+	gas = _held("gas") or (_desktop and kb_gas)
+	brake = _held("brake") or (_desktop and kb_brake)
+	if _steer_btn != null:
+		_steer_btn.visible = Settings.touch_steer
 	if kb_steer != 0.0:
 		steer = kb_steer
 		return
 	if Settings.touch_steer:
 		steer = _pad_steer
 		return
-	# tilt: component of gravity along the screen's horizontal axis -> roll
-	var g := Input.get_accelerometer()
-	var mag := g.length()
-	if mag < 0.5:
+	var gravity := Input.get_accelerometer()
+	var magnitude := gravity.length()
+	if magnitude < 0.5:
 		tilt_ok = false
 		steer = move_toward(steer, 0.0, dt * TILT_SMOOTH)
 		return
 	tilt_ok = true
-	# landscape: the screen x axis is the device's long axis; Godot already
-	# reports the accelerometer in screen orientation on Android
-	var lat := clampf(g.x / mag, -1.0, 1.0)
-	var roll := asin(lat) * (-1.0 if Settings.tilt_invert else 1.0)
+	# Android reports acceleration in the current screen orientation.
+	var lateral := clampf(gravity.x / magnitude, -1.0, 1.0)
+	var roll := asin(lateral) * (-1.0 if Settings.tilt_invert else 1.0)
 	roll_deg = rad_to_deg(roll)
 	var full := deg_to_rad(float(Settings.TILT_FULL[clampi(Settings.tilt_sens, 0, 2)]))
 	var dead := deg_to_rad(DEAD_DEG)
@@ -149,15 +256,16 @@ func _process(dt: float) -> void:
 	steer += (target - steer) * minf(1.0, dt * TILT_SMOOTH)
 
 
-## Write the current controls into a CarState.
-func apply(c: CarState) -> void:
-	c.ctrl.steer = steer
-	c.ctrl.gas = gas
-	c.ctrl.brake = brake
-	c.ctrl.fire = fire
-	c.ctrl.back = back
+func apply(car: CarState) -> void:
+	car.ctrl.steer = steer
+	car.ctrl.gas = gas
+	car.ctrl.brake = brake
+	car.ctrl.fire = fire
+	car.ctrl.back = back
+	car.ctrl.cycle = _cycle
 	fire = false
 	back = false
+	_cycle = false
 
 
 func reset_controls() -> void:
@@ -168,6 +276,8 @@ func reset_controls() -> void:
 	brake = false
 	fire = false
 	back = false
+	_cycle = false
+	_recount()
 
 
 func _notification(what: int) -> void:

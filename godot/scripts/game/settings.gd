@@ -4,6 +4,7 @@ extends Node
 signal changed
 
 const PATH := "user://settings.cfg"
+const PRESENTATION_VERSION := 1
 
 # tilt sensitivity: index into TILT_FULL (degrees for full steer)
 const TILT_FULL := [32.0, 23.0, 15.0]
@@ -11,10 +12,10 @@ const TILT_LABELS := ["E ulët", "Normale", "E lartë"]
 
 var tilt_sens := 1
 var tilt_invert := false
-var touch_steer := false        # touch-pad fallback instead of tilt
+var touch_steer := true         # visible touch pad; tilt remains selectable
 var assist := true
 var difficulty := 1
-var dynamic_weather := true
+var dynamic_weather := false
 var haptics := true
 var quality := "auto"           # "auto" | "low" | "medium" | "high"
 var vol_master := 1.0
@@ -27,7 +28,8 @@ var show_fps := false
 var car_id := "benxi"
 var driver := 0
 var city_id := "tirane"
-var env_override := ""          # "" = city default
+var env_override := "day"       # daylight for the focused Tirana build
+var presentation_version := 0
 var laps_override := 0          # 0 = city default
 var first_run := true
 var stats := {"races": 0, "wins": 0, "podiums": 0, "best_laps": {}}
@@ -45,6 +47,15 @@ func mark_pw(type: String) -> void:
 
 func _ready() -> void:
 	load_settings()
+	# Apply the readability pass once to existing installs, including saved night
+	# and weather choices. Subsequent player settings remain persistent.
+	if presentation_version < PRESENTATION_VERSION:
+		city_id = "tirane"
+		env_override = "day"
+		dynamic_weather = false
+		touch_steer = true
+		presentation_version = PRESENTATION_VERSION
+		save()
 
 
 func load_settings() -> void:
@@ -74,6 +85,7 @@ func load_settings() -> void:
 	first_run = cf.get_value("meta", "first_run", first_run)
 	stats = cf.get_value("meta", "stats", stats)
 	seen_pws = cf.get_value("meta", "seen_pws", seen_pws)
+	presentation_version = cf.get_value("meta", "presentation_version", 0)
 
 
 func save() -> void:
@@ -101,6 +113,7 @@ func save() -> void:
 	cf.set_value("meta", "first_run", first_run)
 	cf.set_value("meta", "stats", stats)
 	cf.set_value("meta", "seen_pws", seen_pws)
+	cf.set_value("meta", "presentation_version", presentation_version)
 	cf.save(PATH)
 	changed.emit()
 

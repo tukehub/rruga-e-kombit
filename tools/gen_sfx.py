@@ -1,4 +1,4 @@
-"""Procedural sound effects for Kafshim asfalti (CC0, generated).
+"""Procedural sound effects for Vortex (CC0, generated).
 
 Writes 16-bit mono WAVs into godot/assets/sfx. Loops carry a 'smpl' chunk so
 Godot's WAV importer picks up forward looping automatically.

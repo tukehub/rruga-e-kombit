@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128">
+<defs><linearGradient id="rim" x1="0" y1="0" x2="0" y2="1"><stop stop-color="white"/><stop offset=".3" stop-color="#dfe9ff"/><stop offset="1" stop-color="#dfe9ff"/></linearGradient><radialGradient id="face"><stop stop-color="#dfe9ff" stop-opacity=".75"/><stop offset="1" stop-color="#101c30" stop-opacity=".94"/></radialGradient></defs>
+<path d="m64 4 52 30v60l-52 30-52-30V34Z" fill="#07111e" fill-opacity=".8" stroke="url(#rim)" stroke-width="4"/>
+<path d="m64 11 45 26v53l-45 26-45-26V37Z" fill="url(#face)" stroke="#dfe9ff" stroke-width="1.5"/>
+<path d="m22 39 42-24 42 24v9L64 29 22 48Z" fill="white" fill-opacity=".13"/>
+<g fill="white"><path d="m64 25 33 13-5 38-28 27-28-27-5-38Z"/><path d="m64 36 22 9-4 27-18 19Z" fill="#536c92"/></g>
+</svg>

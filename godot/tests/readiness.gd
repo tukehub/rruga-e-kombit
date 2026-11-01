@@ -62,20 +62,36 @@ func _ready() -> void:
 	var controls := RaceInput.new()
 	add_child(controls)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	controls.size = Vector2(1920, 1080)
+	controls.size = Vector2(1280, 720)
 	var touch := InputEventScreenTouch.new()
 	touch.index = 1
-	touch.position = Vector2(1600, 500)
+	touch.position = controls.control_rect("gas").get_center()
 	touch.pressed = true
 	controls._gui_input(touch)
-	check(controls.gas and not controls.brake, "right touch gas")
+	check(controls.gas and not controls.brake, "accelerator pedal")
 	touch = touch.duplicate()
 	touch.index = 2
-	touch.position.x = 300
+	touch.position = controls.control_rect("brake").get_center()
 	controls._gui_input(touch)
 	check(controls.gas and controls.brake, "simultaneous gas/brake")
+	touch = touch.duplicate()
+	touch.index = 3
+	touch.position = controls.control_rect("fire").get_center()
+	controls._gui_input(touch)
+	check(controls.gas and controls.brake and controls.fire, "fire while both pedals held")
+	touch = touch.duplicate()
+	touch.index = 2
+	touch.pressed = false
+	controls._gui_input(touch)
+	check(controls.gas and not controls.brake, "one release preserves other held pedal")
 	controls.reset_controls()
 	check(not controls.gas and not controls.brake, "focus/pause clears held touches")
+	touch = touch.duplicate()
+	touch.index = 4
+	touch.pressed = true
+	touch.position = controls.size * 0.5
+	controls._gui_input(touch)
+	check(not controls.gas and not controls.brake, "clear road is not an invisible pedal")
 	controls.queue_free()
 	var sky := SkyEnv.new()
 	add_child(sky)

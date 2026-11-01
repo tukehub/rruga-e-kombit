@@ -1,4 +1,4 @@
-# Kafshim asfalti — Godot 4 rewrite plan
+# Vortex — Godot 4 rewrite plan
 
 Original architecture decisions (retained; see STATUS.md for current verification):
 - **Engine: Godot 4.4.1 stable** (use matching official binary and export templates). GDScript only; matching official Android Gradle export template (see STATUS.md for the direct-export manifest issue).
@@ -41,7 +41,7 @@ Rendering: `Track` → `RoadMesh` (asphalt + kerbs + shoulders conforming to the
 | Roads, buildings, land use, water | OpenStreetMap via Overpass API | ODbL 1.0 | "© OpenStreetMap contributors" |
 | Terrain textures: `aerial_grass_rock`, `asphalt_02`, `asphalt_04`, `rocky_terrain_02`, `concrete_floor_02`, `cobblestone_floor_08`, `coast_sand_rocks_02`, `rock_face_03` | Poly Haven | CC0 | "Textures: Poly Haven (CC0)" |
 | Skies: `kloofendal_48d_partly_cloudy_puresky` (day), `qwantani_dusk_2_puresky` (sunset), `belfast_sunset_puresky` (golden), `satara_night`, `moonless_golf` (night), `kiara_1_dawn` (dusk) | Poly Haven | CC0 | "HDRIs: Poly Haven (CC0)" |
-| Six cars (Benxi GT, Uragani V10, Shigjeta RS, Murrani 4x4, Korrieri i Linjës, Kërcyesi GTI) | `gen_cars.py`, this repo | CC0 (ours) | — |
+| One Vortex GT, six paint variants | `gen_cars.py`, this repo | CC0 (ours) | — |
 | Landmarks (Skanderbeg statue, Pyramid, Flag Monument, castles, Painted Mosque, …) | `landmarks.gd`, this repo | CC0 (ours) | — |
 | Sound effects | `gen_sfx.py`, this repo | CC0 (ours) | — |
 | Fonts Big Shoulders Display, Chakra Petch | Google Fonts via `@fontsource` | SIL OFL 1.1 | font names |
@@ -66,7 +66,7 @@ No Google 3D Tiles, no photos. Everything above is reproducible with `python too
 ## 4. Milestone 1 (this delivery)
 
 - Godot project boots to a menu, starts a race in **Tiranë** on a loop Skanderbeg Square → Bulevardi Dëshmorët e Kombit → Mother Teresa Square → Blloku → back, built from OSM + DEM.
-- One car (Benxi GT) with spinning wheels and lights; bots run (the sim is complete) but the content pass for all six cars is Milestone 2.
+- One shared Vortex GT with spinning wheels and lights; six drivers use distinct paint colors.
 - Tilt steering (accelerometer, sensitivity, invert) with touch-pad fallback; right half gas, left half brake (brake+steer drifts); centre fire button, second button fires backwards.
 - Night Tirana look: HDR glow, emissive windows, street lamps, SSAO (high), wet reflections ready behind the `wetness` uniform.
 - GitHub Actions builds a signed release APK on every push to `main` and publishes `rruga-e-kombit.apk` with `versionCode = run_number`, `versionName = 1.0.<run_number>`.

@@ -47,16 +47,15 @@ func _make_proj(p: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	add_child(root)
 	if p.kind == "eagle":
-		var body := CapsuleMesh.new()
-		body.radius = 0.28
-		body.height = 1.6
-		var mi := _mk(body, _mat("eagle", Color.html(Data.PW.eagle.col), 3.0))
-		mi.rotation.x = PI * 0.5
-		root.add_child(mi)
-		var glow := SphereMesh.new()
-		glow.radius = 0.6
-		glow.height = 1.2
-		root.add_child(_mk(glow, _mat("eagle_glow", Color.html(Data.PW.eagle.col), 1.5, 0.3)))
+		# Keep Shqiponja recognizable after firing, as in the Three.js version.
+		var icon := Sprite3D.new()
+		icon.name = "Icon"
+		icon.texture = PowerupIcons.texture("eagle")
+		icon.pixel_size = 0.0085
+		icon.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		icon.shaded = false
+		icon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(icon)
 		var l := OmniLight3D.new()
 		l.light_color = Color.html(Data.PW.eagle.col)
 		l.light_energy = 2.0
@@ -64,9 +63,14 @@ func _make_proj(p: Dictionary) -> Node3D:
 		l.shadow_enabled = false
 		root.add_child(l)
 	else:
-		var bolt := BoxMesh.new()
-		bolt.size = Vector3(0.35, 0.35, 3.2)
-		root.add_child(_mk(bolt, _mat("bolt", Color.html(Data.PW.bolt.col), 4.0)))
+		var bolt := CylinderMesh.new()
+		bolt.top_radius = 0.08
+		bolt.bottom_radius = 0.16
+		bolt.height = 3.2
+		bolt.radial_segments = 8
+		var beam := _mk(bolt, _mat("bolt", Color(0.70, 0.88, 1.0), 2.6))
+		beam.rotation.x = PI * 0.5
+		root.add_child(beam)
 		var l := OmniLight3D.new()
 		l.light_color = Color.html(Data.PW.bolt.col)
 		l.light_energy = 1.6
@@ -161,6 +165,10 @@ func _process(dt: float) -> void:
 			n.look_at(pos + tan, Vector3.UP)
 		if p.kind == "bolt":
 			n.rotation.z = _t * 20.0
+		else:
+			var icon := n.get_node_or_null("Icon") as Sprite3D
+			if icon:
+				icon.rotation.z = sin(_t * 15.0) * 0.15
 	for m in race.mines:
 		var n: Node3D = _nodes.get(m.id)
 		if n == null:

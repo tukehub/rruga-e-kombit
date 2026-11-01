@@ -9,7 +9,7 @@ uniform float half_w = 10.0;
 uniform float track_len = 5000.0;
 uniform float wetness : hint_range(0.0, 1.0) = 0.0;
 uniform float snow : hint_range(0.0, 1.0) = 0.0;
-uniform vec3 asphalt_tint : source_color = vec3(0.55, 0.55, 0.58);
+uniform vec3 asphalt_tint : source_color = vec3(0.90, 0.92, 0.96);
 uniform vec3 line_white : source_color = vec3(0.9, 0.9, 0.86);
 uniform vec3 line_yellow : source_color = vec3(0.95, 0.75, 0.2);
 uniform float lane_count = 4.0;
@@ -47,7 +47,7 @@ void fragment() {
 	float lane_w = 2.0 * half_w / lane_count;
 	float lane_pos = fract((across + half_w) / lane_w);
 	float wear = exp(-pow((lane_pos - 0.3) * 6.0, 2.0)) + exp(-pow((lane_pos - 0.7) * 6.0, 2.0));
-	asphalt *= 1.0 - 0.18 * wear;
+	asphalt *= 1.0 - 0.09 * wear;
 
 	// lane markings: dashed white between lanes, solid yellow centre, solid white edges
 	float edge = 1.0 - smoothstep(0.15, 0.25, abs(abs(across) - (half_w - 0.35)));
@@ -59,7 +59,7 @@ void fragment() {
 		if (abs(float(i) * 2.0 - lane_count) < 0.5) continue; // centre handled separately
 		lane_line = max(lane_line, (1.0 - smoothstep(0.1, 0.18, abs(across - lx))) * dash);
 	}
-	float worn = 0.6 + 0.4 * vnoise(vec2(across, along) * 1.7);
+	float worn = 0.88 + 0.12 * vnoise(vec2(across, along) * 1.7);
 	vec3 col = asphalt;
 	col = mix(col, line_white * worn, edge * 0.9);
 	col = mix(col, line_white * worn, lane_line * 0.85);
@@ -82,7 +82,7 @@ void fragment() {
 	float puddle = smoothstep(0.62 - 0.25 * wetness, 0.72 - 0.25 * wetness, pud) * wetness;
 	puddle *= 0.5 + 0.5 * smoothstep(0.2, 0.8, abs(across) / half_w);
 	float wet = wetness * 0.75 + puddle;
-	col *= 1.0 - 0.5 * wet;
+	col *= 1.0 - 0.25 * clamp(wet, 0.0, 1.0);
 	rough = mix(rough, 0.08, clamp(wet, 0.0, 1.0));
 	rough = mix(rough, 0.03, puddle);
 	nrm = mix(nrm, vec3(0.5, 0.5, 1.0), puddle);
@@ -97,5 +97,5 @@ void fragment() {
 	METALLIC = 0.0;
 	SPECULAR = mix(0.5, 0.8, wet);
 	NORMAL_MAP = nrm;
-	NORMAL_MAP_DEPTH = mix(0.8, 0.2, wet);
+	NORMAL_MAP_DEPTH = mix(0.45, 0.2, clamp(wet, 0.0, 1.0));
 }

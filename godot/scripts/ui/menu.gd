@@ -10,13 +10,11 @@ var back_to := "title"
 var garage_car: CarVisual
 var garage_pivot: Node3D
 var _garage_t := 0.0
-var _city_btns := {}
 var _car_btns := {}
 var _drv_btns := {}
 var _diff_btns: Array[Button] = []
 var _drv_tag: Label
 var _car_desc: Label
-var _city_info: Label
 var _set_rows := {}
 
 
@@ -32,10 +30,10 @@ func _build_garage() -> void:
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
 	e.background_mode = Environment.BG_COLOR
-	e.background_color = UiTheme.BG
+	e.background_color = Color("273445")
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(0.35, 0.3, 0.45)
-	e.ambient_light_energy = 0.6
+	e.ambient_light_color = Color(0.78, 0.85, 1.0)
+	e.ambient_light_energy = 0.95
 	e.tonemap_mode = Environment.TONE_MAPPER_ACES
 	e.glow_enabled = true
 	e.glow_intensity = 0.5
@@ -46,7 +44,7 @@ func _build_garage() -> void:
 	add_child(env)
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-42, 35, 0)
-	key.light_energy = 2.2
+	key.light_energy = 2.7
 	key.light_color = Color(1.0, 0.95, 0.9)
 	key.shadow_enabled = true
 	add_child(key)
@@ -67,17 +65,18 @@ func _build_garage() -> void:
 	pm.size = Vector2(40, 40)
 	ground.mesh = pm
 	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color(0.06, 0.055, 0.08)
+	fm.albedo_color = Color(0.22, 0.27, 0.33)
 	fm.roughness = 0.25
 	fm.metallic = 0.3
 	ground.material_override = fm
 	add_child(ground)
 	garage_pivot = Node3D.new()
+	garage_pivot.position.x = 4.0
 	add_child(garage_pivot)
 	var cam := Camera3D.new()
 	add_child(cam)
-	cam.position = Vector3(5.2, 1.9, 6.0)
-	cam.look_at(Vector3(0.6, 0.6, 0))
+	cam.position = Vector3(8.0, 3.3, 11.0)
+	cam.look_at(Vector3(0.0, 0.65, 0.0))
 	cam.fov = 38
 	cam.current = true
 	_set_garage_car(str(Game.race_opts.car))
@@ -90,7 +89,7 @@ func _set_garage_car(id: String) -> void:
 	garage_car = CarVisual.new()
 	garage_pivot.add_child(garage_car)
 	garage_car.setup(def, Color.html(def.color), false)
-	garage_car.set_night(1.0)
+	garage_car.set_night(0.0)
 
 
 func _process(dt: float) -> void:
@@ -111,7 +110,6 @@ func _build_ui() -> void:
 	ui.theme = UiTheme.theme()
 	layer.add_child(ui)
 	pages.title = _page_title()
-	pages.city = _page_city()
 	pages.car = _page_car()
 	pages.settings = _page_settings()
 	pages.help = _page_help()
@@ -121,12 +119,15 @@ func _build_ui() -> void:
 
 
 func show_page(name: String) -> void:
+	if name == "city":
+		name = "title"
+	Game.race_opts.city = "tirane"
 	page = name
 	for k in pages:
 		pages[k].visible = (k == name)
 	if name == "settings":
 		_refresh_settings()
-	if name == "city":
+	if name == "title":
 		_refresh_city()
 	if name == "car":
 		_refresh_car()
@@ -152,7 +153,7 @@ func _margin(parent: Control, m := 36) -> MarginContainer:
 
 
 func _eyebrow(text: String) -> Label:
-	var l := UiTheme.label(text.to_upper(), 15, UiTheme.CYAN)
+	var l := UiTheme.label(text.to_upper(), 22, UiTheme.CYAN)
 	l.add_theme_constant_override("line_spacing", 0)
 	return l
 
@@ -196,253 +197,140 @@ func _seg_set(h: HBoxContainer, idx: int) -> void:
 
 # ------------------------------------------------------------------ title
 func _page_title() -> Control:
-	var c := _page(0.35)
+	var c := _page(0.15)
+	var panel := UiTheme.panel(24)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	panel.offset_left = 28
+	panel.offset_right = 592
+	panel.offset_top = 24
+	panel.offset_bottom = -24
+	panel.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.025, 0.055, 0.09, 0.9), Color(1, 1, 1, 0.16), 24))
+	c.add_child(panel)
 	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
-	v.offset_left = 70
-	v.offset_top = -230
-	v.offset_bottom = 230
-	v.offset_right = 760
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 10)
-	c.add_child(v)
-	v.add_child(_eyebrow("Garë me fuqi"))
-	var h := UiTheme.headline(Data.GAME_NAME.to_upper(), 112, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
-	h.add_theme_color_override("font_color", UiTheme.TEXT)
-	v.add_child(h)
-	var tag := UiTheme.label("Pa frena, pa patentë, pa mëshirë. Gjashtë qytete, pesë shoferë dhe asfalt që kafshon.", 20, UiTheme.MUTED)
-	tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tag.custom_minimum_size.x = 620
+	v.add_theme_constant_override("separation", 12)
+	panel.add_child(v)
+	v.add_child(_eyebrow("GARË ARKADE · TIRANË"))
+	v.add_child(UiTheme.headline("VORTEX", 96, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	var tag := UiTheme.label("Shpejtësi. Fuqi. Vendi i parë.", 26, UiTheme.TEXT)
 	v.add_child(tag)
-	v.add_child(UiTheme.spacer(18))
-	var play := UiTheme.button("Luaj", UiTheme.PINK.darkened(0.2), 300)
+	v.add_child(UiTheme.spacer(4))
+	v.add_child(UiTheme.label("TIRANË  /  2 XHIRO", 27, UiTheme.CYAN))
+	var names := ["E lehtë", "Normale", "E fortë"]
+	var difficulty := _seg(names, func(i: int): Game.race_opts.diff = i; _refresh_city())
+	_diff_btns.clear()
+	for b in difficulty.get_children():
+		b.custom_minimum_size = Vector2(150, 50)
+		_diff_btns.append(b)
+	v.add_child(difficulty)
+	var play := UiTheme.button("Nisu!", UiTheme.CYAN.darkened(0.45))
+	play.custom_minimum_size.y = 70
 	play.add_theme_font_size_override("font_size", 34)
-	play.custom_minimum_size.y = 72
-	play.pressed.connect(func(): Sfx.ui_click(); show_page("city"))
+	play.pressed.connect(func(): Sfx.ui_click(); Game.race_opts.city = "tirane"; Game.start_race())
 	v.add_child(play)
+	var customize := UiTheme.button("Ngjyra dhe shoferi")
+	customize.custom_minimum_size.y = 52
+	customize.pressed.connect(func(): Sfx.ui_click(); show_page("car"))
+	v.add_child(customize)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
 	for pair in [["Si luhet", "help"], ["Cilësimet", "settings"], ["Kredite", "credits"]]:
-		var b := UiTheme.button(pair[0], Color(0, 0, 0, 0), 150)
+		var b := UiTheme.button(pair[0])
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size.y = 50
+		b.add_theme_font_size_override("font_size", 22)
 		var target: String = pair[1]
 		b.pressed.connect(func(): Sfx.ui_click(); back_to = "title"; show_page(target))
 		row.add_child(b)
-	var st: Dictionary = Settings.stats
-	var foot := UiTheme.label("Gara: %d · Fitore: %d · Podiume: %d" % [int(st.races), int(st.wins), int(st.podiums)], 15, UiTheme.MUTED)
-	foot.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	foot.offset_left = 70
-	foot.offset_top = -40
-	foot.offset_bottom = -16
-	foot.offset_right = 600
-	c.add_child(foot)
-	var ver := UiTheme.label("v" + str(ProjectSettings.get_setting("application/config/version", "dev")), 14, UiTheme.MUTED, false, HORIZONTAL_ALIGNMENT_RIGHT)
-	ver.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	ver.offset_left = -300
-	ver.offset_right = -24
-	ver.offset_top = -40
-	ver.offset_bottom = -16
-	c.add_child(ver)
-	return c
-
-
-# ------------------------------------------------------------------ city
-func _page_city() -> Control:
-	var c := _page(0.7)
-	var mc := _margin(c)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
-	mc.add_child(v)
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 30)
-	v.add_child(top)
-	var tl := VBoxContainer.new()
-	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tl.add_child(_eyebrow("Hapi 1 nga 2"))
-	tl.add_child(UiTheme.headline("Ku luajmë?", 44, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
-	top.add_child(tl)
-	var td := VBoxContainer.new()
-	td.add_child(_eyebrow("Vështirësia"))
-	var names := []
-	for d in Data.DIFFS:
-		names.append(d.name)
-	var seg := _seg(names, func(i: int): Game.race_opts.diff = i; _refresh_city())
-	td.add_child(seg)
-	top.add_child(td)
-	_diff_btns.clear()
-	for b in seg.get_children():
-		_diff_btns.append(b)
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(grid)
-	for city in Data.CITIES:
-		var has_data := FileAccess.file_exists("res://assets/cities/%s/track.json" % city.id)
-		var b := Button.new()
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(0, 118)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.toggle_mode = true
-		b.disabled = not has_data
-		var neon := Color.html(city.neon)
-		var inner := VBoxContainer.new()
-		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		inner.offset_left = 16
-		inner.offset_top = 10
-		inner.offset_right = -16
-		inner.offset_bottom = -10
-		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inner.add_theme_constant_override("separation", 2)
-		inner.add_child(UiTheme.label(str(city.region).to_upper(), 13, neon))
-		inner.add_child(UiTheme.headline(city.name, 38, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
-		var sub := UiTheme.label(("%s · %d xhiro" % [Data.ENV[city.env].label, int(city.laps)]) if has_data else "Së shpejti", 15, UiTheme.MUTED if has_data else UiTheme.AMBER)
-		inner.add_child(sub)
-		b.add_child(inner)
-		b.pressed.connect(func():
-			Sfx.ui_click()
-			Game.race_opts.city = city.id
-			_refresh_city())
-		grid.add_child(b)
-		_city_btns[city.id] = {"btn": b, "neon": neon}
-	_city_info = UiTheme.label("", 17, UiTheme.MUTED)
-	_city_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(_city_info)
-	v.add_child(_bottombar(func(): show_page("title"), "Vazhdo", func(): show_page("car")))
 	return c
 
 
 func _refresh_city() -> void:
-	for id in _city_btns:
-		var e: Dictionary = _city_btns[id]
-		var b: Button = e.btn
-		var sel: bool = (id == Game.race_opts.city)
-		b.button_pressed = sel
-		var neon: Color = e.neon
-		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(neon, 0.22 if sel else 0.05), neon if sel else Color(1, 1, 1, 0.14), 16, 2))
-		b.add_theme_stylebox_override("hover", UiTheme.flat(Color(neon, 0.3 if sel else 0.12), neon, 16, 2))
-		b.add_theme_stylebox_override("pressed", UiTheme.flat(Color(neon, 0.3), neon, 16, 2))
-	var city: Dictionary = Data.city(Game.race_opts.city)
-	_city_info.text = "%s  —  %s" % [city.blurb, ", ".join(city.landmarks)]
 	for i in _diff_btns.size():
 		var b := _diff_btns[i]
-		var sel: bool = (i == int(Game.race_opts.diff))
-		b.button_pressed = sel
-		if sel:
-			b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.3), UiTheme.CYAN, 12))
-		else:
-			b.remove_theme_stylebox_override("normal")
+		var selected: bool = i == int(Game.race_opts.diff)
+		b.button_pressed = selected
+		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.25) if selected else Color(1, 1, 1, 0.06), UiTheme.CYAN if selected else Color(1, 1, 1, 0.2), 12))
 
 
-# ------------------------------------------------------------------ car
+# ------------------------------------------------------------------ paint / driver
 func _page_car() -> Control:
 	var c := _page(0.25)
-	var mc := _margin(c)
+	var mc := _margin(c, 32)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 12)
 	mc.add_child(v)
-	v.add_child(_eyebrow("Hapi 2 nga 2"))
-	v.add_child(UiTheme.headline("Shoferi dhe makina", 44, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	v.add_child(_eyebrow("VORTEX · GARAZHI"))
+	v.add_child(UiTheme.headline("Stili yt. Gara jote.", 54, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 30)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(body)
+	var panel := UiTheme.panel(20)
+	panel.custom_minimum_size.x = 550
+	body.add_child(panel)
 	var left := VBoxContainer.new()
-	left.custom_minimum_size.x = 560
-	left.add_theme_constant_override("separation", 8)
-	body.add_child(left)
-	left.add_child(_eyebrow("Kush je ti"))
-	var drow := HFlowContainer.new()
-	drow.add_theme_constant_override("h_separation", 8)
-	drow.add_theme_constant_override("v_separation", 8)
-	left.add_child(drow)
-	for i in Data.DRIVERS.size():
-		var d: Dictionary = Data.DRIVERS[i]
-		var b := UiTheme.button(d.name)
-		b.toggle_mode = true
-		var idx := i
-		b.pressed.connect(func(): Sfx.ui_click(); Game.race_opts.driver = idx; _refresh_car())
-		drow.add_child(b)
-		_drv_btns[i] = b
-	_drv_tag = UiTheme.label("", 16, UiTheme.MUTED)
-	left.add_child(_drv_tag)
-	left.add_child(UiTheme.spacer(6))
-	left.add_child(_eyebrow("Makina"))
-	var clist := VBoxContainer.new()
-	clist.add_theme_constant_override("separation", 6)
-	left.add_child(clist)
+	left.add_theme_constant_override("separation", 14)
+	panel.add_child(left)
+	left.add_child(UiTheme.label("NGJYRA E MAKINËS", 24, UiTheme.CYAN))
+	var paints := GridContainer.new()
+	paints.columns = 3
+	paints.add_theme_constant_override("h_separation", 10)
+	paints.add_theme_constant_override("v_separation", 10)
+	left.add_child(paints)
 	for car in Data.CARS:
-		var b := Button.new()
-		b.focus_mode = Control.FOCUS_NONE
+		var b := UiTheme.button("●")
+		b.custom_minimum_size = Vector2(158, 72)
+		b.add_theme_font_size_override("font_size", 42)
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(state, Color.html(car.color).lightened(0.15))
 		b.toggle_mode = true
-		b.custom_minimum_size.y = 52
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		var h := HBoxContainer.new()
-		h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		h.offset_left = 14
-		h.offset_right = -14
-		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		h.add_theme_constant_override("separation", 12)
-		var sw := ColorRect.new()
-		sw.color = Color.html(car.color)
-		sw.custom_minimum_size = Vector2(16, 16)
-		sw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		sw.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		h.add_child(sw)
-		var nm := UiTheme.label(car.name, 22, UiTheme.TEXT, true)
-		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		h.add_child(nm)
-		var stats := UiTheme.label("%d km/h · %s" % [int(float(car.vmax) * 3.6), _car_trait(car)], 14, UiTheme.MUTED)
-		stats.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		h.add_child(stats)
-		b.add_child(h)
+		b.tooltip_text = str(car.name)
 		b.pressed.connect(func():
 			Sfx.ui_click()
 			Game.race_opts.car = car.id
 			_set_garage_car(car.id)
 			_refresh_car())
-		clist.add_child(b)
+		paints.add_child(b)
 		_car_btns[car.id] = b
-	_car_desc = UiTheme.label("", 16, UiTheme.MUTED)
-	_car_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_car_desc = UiTheme.label("", 24, UiTheme.TEXT)
 	left.add_child(_car_desc)
-	v.add_child(_bottombar(func(): show_page("city"), "Nisu!", func(): Game.start_race()))
+	left.add_child(UiTheme.label("SHOFERI", 24, UiTheme.CYAN))
+	var drivers := GridContainer.new()
+	drivers.columns = 3
+	drivers.add_theme_constant_override("h_separation", 10)
+	drivers.add_theme_constant_override("v_separation", 8)
+	left.add_child(drivers)
+	for i in Data.DRIVERS.size():
+		var d: Dictionary = Data.DRIVERS[i]
+		var b := UiTheme.button(d.name)
+		b.custom_minimum_size = Vector2(158, 50)
+		b.toggle_mode = true
+		var idx := i
+		b.pressed.connect(func(): Sfx.ui_click(); Game.race_opts.driver = idx; _refresh_car())
+		drivers.add_child(b)
+		_drv_btns[i] = b
+	_drv_tag = UiTheme.label("", 22, UiTheme.MUTED)
+	_drv_tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	left.add_child(_drv_tag)
+	v.add_child(_bottombar(func(): show_page("title"), "Nisu!", func(): Game.race_opts.city = "tirane"; Game.start_race()))
 	return c
-
-
-func _car_trait(car: Dictionary) -> String:
-	if float(car.grip) >= 1.1:
-		return "kap si ngjitës"
-	if float(car.hp) >= 140.0:
-		return "tank"
-	if float(car.vmax) >= 61.0:
-		return "raketë"
-	if float(car.acc) >= 18.0:
-		return "niset si plumb"
-	return "e balancuar"
 
 
 func _refresh_car() -> void:
 	for i in _drv_btns:
 		var b: Button = _drv_btns[i]
-		var d: Dictionary = Data.DRIVERS[i]
-		var sel: bool = (i == int(Game.race_opts.driver))
-		b.button_pressed = sel
-		var col := Color.html(d.col)
-		if sel:
-			b.add_theme_stylebox_override("normal", UiTheme.flat(Color(col, 0.35), col, 12))
-		else:
-			b.add_theme_stylebox_override("normal", UiTheme.flat(Color(col, 0.08), Color(col, 0.4), 12))
+		var selected: bool = i == int(Game.race_opts.driver)
+		b.button_pressed = selected
+		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.25) if selected else Color(1, 1, 1, 0.05), UiTheme.CYAN if selected else Color(1, 1, 1, 0.15), 12))
 	var drv: Dictionary = Data.DRIVERS[clampi(int(Game.race_opts.driver), 0, Data.DRIVERS.size() - 1)]
-	_drv_tag.text = "„%s“" % drv.tag
+	_drv_tag.text = str(drv.tag)
 	for id in _car_btns:
 		var b: Button = _car_btns[id]
-		var sel: bool = (id == Game.race_opts.car)
-		b.button_pressed = sel
-		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.22) if sel else Color(1, 1, 1, 0.05), UiTheme.CYAN if sel else Color(1, 1, 1, 0.12), 12))
-	_car_desc.text = str(Data.car(Game.race_opts.car).desc)
+		var selected: bool = id == Game.race_opts.car
+		b.button_pressed = selected
+		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.22) if selected else Color(1, 1, 1, 0.06), UiTheme.CYAN if selected else Color(1, 1, 1, 0.2), 12))
+	_car_desc.text = "Vortex GT · " + str(Data.car(Game.race_opts.car).name)
 
 
 # ------------------------------------------------------------------ settings
@@ -495,7 +383,7 @@ func _page_settings() -> Control:
 func _set_row(list: VBoxContainer, key: String, title: String, options: Array, on_pick: Callable) -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
-	var l := UiTheme.label(title, 20)
+	var l := UiTheme.label(title, 25)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(l)
@@ -510,7 +398,7 @@ func _set_row(list: VBoxContainer, key: String, title: String, options: Array, o
 func _set_slider(list: VBoxContainer, key: String, title: String, on_change: Callable) -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
-	var l := UiTheme.label(title, 20)
+	var l := UiTheme.label(title, 25)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(l)
@@ -567,19 +455,18 @@ func _page_help() -> Control:
 	rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rt.add_theme_font_override("normal_font", UiTheme.body())
 	rt.add_theme_font_override("bold_font", UiTheme.body_bold())
-	rt.add_theme_font_size_override("normal_font_size", 19)
-	rt.add_theme_font_size_override("bold_font_size", 19)
+	rt.add_theme_font_size_override("normal_font_size", 25)
+	rt.add_theme_font_size_override("bold_font_size", 25)
 	var cy := "#" + UiTheme.CYAN.to_html(false)
-	rt.text = ("[b]Garë:[/b] mblidh fuqitë që shkëlqejnë në rrugë (deri në tre), godit kundërshtarët dhe mbërri i pari. " +
-		"Kur makina bëhet copë, rikthehesh pas dy sekondash.\n\n" +
-		"[b]Me telefon:[/b] anoje telefonin majtas-djathtas për të kthyer · mbaj gishtin në gjysmën e [color=%s]djathtë[/color] për gaz " % cy +
-		"dhe në të [color=%s]majtën[/color] për frena (frena + kthesë = drift) · [color=%s]GJUAJ[/color] në mes përdor fuqinë · " % [cy, cy] +
-		"[color=%s]PRAPA[/color] e gjuan pas · prek fuqitë e vogla për t’i ndërruar. Në Cilësimet mund të zgjedhësh timonin me prekje.\n\n" % cy +
-		"[b]Me tastierë:[/b] ←/→ ose A/D timoni · ↑/W gazi · ↓/S frena dhe drift · Hapësirë gjuaj · Shift ose X gjuaj prapa · Q/E ndërro fuqinë · Esc pauzë.")
+	rt.text = ("[b]Qëllimi:[/b] mblidh fuqitë me simbole, godit rivalët dhe mbërri i pari.\n\n" +
+		"[b]Timoni:[/b] ano telefonin majtas ose djathtas. Për timon me prekje zgjidh [b]Cilësimet → Timoni → Prekje[/b].\n\n" +
+		"[b]Pedalet:[/b] [color=%s]GAZ[/color] poshtë djathtas, [color=%s]FRENA[/color] poshtë majtas. Frena + kthesë = drift.\n\n" % [cy, cy] +
+		"[b]Fuqitë:[/b] [color=%s]GJUAJ PARA[/color] mbi gazin; [color=%s]GJUAJ PRAPA[/color] mbi frenën. Prek fuqinë në inventar për ta zgjedhur.\n\n" % [cy, cy] +
+		"[b]Tastiera:[/b] A/D ose shigjetat për timon, W gaz, S frena, Hapësirë gjuaj para, Shift/X prapa, Q/E ndërro fuqinë, Esc pauzë.")
 	inner.add_child(rt)
 	inner.add_child(_eyebrow("Fuqitë"))
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = 1
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 6)
 	inner.add_child(grid)
@@ -592,9 +479,9 @@ func _page_help() -> Control:
 		dot.custom_minimum_size = Vector2(14, 14)
 		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(dot)
-		var l := UiTheme.label("%s — %s" % [pw.name, pw.desc], 16, UiTheme.TEXT)
+		var l := UiTheme.label("%s — %s" % [pw.name, pw.desc], 24, UiTheme.TEXT)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size.x = 520
+		l.custom_minimum_size.x = 900
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(l)
 		grid.add_child(h)
@@ -627,8 +514,8 @@ func _page_credits() -> Control:
 	rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rt.add_theme_font_override("normal_font", UiTheme.body())
 	rt.add_theme_font_override("bold_font", UiTheme.body_bold())
-	rt.add_theme_font_size_override("normal_font_size", 17)
-	rt.add_theme_font_size_override("bold_font_size", 17)
+	rt.add_theme_font_size_override("normal_font_size", 23)
+	rt.add_theme_font_size_override("bold_font_size", 23)
 	rt.text = FileAccess.get_file_as_string("res://assets/CREDITS.txt") if FileAccess.file_exists("res://assets/CREDITS.txt") else "—"
 	rt.text += "\n\n[b]Licenca e motorit Godot (MIT)[/b]\n" + Engine.get_license_text()
 	for license_path in ["res://assets/fonts/OFL-BigShouldersDisplay.txt", "res://assets/fonts/OFL-ChakraPetch.txt"]:
@@ -652,6 +539,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		Sfx.ui_back()
 		match page:
 			"city": show_page("title")
-			"car": show_page("city")
+			"car": show_page("title")
 			_: show_page(back_to)
 		get_viewport().set_input_as_handled()

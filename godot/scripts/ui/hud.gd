@@ -64,155 +64,159 @@ func setup(p_race: Race, p_player: CarState, p_track: RaceTrack) -> void:
 
 
 func _build() -> void:
-	# ---- top-left: position, lap, time
-	var tl := UiTheme.panel(14)
-	tl.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	tl.position = Vector2(16, 14)
-	tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(tl)
+	# Screen edges carry information; the road and car remain uncovered.
+	var status := UiTheme.panel(12)
+	status.position = Vector2(16, 12)
+	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(status)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
-	tl.add_child(h)
-	_pos = UiTheme.headline("6", 58, UiTheme.TEXT)
-	_pos.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	status.add_child(h)
+	_pos = UiTheme.headline("6", 48, UiTheme.TEXT)
 	h.add_child(_pos)
-	_pos_n = UiTheme.label("/6", 22, UiTheme.MUTED, true)
-	_pos_n.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_pos_n = UiTheme.label("/6", 24, UiTheme.MUTED)
+	_pos_n.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(_pos_n)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
 	h.add_child(v)
-	_lap = UiTheme.label("XHIRO 1/2", 20, UiTheme.CYAN, true)
+	_lap = UiTheme.label("XHIRO 1/2", 23, UiTheme.CYAN)
 	v.add_child(_lap)
-	_time = UiTheme.label("0:00.000", 22, UiTheme.TEXT)
+	_time = UiTheme.label("0:00.000", 23, UiTheme.TEXT)
 	v.add_child(_time)
-	# ---- standings under it
+	var standings := UiTheme.panel(12)
+	standings.position = Vector2(16, 102)
+	standings.custom_minimum_size.x = 208
+	standings.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	standings.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.24), Color(1, 1, 1, 0.13), 12, 1))
+	add_child(standings)
+	var bv := VBoxContainer.new()
+	bv.add_theme_constant_override("separation", 3)
+	standings.add_child(bv)
+	bv.add_child(UiTheme.label("RENDITJA", 18, UiTheme.CYAN))
 	_board = VBoxContainer.new()
-	_board.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_board.position = Vector2(20, 96)
-	_board.add_theme_constant_override("separation", 1)
+	_board.add_theme_constant_override("separation", 0)
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_board)
-	# ---- feed (left, lower-middle)
+	bv.add_child(_board)
 	_feed = VBoxContainer.new()
-	_feed.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
-	_feed.position = Vector2(20, 0)
-	_feed.offset_top = 30
+	_feed.position = Vector2(20, 344)
 	_feed.add_theme_constant_override("separation", 2)
 	_feed.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_feed)
-	# ---- centre message
 	var cv := VBoxContainer.new()
 	cv.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	cv.offset_top = 150
-	cv.offset_left = -500
-	cv.offset_right = 500
-	cv.alignment = BoxContainer.ALIGNMENT_CENTER
+	cv.offset_top = 170
+	cv.offset_left = -340
+	cv.offset_right = 340
 	cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(cv)
-	_center = UiTheme.headline("", 150, UiTheme.AMBER)
+	_center = UiTheme.headline("", 80, UiTheme.AMBER)
 	_center.modulate.a = 0.0
 	cv.add_child(_center)
-	_center_sub = UiTheme.label("", 22, UiTheme.AMBER, false, HORIZONTAL_ALIGNMENT_CENTER)
+	_center_sub = UiTheme.label("", 26, UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_CENTER)
 	_center_sub.modulate.a = 0.0
 	cv.add_child(_center_sub)
-	_pop = UiTheme.headline("", 44, UiTheme.AMBER)
+	_pop = UiTheme.headline("", 40, UiTheme.AMBER)
 	_pop.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_pop.offset_left = -200
 	_pop.offset_right = 200
-	_pop.offset_top = -120
+	_pop.offset_top = -100
 	_pop.modulate.a = 0.0
 	add_child(_pop)
-	# ---- flash overlay
 	_flash = ColorRect.new()
 	_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_flash.color = Color(1, 1, 1, 0)
 	add_child(_flash)
-	# ---- top-right: pause + minimap
 	_pause = UiTheme.button("II")
+	_pause.add_theme_font_override("font", UiTheme.body_bold())
+	_pause.add_theme_font_size_override("font_size", 30)
+	_pause.add_theme_stylebox_override("normal", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.8), Color(1, 1, 1, 0.65), 12))
+	_pause.add_theme_stylebox_override("hover", UiTheme.flat(Color(0.04, 0.08, 0.12, 0.9), UiTheme.CYAN, 12))
+	_pause.add_theme_stylebox_override("pressed", UiTheme.flat(Color(0.02, 0.12, 0.17, 0.95), UiTheme.CYAN, 12))
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_pause.offset_left = -72
+	_pause.offset_left = -76
 	_pause.offset_right = -16
-	_pause.offset_top = 14
-	_pause.offset_bottom = 58
+	_pause.offset_top = 12
+	_pause.offset_bottom = 64
 	_pause.pressed.connect(func(): pause_pressed.emit())
 	add_child(_pause)
 	_minimap = Control.new()
 	_minimap.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_minimap.offset_left = -216
+	_minimap.offset_left = -180
 	_minimap.offset_right = -16
-	_minimap.offset_top = 70
-	_minimap.offset_bottom = 270
+	_minimap.offset_top = 78
+	_minimap.offset_bottom = 208
 	_minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_minimap.draw.connect(_draw_minimap)
+	_minimap.resized.connect(func():
+		if track != null:
+			_build_minimap())
 	add_child(_minimap)
-	# ---- bottom-right: gauge
+	# Compact digital speed and damage bar, rather than an opaque corner dial.
 	_gauge = Control.new()
-	_gauge.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	_gauge.offset_left = -190
-	_gauge.offset_right = -20
-	_gauge.offset_top = -190
-	_gauge.offset_bottom = -20
+	_gauge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_gauge.offset_left = -78
+	_gauge.offset_right = 78
+	_gauge.offset_top = 12
+	_gauge.offset_bottom = 100
 	_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_gauge.draw.connect(_draw_gauge)
 	add_child(_gauge)
-	_speed = UiTheme.headline("0", 54, UiTheme.TEXT)
+	var speed_back := Panel.new()
+	speed_back.size = Vector2(156, 78)
+	speed_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	speed_back.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.65), Color(1, 1, 1, 0.15), 12, 1))
+	_gauge.add_child(speed_back)
+	_speed = UiTheme.headline("0", 44, UiTheme.TEXT)
 	_speed.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_speed.offset_top = 30
-	_speed.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_speed.offset_bottom = -28
 	_gauge.add_child(_speed)
-	_speed_unit = UiTheme.label("KM/H", 14, UiTheme.MUTED, true, HORIZONTAL_ALIGNMENT_CENTER)
-	_speed_unit.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_speed_unit.offset_top = -48
-	_speed_unit.offset_left = -40
-	_speed_unit.offset_right = 40
+	_speed_unit = UiTheme.label("KM/H", 18, UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_CENTER)
+	_speed_unit.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_speed_unit.offset_top = -34
+	_speed_unit.offset_bottom = -10
 	_gauge.add_child(_speed_unit)
-	_me = UiTheme.label("", 16, UiTheme.TEXT, true, HORIZONTAL_ALIGNMENT_RIGHT)
-	_me.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	_me.offset_left = -200
-	_me.offset_right = -24
-	_me.offset_top = -214
-	_me.offset_bottom = -190
+	_me = UiTheme.label("", 22)
+	_me.visible = false
 	add_child(_me)
-	# ---- bottom-centre: slots (above the fire button which sits at y -150..-58)
-	_slot_name = UiTheme.label("", 18, UiTheme.CYAN, true, HORIZONTAL_ALIGNMENT_CENTER)
+	_slot_name = UiTheme.label("", 23, UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_CENTER)
 	_slot_name.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_slot_name.offset_left = -160
-	_slot_name.offset_right = 160
-	_slot_name.offset_top = -236
-	_slot_name.offset_bottom = -210
+	_slot_name.offset_left = -210
+	_slot_name.offset_right = 210
+	_slot_name.offset_top = -108
+	_slot_name.offset_bottom = -78
 	add_child(_slot_name)
-	var sh := HBoxContainer.new()
-	sh.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	sh.offset_left = -118
-	sh.offset_right = 118
-	sh.offset_top = -210
-	sh.offset_bottom = -158
-	sh.alignment = BoxContainer.ALIGNMENT_CENTER
-	sh.add_theme_constant_override("separation", 10)
-	add_child(sh)
+	var inventory := HBoxContainer.new()
+	inventory.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	inventory.offset_left = -126
+	inventory.offset_right = 126
+	inventory.offset_top = -76
+	inventory.offset_bottom = -18
+	inventory.alignment = BoxContainer.ALIGNMENT_CENTER
+	inventory.add_theme_constant_override("separation", 8)
+	add_child(inventory)
 	for i in SLOT_N:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(66, 48)
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_override("font", UiTheme.display())
-		b.add_theme_font_size_override("font_size", 20)
-		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(0, 0, 0, 0.45), Color(1, 1, 1, 0.2), 10))
-		b.add_theme_stylebox_override("hover", UiTheme.flat(Color(0, 0, 0, 0.45), Color(1, 1, 1, 0.3), 10))
-		b.add_theme_stylebox_override("pressed", UiTheme.flat(Color(1, 1, 1, 0.25), Color.WHITE, 10))
-		var idx := i
-		b.pressed.connect(func(): slot_selected.emit(idx))
-		sh.add_child(b)
-		_slots.append(b)
-	# ---- fps
-	_fps = UiTheme.label("", 14, UiTheme.MUTED)
+		var button := UiTheme.button("")
+		button.custom_minimum_size = Vector2(72, 58)
+		button.expand_icon = true
+		button.add_theme_constant_override("icon_max_width", 40)
+		button.add_theme_font_size_override("font_size", 22)
+		button.add_theme_stylebox_override("normal", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.48), Color(1, 1, 1, 0.3), 12))
+		var index := i
+		button.pressed.connect(func(): slot_selected.emit(index))
+		inventory.add_child(button)
+		_slots.append(button)
+	_fps = UiTheme.label("", 18, UiTheme.TEXT)
 	_fps.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_fps.offset_left = -120
-	_fps.offset_right = 120
-	_fps.offset_top = 8
+	_fps.offset_left = -190
+	_fps.offset_right = 190
+	_fps.offset_top = 112
 	_fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_fps)
+	for label in [_slot_name, _speed_unit, _center_sub, _fps]:
+		label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		label.add_theme_constant_override("outline_size", 4)
 
 
 func _build_minimap() -> void:
@@ -262,32 +266,21 @@ func _draw_minimap() -> void:
 func _draw_gauge() -> void:
 	if player == null:
 		return
-	var c := _gauge.size * 0.5
-	var r := minf(c.x, c.y) - 8.0
-	_gauge.draw_circle(c, r + 6.0, Color(0, 0, 0, 0.45))
-	_gauge.draw_arc(c, r, ARC_START, ARC_START + ARC_SWEEP, 48, Color(1, 1, 1, 0.12), 8.0, true)
-	var vf := clampf(absf(player.v) / (float(player.def.vmax) * 1.05), 0.0, 1.0)
-	if vf > 0.005:
-		var col := UiTheme.CYAN.lerp(UiTheme.PINK, vf)
-		if player.nitro_t > 0.0:
-			col = UiTheme.GREEN
-		_gauge.draw_arc(c, r, ARC_START, ARC_START + ARC_SWEEP * vf, 48, col, 8.0, true)
 	var hp := clampf(player.health / player.max_hp, 0.0, 1.0)
-	var hcol := UiTheme.GREEN if hp > 0.5 else (UiTheme.AMBER if hp > 0.25 else UiTheme.RED)
-	_gauge.draw_arc(c, r - 14.0, ARC_START, ARC_START + ARC_SWEEP, 48, Color(1, 1, 1, 0.1), 5.0, true)
-	if hp > 0.005:
-		_gauge.draw_arc(c, r - 14.0, ARC_START, ARC_START + ARC_SWEEP * hp, 48, hcol, 5.0, true)
+	var col := UiTheme.GREEN if hp > 0.5 else (UiTheme.AMBER if hp > 0.25 else UiTheme.RED)
+	_gauge.draw_rect(Rect2(8, 82, 140, 6), Color(0.01, 0.02, 0.03, 0.65))
+	_gauge.draw_rect(Rect2(8, 82, 140 * hp, 6), col)
 	if player.shield_t > 0.0:
-		_gauge.draw_arc(c, r + 3.0, 0.0, TAU, 64, Color(UiTheme.CYAN, 0.5 + 0.3 * sin(Time.get_ticks_msec() * 0.01)), 2.0, true)
+		_gauge.draw_line(Vector2(8, 78), Vector2(148, 78), UiTheme.CYAN, 3.0)
 
 
 func feed(text: String, col := UiTheme.TEXT, ttl := 2.6) -> void:
-	var l := UiTheme.label(text, 18, col)
+	var l := UiTheme.label(text, 22, col)
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	l.add_theme_constant_override("outline_size", 4)
 	l.set_meta("ttl", ttl)
 	_feed.add_child(l)
-	while _feed.get_child_count() > 4:
+	while _feed.get_child_count() > 2:
 		_feed.get_child(0).queue_free()
 		_feed.remove_child(_feed.get_child(0))
 
@@ -361,15 +354,15 @@ func _process(dt: float) -> void:
 			i += 1
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 6)
-			var n := UiTheme.label(str(i), 15, UiTheme.MUTED if c != player else UiTheme.TEXT, true)
-			n.custom_minimum_size.x = 16
+			var n := UiTheme.label(str(i), 23, UiTheme.TEXT, false)
+			n.custom_minimum_size.x = 24
 			row.add_child(n)
 			var dot := ColorRect.new()
 			dot.color = c.color
 			dot.custom_minimum_size = Vector2(8, 8)
 			dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(dot)
-			var nm := UiTheme.label(c.name + (" ✓" if c.finished else ""), 15, UiTheme.TEXT if c == player else UiTheme.MUTED)
+			var nm := UiTheme.label(c.name + (" ✓" if c.finished else ""), 23, UiTheme.CYAN if c == player else UiTheme.TEXT)
 			nm.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 			nm.add_theme_constant_override("outline_size", 3)
 			row.add_child(nm)
@@ -385,12 +378,16 @@ func _process(dt: float) -> void:
 			if i < player.slots.size():
 				var s = player.slots[i]
 				var pw: Dictionary = Data.PW[s.type]
-				b.text = pw.name.to_upper().left(6) + ("" if s.type != "bolt" else " ×%d" % s.ammo)
+				b.icon = PowerupIcons.texture(s.type)
+				b.text = str(s.ammo) if s.type == "bolt" else ""
+				b.tooltip_text = str(pw.name)
 				b.add_theme_color_override("font_color", Color.html(pw.col).lightened(0.25))
 				b.visible = true
 			else:
 				b.text = ""
-				b.visible = i == 0
+				b.icon = null
+				b.tooltip_text = ""
+				b.visible = false
 		_slot_name.text = Data.PW[player.slots[0].type].name.to_upper() if not player.slots.is_empty() else ""
 	_minimap.queue_redraw()
 	_gauge.queue_redraw()
