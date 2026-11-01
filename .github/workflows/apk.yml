@@ -20,6 +20,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # The action defaults to the retired SDK package "tools".
+          packages: 'platform-tools'
       - name: Install Android export dependencies
         run: sdkmanager 'platform-tools' 'platforms;android-34' 'build-tools;34.0.0'
       - name: Install verified Godot and export templates
