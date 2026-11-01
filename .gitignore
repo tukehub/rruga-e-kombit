@@ -13,3 +13,6 @@ godot/android/
 tools/cache/
 tools/godot/
 tools/godot.zip
+__pycache__/
+*.pyc
+/*.log

@@ -14,6 +14,7 @@ var tilt_invert := false
 var touch_steer := false        # touch-pad fallback instead of tilt
 var assist := true
 var difficulty := 1
+var dynamic_weather := true
 var haptics := true
 var quality := "auto"           # "auto" | "low" | "medium" | "high"
 var vol_master := 1.0
@@ -56,6 +57,7 @@ func load_settings() -> void:
 	assist = cf.get_value("game", "assist", assist)
 	difficulty = cf.get_value("game", "difficulty", difficulty)
 	haptics = cf.get_value("game", "haptics", haptics)
+	dynamic_weather = cf.get_value("game", "dynamic_weather", dynamic_weather)
 	quality = cf.get_value("video", "quality", quality)
 	show_fps = cf.get_value("video", "show_fps", show_fps)
 	vol_master = cf.get_value("audio", "master", vol_master)
@@ -82,6 +84,7 @@ func save() -> void:
 	cf.set_value("game", "assist", assist)
 	cf.set_value("game", "difficulty", difficulty)
 	cf.set_value("game", "haptics", haptics)
+	cf.set_value("game", "dynamic_weather", dynamic_weather)
 	cf.set_value("video", "quality", quality)
 	cf.set_value("video", "show_fps", show_fps)
 	cf.set_value("audio", "master", vol_master)

@@ -147,3 +147,20 @@ func ui_back() -> void:
 func haptic(ms: int) -> void:
 	if Settings.haptics and OS.has_feature("mobile"):
 		Input.vibrate_handheld(ms)
+
+
+func stop_all() -> void:
+	stop_loops()
+	for p in _players:
+		p.stop()
+		p.stream = null
+	for p in _players3d:
+		p.stop()
+		p.stream = null
+
+
+func _exit_tree() -> void:
+	stop_all()
+	for p in _loop_players.values():
+		p.stream = null
+	_streams.clear()

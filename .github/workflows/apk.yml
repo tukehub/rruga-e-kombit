@@ -1,63 +1,61 @@
 name: Build APK
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 concurrency:
   group: apk
   cancel-in-progress: true
-
 jobs:
   apk:
     runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.4.1
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
-          cache: gradle
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build the game into www/
-        run: python3 build.py
-
-      - name: Copy the game into the Android project
-        run: npx cap sync android
-
-      - name: Build signed APK
-        working-directory: android
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android export dependencies
+        run: sdkmanager 'platform-tools' 'platforms;android-34' 'build-tools;34.0.0'
+      - name: Install verified Godot and export templates
+        shell: bash
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace -Pvc=${{ github.run_number }}
-
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk rruga-e-kombit.apk
-
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          engine="Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          templates="Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          curl -fsSL "$base/SHA512-SUMS.txt" -o SHA512-SUMS.txt
+          curl -fsSL "$base/$engine" -o "$engine"
+          curl -fsSL "$base/$templates" -o "$templates"
+          awk -v e="$engine" -v t="$templates" '$2==e || $2==t' SHA512-SUMS.txt | sha512sum -c -
+          unzip -q "$engine"
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" "$HOME/.local/bin/godot"
+          unzip -q "$templates" 'templates/android_release.apk' 'templates/android_debug.apk' 'templates/android_source.zip'
+          mv templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Import and test native project
+        run: |
+          godot --headless --path godot --editor --import
+          python3 tools/run_tests.py --godot godot
+      - name: Export signed native APK
+        run: python3 tools/export_android.py --version-code '${{ github.run_number }}'
+      - name: Verify package and signature
+        run: python3 tools/verify_apk.py rruga-e-kombit.apk --version-code '${{ github.run_number }}'
       - uses: actions/upload-artifact@v4
         with:
           name: rruga-e-kombit-apk
           path: rruga-e-kombit.apk
-
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="v1.0.${{ github.run_number }}"
-          gh release create "$tag" rruga-e-kombit.apk \
-            --title "Vortex $tag" \
-            --notes "Hape këtë faqe në telefon, shkarko rruga-e-kombit.apk dhe instaloje." \
-            --latest
+          gh release create 'v1.0.${{ github.run_number }}' rruga-e-kombit.apk \
+            --title 'Kafshim asfalti 1.0.${{ github.run_number }}' \
+            --notes 'Loja vendase Godot për Android. Shkarko APK-në për ta instaluar.' --latest

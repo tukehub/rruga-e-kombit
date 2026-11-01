@@ -75,7 +75,7 @@ func _sample(g: Dictionary, h: PackedFloat32Array, x: float, z: float) -> float:
 	return lerpf(lerpf(h00, h10, tx), lerpf(h01, h11, tx), tz)
 
 
-func _grid_mesh(g: Dictionary, h: PackedFloat32Array, cx0: int, cz0: int, cells: int, step: int, skirt: float, hole := Rect2()) -> ArrayMesh:
+func _grid_mesh(g: Dictionary, h: PackedFloat32Array, cx0: int, cz0: int, cells: int, step: int, skirt: float, hole := Rect2(), origin := Vector3.ZERO) -> ArrayMesh:
 	var n := int(g.n)
 	var cell := float(g.cell)
 	var x0 := float(g.x0)
@@ -94,7 +94,7 @@ func _grid_mesh(g: Dictionary, h: PackedFloat32Array, cx0: int, cz0: int, cells:
 			var y := h[gz * n + gx]
 			var px := x0 + gx * cell
 			var pz := z0 + gz * cell
-			verts[j * m + i] = Vector3(px, y, pz)
+			verts[j * m + i] = Vector3(px, y, pz) - origin
 			# central differences for the normal
 			var xl := h[gz * n + maxi(gx - step, 0)]
 			var xr := h[gz * n + mini(gx + step, n - 1)]
@@ -143,20 +143,24 @@ func _build_near() -> void:
 	var nc := (n - 1) / CHUNK
 	for cz in nc:
 		for cx in nc:
+			var center := Vector3(float(near.x0) + (cx + 0.5) * CHUNK * cell, 0, float(near.z0) + (cz + 0.5) * CHUNK * cell)
+			var lod_distance := 1600.0 if Quality.preset == "high" else (850.0 if Quality.preset == "medium" else 500.0)
 			var mi := MeshInstance3D.new()
-			mi.mesh = _grid_mesh(near, near_h, cx * CHUNK, cz * CHUNK, CHUNK, 1, 0.0)
+			mi.position = center
+			mi.mesh = _grid_mesh(near, near_h, cx * CHUNK, cz * CHUNK, CHUNK, 1, 0.0, Rect2(), center)
 			mi.material_override = mat
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			mi.visibility_range_end = 2600.0
+			mi.visibility_range_end = lod_distance
 			mi.visibility_range_end_margin = 150.0
 			mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 			add_child(mi)
 			# coarse LOD for the same chunk
 			var lo := MeshInstance3D.new()
-			lo.mesh = _grid_mesh(near, near_h, cx * CHUNK, cz * CHUNK, CHUNK, 4, 1.5)
+			lo.mesh = _grid_mesh(near, near_h, cx * CHUNK, cz * CHUNK, CHUNK, 4, 1.5, Rect2(), center)
+			lo.position = center
 			lo.material_override = mat
 			lo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			lo.visibility_range_begin = 2600.0
+			lo.visibility_range_begin = lod_distance
 			lo.visibility_range_begin_margin = 150.0
 			add_child(lo)
 			chunks.append(mi)

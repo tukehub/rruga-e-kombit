@@ -22,6 +22,7 @@ var head_r: SpotLight3D
 var spin := 0.0
 var steer_vis := 0.0
 var night := 0.0
+var nitro_jets: Array[MeshInstance3D] = []
 var blink := 0.0
 var wreck_roll := 0.0
 var base_pos := Vector3.ZERO
@@ -43,6 +44,7 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 			ch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			ch.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
 			_override_materials(ch)
+	_make_nitro()
 	_make_shield()
 	if is_player:
 		_make_headlights()
@@ -235,6 +237,9 @@ func apply_state(c: CarState, track: RaceTrack, dt: float) -> void:
 		var base := 0.9 if night > 0.3 else 0.3
 		mat_rear.emission_energy_multiplier = 3.5 if (c.braking or c.v < -0.1) else base
 	# shield
+	for jet in nitro_jets:
+		jet.visible = c.nitro_t > 0.0
+		jet.scale.z = 0.8 + 0.2 * sin(spin * 4.0)
 	shield.visible = c.shield_t > 0.0
 	if shield.visible:
 		var a := 0.12 + 0.08 * sin(Time.get_ticks_msec() * 0.012)
@@ -247,3 +252,27 @@ func apply_state(c: CarState, track: RaceTrack, dt: float) -> void:
 		blink = 0.0
 		model.visible = true
 	visible = not (c.wreck_t > 0.0 and c.wreck_t < 0.05)
+
+
+func _make_nitro() -> void:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(0.2, 0.7, 1.0)
+	material.emission_enabled = true
+	material.emission = Color(0.2, 0.6, 1.0)
+	material.emission_energy_multiplier = 5.0
+	for side in [-1.0, 1.0]:
+		var jet := MeshInstance3D.new()
+		var mesh := CylinderMesh.new()
+		mesh.bottom_radius = 0.02
+		mesh.top_radius = 0.14
+		mesh.height = 1.6
+		mesh.radial_segments = 8
+		jet.mesh = mesh
+		jet.material_override = material
+		jet.rotation.x = PI / 2.0
+		jet.position = Vector3(side * def.size.x * 0.3, 0.3, def.size.z * 0.5 + 0.6)
+		jet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		jet.visible = false
+		add_child(jet)
+		nitro_jets.append(jet)

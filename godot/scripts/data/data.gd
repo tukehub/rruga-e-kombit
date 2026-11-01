@@ -75,10 +75,10 @@ const CARS := [
 	{"id": "shigjeta", "name": "Shigjeta RS", "kind": "sedan", "vmax": 60.0, "acc": 18.0, "grip": 1.06, "hp": 95.0, "mass": 0.95, "color": "#f1eee8",
 		"model": "res://assets/cars/shigjeta.glb", "size": Vector3(1.9, 1.4, 4.7), "wheel_r": 0.34,
 		"desc": "Katër rrota që tërheqin. Shkon si në binarë, edhe mbi gropa."},
-	{"id": "gelendvagen", "name": "Gelendvagen G", "kind": "offroad", "vmax": 54.0, "acc": 15.0, "grip": 0.96, "hp": 140.0, "mass": 1.35, "color": "#2a2a2e",
+	{"id": "gelendvagen", "name": "Murrani 4x4", "kind": "offroad", "vmax": 54.0, "acc": 15.0, "grip": 0.96, "hp": 140.0, "mass": 1.35, "color": "#2a2a2e",
 		"model": "res://assets/cars/gelendvagen.glb", "size": Vector3(2.0, 1.95, 4.65), "wheel_r": 0.42,
 		"desc": "Kutia e zezë e çdo dasme. Gropat e tua s’i bëjnë gjë."},
-	{"id": "sprinteri", "name": "Sprinteri i Linjës", "kind": "van", "vmax": 51.0, "acc": 13.5, "grip": 0.88, "hp": 175.0, "mass": 1.7, "color": "#f3f3ee",
+	{"id": "sprinteri", "name": "Korrieri i Linjës", "kind": "van", "vmax": 51.0, "acc": 13.5, "grip": 0.88, "hp": 175.0, "mass": 1.7, "color": "#f3f3ee",
 		"model": "res://assets/cars/sprinteri.glb", "size": Vector3(2.05, 2.5, 5.9), "wheel_r": 0.38,
 		"desc": "Tiranë–Durrës, 24/7. Ndalon ku të duash, edhe ku s’do."},
 ]

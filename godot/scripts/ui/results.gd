@@ -66,7 +66,7 @@ func _ready() -> void:
 		grid.add_child(nm)
 		grid.add_child(UiTheme.label(str(row.car), 17, c))
 		var finished := bool(row.get("finished", false))
-		grid.add_child(UiTheme.label(Game.fmt_time(float(row.time)) if finished else "DNF", 18, c))
+		grid.add_child(UiTheme.label(Game.fmt_time(float(row.time)) if finished else "Pa përfunduar", 18, c))
 		grid.add_child(UiTheme.label(Game.fmt_time(float(row.get("best_lap", INF))), 18, c))
 		grid.add_child(UiTheme.label(str(int(row.get("fans", 0))), 18, c))
 	var best := float(r.get("best_lap", INF))

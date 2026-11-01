@@ -25,6 +25,7 @@ from common import CACHE, OUT, Proj, ensure_dir, load_json, log, save_json  # no
 from cities import CITIES, ROAD_WIDTH, ROUTABLE, ROUTE_COST  # noqa: E402
 from glb import GLB, earcut  # noqa: E402
 import fetch_dem  # noqa: E402
+from side_roads import build_side_roads
 
 SAMPLE = 2.0          # m, centreline sample spacing used for smoothing
 OUT_SPACING = 6.0     # m, spacing of exported control points
@@ -829,6 +830,7 @@ def build(cid, route_only=False):
 
     # 4. buildings, splat, props
     build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'))
+    build_side_roads(osm, ref, hw, terrain_sample, os.path.join(out, 'roads.glb'))
     build_splat(osm, ref, hw, os.path.join(out, 'splat.png'))
     build_props(osm, ref, hw, terrain_sample, city, proj, os.path.join(out, 'props.json'), None)
     debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_map.png'))

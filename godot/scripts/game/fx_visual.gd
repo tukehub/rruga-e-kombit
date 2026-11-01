@@ -40,7 +40,6 @@ func _mk(mesh: Mesh, mat: Material) -> MeshInstance3D:
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-	add_child(mi)
 	return mi
 
 
@@ -134,6 +133,7 @@ func boom(pos: Vector3, col: Color, r: float = 3.0, ttl: float = 0.45) -> void:
 	l.omni_range = r * 3.0
 	l.shadow_enabled = false
 	mi.add_child(l)
+	add_child(mi)
 	_flashes.append({"node": mi, "t": 0.0, "ttl": ttl, "r": r})
 
 

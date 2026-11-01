@@ -18,6 +18,12 @@ var road: RoadMesh
 var cam: ChaseCam
 var hud: Hud
 var input: RaceInput
+var effects: FxVisual
+var buildings: Buildings
+var props: Props
+var _weather_clock := 0.0
+var _weather_step := 0
+var _light_clock := 0.0
 var pickups: PickupVisual
 var pause_ui: Control
 
@@ -59,11 +65,16 @@ func _build_world() -> void:
 	road = RoadMesh.new()
 	add_child(road)
 	road.build(track, float(tj.get("hw", track.half_w)), sky.wet)
-	var bld := Buildings.new()
+	buildings = Buildings.new()
+	var side_path := "res://assets/cities/%s/roads.glb" % city_id
+	if ResourceLoader.exists(side_path):
+		var side_scene: PackedScene = load(side_path)
+		add_child(side_scene.instantiate())
+	var bld := buildings
 	add_child(bld)
 	bld.load_city(city_id)
 	bld.set_env(sky.night, sky.wet)
-	var props := Props.new()
+	props = Props.new()
 	add_child(props)
 	props.load_city(city_id, terrain)
 	props.set_night(sky.night)
@@ -99,6 +110,9 @@ func _build_race() -> void:
 	pickups = PickupVisual.new()
 	add_child(pickups)
 	pickups.setup(race, track)
+	effects = FxVisual.new()
+	add_child(effects)
+	effects.setup(race, track)
 	cam = ChaseCam.new()
 	add_child(cam)
 	cam.setup(track)
@@ -161,6 +175,7 @@ func toggle_pause() -> void:
 	paused = not paused
 	get_tree().paused = paused
 	pause_ui.visible = paused
+	input.reset_controls()
 	input.visible = not paused
 	if paused:
 		Sfx.stop_loops()
@@ -182,6 +197,7 @@ func _process(dt: float) -> void:
 	if paused:
 		return
 	dt = minf(dt, 0.1)
+	_update_weather(dt)
 	match state:
 		"intro":
 			cam.follow(player, dt)
@@ -264,6 +280,12 @@ func _wpos(s: float, d: float, dy := 0.0) -> Vector3:
 func _events() -> void:
 	for e in race.take_events():
 		var c: CarState = e.get("car")
+		if e.t in ["boom", "zap", "barge", "repair"]:
+			var s_pos: float = float(e.get("s", c.s if c != null else 0.0))
+			var d_pos: float = float(e.get("d", c.d if c != null else 0.0))
+			var kind: String = str(e.get("kind", e.t))
+			var color := Color.html(Data.PW[kind].col) if Data.PW.has(kind) else Color(1, 0.5, 0.15)
+			effects.boom(_wpos(s_pos, d_pos, 0.7), color, 3.0)
 		match e.t:
 			"pickup":
 				if c == player:
@@ -377,7 +399,7 @@ func _engine_audio(ratio: float, gas_on: bool, alive: bool, scrape: float, dt: f
 	Sfx.set_loop("wind_loop", "Tyres", clampf(r - 0.35, 0.0, 0.6), 0.8 + r * 0.4)
 	Sfx.set_loop("screech_loop", "Tyres", clampf(player.drift * 0.8, 0.0, 0.7) if player else 0.0, 0.9 + r * 0.2)
 	Sfx.set_loop("scrape_loop", "Impacts", clampf(scrape, 0.0, 0.6), 1.0)
-	Sfx.set_loop("rain_loop", "Tyres", 0.35 if bool(sky.preset.get("rain", false)) else 0.0, 1.0)
+	Sfx.set_loop("rain_loop", "Tyres", 0.35 * sky.wet, 1.0)
 
 
 func _show_results() -> void:
@@ -394,3 +416,26 @@ func _show_results() -> void:
 		"city": city_id, "env": env_id, "place": player.place, "n": race.cars.size(),
 		"best_lap": player.best_lap, "time": player.finish_time, "rows": rows,
 	})
+
+
+func _update_weather(dt: float) -> void:
+	if Settings.dynamic_weather and state == "race":
+		_weather_clock += dt
+		if _weather_clock >= 70.0:
+			_weather_clock = 0.0
+			var cycle := ["dusk", "rain", "night", "golden", "day"]
+			sky.transition_to(cycle[_weather_step % cycle.size()], 18.0)
+			_weather_step += 1
+			hud.feed("Moti po ndryshon: " + Data.ENV[sky.env_id].label, UiTheme.CYAN, 3.0)
+	_light_clock += dt
+	if _light_clock >= 0.15:
+		_light_clock = 0.0
+		props.update_lights(track.pos(player.s, player.d), track.tangent(player.s))
+	sky.advance(dt)
+	road.set_wet(sky.wet)
+	terrain.set_env(sky.wet, 0.0, sky.night)
+	buildings.set_env(sky.night, sky.wet)
+	props.set_night(sky.night)
+	race.wet = sky.wet > 0.5
+	for car in cars:
+		car.set_night(sky.night)

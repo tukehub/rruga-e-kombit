@@ -465,6 +465,7 @@ func _page_settings() -> Control:
 	_set_row(list, "sens", "Ndjeshmëria e animit", Settings.TILT_LABELS, func(i): Settings.tilt_sens = i)
 	_set_row(list, "invert", "Anim i kundërt", ["Jo", "Po"], func(i): Settings.tilt_invert = (i == 1))
 	_set_row(list, "assist", "Ndihmë në timon", ["Jo", "Po"], func(i): Settings.assist = (i == 1))
+	_set_row(list, "weather", "Mot dhe dritë dinamike", ["Jo", "Po"], func(i): Settings.dynamic_weather = (i == 1))
 	_set_row(list, "haptics", "Dridhje", ["Jo", "Po"], func(i): Settings.haptics = (i == 1))
 	_set_row(list, "quality", "Cilësia grafike", ["Auto", "E ulët", "Mesatare", "E lartë"], func(i):
 		Settings.quality = ["auto", "low", "medium", "high"][i]
@@ -527,6 +528,7 @@ func _set_slider(list: VBoxContainer, key: String, title: String, on_change: Cal
 
 
 func _refresh_settings() -> void:
+	_seg_set(_set_rows.weather, 1 if Settings.dynamic_weather else 0)
 	_seg_set(_set_rows.steer, 1 if Settings.touch_steer else 0)
 	_seg_set(_set_rows.sens, int(Settings.tilt_sens))
 	_seg_set(_set_rows.invert, 1 if Settings.tilt_invert else 0)
@@ -628,6 +630,9 @@ func _page_credits() -> Control:
 	rt.add_theme_font_size_override("normal_font_size", 17)
 	rt.add_theme_font_size_override("bold_font_size", 17)
 	rt.text = FileAccess.get_file_as_string("res://assets/CREDITS.txt") if FileAccess.file_exists("res://assets/CREDITS.txt") else "—"
+	rt.text += "\n\n[b]Licenca e motorit Godot (MIT)[/b]\n" + Engine.get_license_text()
+	for license_path in ["res://assets/fonts/OFL-BigShouldersDisplay.txt", "res://assets/fonts/OFL-ChakraPetch.txt"]:
+		rt.text += "\n\n" + FileAccess.get_file_as_string(license_path)
 	sc.add_child(rt)
 	var done := UiTheme.button("Kthehu", Color(0, 0, 0, 0), 200)
 	done.pressed.connect(func(): Sfx.ui_back(); show_page(back_to))

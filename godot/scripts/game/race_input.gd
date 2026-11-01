@@ -158,3 +158,18 @@ func apply(c: CarState) -> void:
 	c.ctrl.back = back
 	fire = false
 	back = false
+
+
+func reset_controls() -> void:
+	_touches.clear()
+	_pad_steer = 0.0
+	steer = 0.0
+	gas = false
+	brake = false
+	fire = false
+	back = false
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		reset_controls()

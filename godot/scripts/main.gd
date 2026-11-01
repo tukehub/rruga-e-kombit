@@ -10,8 +10,15 @@ func _ready() -> void:
 		Settings.save()
 	var start := "menu"
 	var shots: Array = []
+	var benchmark_seconds := 0.0
 	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--scene="):
+		if a.begins_with("--benchmark="):
+			benchmark_seconds = clampf(float(a.substr(12)), 1.0, 600.0)
+		elif a.begins_with("--quality="):
+			Quality.set_preset(a.substr(10))
+		elif a.begins_with("--city="):
+			Game.race_opts.city = a.substr(7)
+		elif a.begins_with("--scene="):
 			start = a.substr(8)
 		elif a.begins_with("--env="):
 			Game.race_opts.env = a.substr(6)  # debug: force day/night/rain preset
@@ -20,12 +27,18 @@ func _ready() -> void:
 			for t in a.substr(8).split(","):
 				shots.append(float(t))
 	Game.goto(start)
-	if not shots.is_empty():
+	if benchmark_seconds > 0.0:
+		RaceBenchmark.run(get_tree(), benchmark_seconds)
+	elif not shots.is_empty():
 		_debug_shots(start, shots)
 
 
 func _debug_shots(tag: String, times: Array) -> void:
 	DirAccess.make_dir_recursive_absolute("user://shots")
+	while Game._loading or Game.current != tag:
+		await get_tree().process_frame
+	for frame in 3:
+		await get_tree().process_frame
 	var t0 := Time.get_ticks_msec()
 	for t in times:
 		while Time.get_ticks_msec() - t0 < float(t) * 1000.0:

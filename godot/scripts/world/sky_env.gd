@@ -9,7 +9,7 @@ const HDRI := {
 	"sunset": "res://assets/hdri/sky_sunset.hdr",
 	"day": "res://assets/hdri/sky_day.hdr",
 	"golden": "res://assets/hdri/sky_golden.hdr",
-	"rain": "res://assets/hdri/sky_overcast.hdr",
+	"rain": "res://assets/hdri/sky_night.hdr",
 	"snow": "res://assets/hdri/sky_overcast.hdr",
 }
 
@@ -216,3 +216,66 @@ func _make_weather() -> void:
 func follow(pos: Vector3) -> void:
 	rain.global_position = pos + Vector3(0, 18, 0)
 	snow.global_position = pos + Vector3(0, 14, 0)
+
+
+var _transition := 1.0
+var _duration := 1.0
+var _from := {}
+var _to := {}
+var _sky_blend: ShaderMaterial
+
+
+func _snapshot() -> Dictionary:
+	return {"wet": wet, "night": night, "sun_color": sun.light_color,
+		"sun_energy": sun.light_energy, "sun_rotation": sun.quaternion,
+		"ambient": env.ambient_light_energy, "exposure": env.tonemap_exposure,
+		"fog_color": env.fog_light_color, "fog_density": env.fog_density,
+		"glow": env.glow_intensity}
+
+
+## Smoothly changes both time of day and weather; no scene rebuild.
+func transition_to(id: String, seconds: float = 18.0) -> void:
+	if not Data.ENV.has(id) or _transition < 1.0 or id == env_id:
+		return
+	var old_id := env_id
+	_from = _snapshot()
+	apply(id)
+	_to = _snapshot()
+	_duration = maxf(seconds, 0.1)
+	_transition = 0.0
+	_sky_blend = ShaderMaterial.new()
+	_sky_blend.shader = preload("res://shaders/sky_blend.gdshader")
+	_sky_blend.set_shader_parameter("from_sky", load(HDRI[old_id]))
+	_sky_blend.set_shader_parameter("to_sky", load(HDRI[id]))
+	_sky_blend.set_shader_parameter("from_energy", _sky_energy(old_id))
+	_sky_blend.set_shader_parameter("to_energy", _sky_energy(id))
+	_sky_blend.set_shader_parameter("from_yaw", _sky_yaw(old_id))
+	_sky_blend.set_shader_parameter("to_yaw", _sky_yaw(id))
+	env.sky.sky_material = _sky_blend
+	env.sky_rotation = Vector3.ZERO
+	advance(0.0)
+
+
+func advance(dt: float) -> void:
+	if _transition >= 1.0:
+		return
+	_transition = minf(1.0, _transition + dt / _duration)
+	var k := smoothstep(0.0, 1.0, _transition)
+	wet = lerpf(_from.wet, _to.wet, k)
+	night = lerpf(_from.night, _to.night, k)
+	sun.light_color = (_from.sun_color as Color).lerp(_to.sun_color, k)
+	sun.light_energy = lerpf(_from.sun_energy, _to.sun_energy, k)
+	sun.quaternion = (_from.sun_rotation as Quaternion).slerp(_to.sun_rotation, k)
+	env.ambient_light_energy = lerpf(_from.ambient, _to.ambient, k)
+	env.tonemap_exposure = lerpf(_from.exposure, _to.exposure, k)
+	env.fog_light_color = (_from.fog_color as Color).lerp(_to.fog_color, k)
+	env.fog_density = lerpf(_from.fog_density, _to.fog_density, k)
+	env.glow_intensity = lerpf(_from.glow, _to.glow, k)
+	env.ssr_enabled = bool(Quality.p.ssr) and wet > 0.05
+	_sky_blend.set_shader_parameter("blend", k)
+	rain.amount_ratio = wet
+	if wet > 0.01:
+		rain.emitting = true
+		rain.visible = true
+	if _transition >= 1.0:
+		apply(env_id)
