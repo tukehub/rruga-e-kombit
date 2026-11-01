@@ -5,6 +5,7 @@ extends Node3D
 ## States: intro -> countdown -> race -> finish -> results.
 
 const DT := 1.0 / 60.0
+const RenderPose = preload("res://scripts/game/render_pose.gd")
 
 var city_id := "tirane"
 var env_id := "night"
@@ -29,6 +30,7 @@ var pause_ui: Control
 
 var state := "intro"
 var acc := 0.0
+var _previous_poses: Array[Dictionary] = []
 var cd_t := 0.0
 var cd_n := 4
 var fin_t := 0.0
@@ -107,6 +109,7 @@ func _build_race() -> void:
 		cv.set_night(sky.night)
 		cv.apply_state(c, track, DT)
 		cars.append(cv)
+		_previous_poses.append(RenderPose.capture(c))
 	pickups = PickupVisual.new()
 	add_child(pickups)
 	pickups.setup(race, track)
@@ -231,6 +234,8 @@ func _process(dt: float) -> void:
 			acc += dt
 			var n := 0
 			while acc >= DT and n < 5:
+				for i in race.cars.size():
+					_previous_poses[i] = RenderPose.capture(race.cars[i])
 				race.step(DT)
 				acc -= DT
 				n += 1
@@ -243,14 +248,19 @@ func _process(dt: float) -> void:
 					last500 = true
 					hud.center("500 metrat e fundit!", "", 2.0)
 					Sfx.play("lap", "UI", -4.0)
-			cam.follow(player, dt)
+			var player_index := race.cars.find(player)
+			var player_pose := RenderPose.sample(_previous_poses[player_index], player, acc / DT, track.L)
+			cam.follow(player, dt, player_pose)
 			_engine_audio(absf(player.v) / float(player.def.vmax), player.gas_on, player.wreck_t <= 0.0, player.scrape, dt)
 			if state == "finish":
 				fin_t += dt
 				if fin_t > 4.2:
 					_show_results()
 	for i in cars.size():
-		cars[i].apply_state(race.cars[i], track, dt)
+		var pose := {}
+		if state in ["race", "finish"]:
+			pose = RenderPose.sample(_previous_poses[i], race.cars[i], acc / DT, track.L)
+		cars[i].apply_state(race.cars[i], track, dt, pose)
 	sky.follow(cam.global_position)
 	Sfx.listener_pos = cam.global_position
 

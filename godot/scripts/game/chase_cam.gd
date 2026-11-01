@@ -30,20 +30,24 @@ func add_shake(amount: float) -> void:
 	shake = minf(shake + amount, 1.5)
 
 
-func follow(c: CarState, dt: float) -> void:
+func follow(c: CarState, dt: float, pose: Dictionary = {}) -> void:
 	if intro:
 		_intro_cam(c, dt)
 		return
+	var s := float(pose.get("s", c.s))
+	var d := float(pose.get("d", c.d))
+	var hop := float(pose.get("hop", c.hop))
+	var yaw := float(pose.get("yaw", c.yaw))
 	var sp := absf(c.v)
 	# real-scale cars (~4.5 m) need more distance than the original 3.5 m
 	var back := 6.4 + sp * 0.022
 	var h := 2.15 + sp * 0.006
-	var target := track.pos(c.s - back, c.d * 0.82)
-	target.y += h + c.hop * 0.5
-	var car := track.pos(c.s, c.d)
-	car.y += c.hop
-	var psi := track.heading(c.s) + c.yaw * 0.5
-	var tg := track.tangent(c.s)
+	var target := track.pos(s - back, d * 0.82)
+	target.y += h + hop * 0.5
+	var car := track.pos(s, d)
+	car.y += hop
+	var psi := track.heading(s) + yaw * 0.5
+	var tg := track.tangent(s)
 	var look_t := Vector3(car.x - sin(psi) * 12.0, car.y + 1.0 + tg.y * 12.0, car.z + cos(psi) * 12.0)
 	var snap := _snap or global_position.distance_squared_to(target) > 900.0
 	_snap = false
@@ -53,9 +57,9 @@ func follow(c: CarState, dt: float) -> void:
 	look = look.lerp(look_t, kl)
 	if shake > 0.0:
 		shake = maxf(0.0, shake - dt * 2.5)
-		var s := shake * 0.5
-		p.x += (_rng.randf() - 0.5) * s
-		p.y += (_rng.randf() - 0.5) * s
+		var shake_size := shake * 0.5
+		p.x += (_rng.randf() - 0.5) * shake_size
+		p.y += (_rng.randf() - 0.5) * shake_size
 	global_position = p
 	if not p.is_equal_approx(look):
 		look_at(look, Vector3.UP)

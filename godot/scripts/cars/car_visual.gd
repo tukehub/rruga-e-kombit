@@ -198,10 +198,11 @@ func set_night(n: float) -> void:
 
 
 ## Place and animate from the sim state. Call once per rendered frame.
-func apply_state(c: CarState, track: RaceTrack, dt: float) -> void:
-	var p := track.pos(c.s, c.d)
-	var t := track.tangent(c.s)
-	var yaw_g := atan2(-t.x, -t.z) - c.yaw
+func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}) -> void:
+	var s := float(pose.get("s", c.s))
+	var p := track.pos(s, float(pose.get("d", c.d)))
+	var t := track.tangent(s)
+	var yaw_g := atan2(-t.x, -t.z) - float(pose.get("yaw", c.yaw))
 	if c.spin_t > 0.0:
 		yaw_g -= c.spin_t * 7.0 * float(c.spin_dir)
 	var roll := 0.0
@@ -216,7 +217,7 @@ func apply_state(c: CarState, track: RaceTrack, dt: float) -> void:
 		# lean into corners and under braking
 		roll = -c.steer * 0.035 * clampf(c.v / 30.0, 0.0, 1.0) - c.drift * 0.03 * signf(c.steer)
 		pitch += (-0.02 if c.gas_on else 0.0) + (0.035 if c.braking else 0.0)
-	p.y += c.hop
+	p.y += float(pose.get("hop", c.hop))
 	base_pos = p
 	var b := Basis.from_euler(Vector3(pitch, yaw_g, roll))
 	global_transform = Transform3D(b, p)

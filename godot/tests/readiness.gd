@@ -22,6 +22,24 @@ func _ready() -> void:
 					triangles += mi.mesh.surface_get_array_index_len(i) / 3
 		check(triangles >= 25000 and triangles <= 60000, "car triangle budget " + def.id)
 		car.queue_free()
+	# Render interpolation must advance smoothly even when a frame contains no
+	# simulation step, cross the start line correctly, and snap on respawn.
+	var render_pose = load("res://scripts/game/render_pose.gd")
+	var sample_car := CarState.new(0, Data.CARS[0], "test", true, Color.WHITE)
+	sample_car.progress = 99.0
+	sample_car.s = 99.0
+	var previous: Dictionary = render_pose.capture(sample_car)
+	sample_car.progress = 101.0
+	sample_car.s = 1.0
+	check(is_equal_approx(float(render_pose.sample(previous, sample_car, 0.25, 100.0).s), 99.5), "render interpolation before lap wrap")
+	check(is_equal_approx(float(render_pose.sample(previous, sample_car, 0.75, 100.0).s), 0.5), "render interpolation after lap wrap")
+	sample_car.progress = 120.0
+	sample_car.s = 20.0
+	check(is_equal_approx(float(render_pose.sample(previous, sample_car, 0.0, 100.0).s), 20.0), "render interpolation snaps teleport")
+	previous.wreck_t = 0.01
+	sample_car.progress = 100.0
+	sample_car.s = 0.0
+	check(is_equal_approx(float(render_pose.sample(previous, sample_car, 0.0, 100.0).s), 0.0), "render interpolation snaps respawn")
 	var sim_count := 0
 	for city in Data.CITIES:
 		if not FileAccess.file_exists("res://assets/cities/%s/track.json" % city.id):

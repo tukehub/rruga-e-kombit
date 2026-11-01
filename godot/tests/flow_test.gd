@@ -33,6 +33,36 @@ func _ready() -> void:
 	await wait_scene("race")
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
+	# A 120 Hz render frame between fixed simulation steps should visibly move
+	# the car without advancing the simulation. The camera must follow that
+	# same rendered pose, rather than the newer raw simulation position.
+	scene.state = "race"
+	scene.race.started = true
+	scene.player.autopilot = true
+	scene.player.v = 30.0
+	scene.cam.intro = false
+	scene._process(1.0 / 60.0)
+	var progress_after_step: float = scene.player.progress
+	var player_index: int = scene.race.cars.find(scene.player)
+	var before: Vector3 = scene.cars[player_index].base_pos
+	scene.cam._snap = true
+	scene._process(1.0 / 120.0)
+	var after: Vector3 = scene.cars[player_index].base_pos
+	check(is_equal_approx(scene.player.progress, progress_after_step), "render-only frame leaves simulation unchanged")
+	check(after.distance_to(before) > 0.05, "car advances on frame without simulation step")
+	var pose: Dictionary = scene.RenderPose.sample(scene._previous_poses[player_index], scene.player, scene.acc / scene.DT, scene.track.L)
+	var pose_s: float = pose.s
+	var car_pos: Vector3 = scene.track.pos(pose_s, pose.d)
+	car_pos.y += float(pose.hop)
+	var psi: float = scene.track.heading(pose_s) + float(pose.yaw) * 0.5
+	var tangent: Vector3 = scene.track.tangent(pose_s)
+	var expected_look := Vector3(car_pos.x - sin(psi) * 12.0, car_pos.y + 1.0 + tangent.y * 12.0, car_pos.z + cos(psi) * 12.0)
+	check(scene.cam.look.distance_to(expected_look) < 0.001, "camera follows rendered car pose")
+	# Rebuild so the flow test starts with an untouched race.
+	Game.goto("race")
+	await wait_scene("race")
+	scene = Game._root.get_child(0)
+	scene.set_process(false)
 	scene.player.autopilot = true
 	scene.input.gas = true
 	scene.toggle_pause()
