@@ -1,0 +1,88 @@
+shader_type spatial;
+render_mode cull_back, depth_draw_opaque, specular_schlick_ggx;
+
+// Facades from the OSM pipeline: UV.x = metres along facade, UV.y = height in metres.
+// COLOR.rgb = tint, COLOR.a = 1 glass tower / 0 plaster (any value between blends).
+uniform sampler2D tex_plaster : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_plaster_n : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_concrete : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float night : hint_range(0.0, 1.0) = 0.0;
+uniform float wetness : hint_range(0.0, 1.0) = 0.0;
+uniform float floor_h = 3.1;
+uniform float window_w = 2.6;
+uniform vec3 window_warm : source_color = vec3(1.0, 0.78, 0.45);
+uniform vec3 window_cool : source_color = vec3(0.75, 0.85, 1.0);
+uniform float window_glow = 2.4;
+uniform float seed = 0.0;
+
+varying vec3 wpos;
+varying vec4 vcol;
+varying vec2 fuv;
+
+float hash(vec2 p) {
+	return fract(sin(dot(p + seed, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	vcol = COLOR;
+	fuv = UV;
+}
+
+void fragment() {
+	float glass_w = vcol.a;
+	// window grid
+	float fx = fuv.x / window_w;
+	float fy = fuv.y / floor_h;
+	vec2 cell = floor(vec2(fx, fy));
+	vec2 fr = fract(vec2(fx, fy));
+	// window opening (centre of the cell), inset for plaster, near full for glass
+	vec2 inset = mix(vec2(0.28, 0.3), vec2(0.06, 0.08), glass_w);
+	float win = step(inset.x, fr.x) * step(fr.x, 1.0 - inset.x) * step(inset.y, fr.y) * step(fr.y, 1.0 - inset.y);
+	// ground floor is a shop front / no windows row
+	win *= step(0.95, fy);
+
+	vec2 tuv = vec2(fuv.x, fuv.y) / 3.0;
+	vec3 plaster = texture(tex_plaster, tuv).rgb * vcol.rgb * 1.15;
+	vec3 concrete = texture(tex_concrete, tuv * 1.3).rgb * vcol.rgb;
+	vec3 wall = mix(plaster, concrete, step(0.5, hash(floor(wpos.xz * 0.002))));
+	vec3 glass_wall = vcol.rgb * 0.35;
+	vec3 base = mix(wall, glass_wall, glass_w);
+	vec3 nrm = mix(texture(tex_plaster_n, tuv).rgb, vec3(0.5, 0.5, 1.0), glass_w);
+
+	// window glass
+	vec3 glass = mix(vec3(0.05, 0.07, 0.09), vec3(0.08, 0.1, 0.13), glass_w);
+	vec3 col = mix(base, glass, win);
+	float rough = mix(mix(0.85, 0.5, glass_w), 0.12, win);
+	float metal = mix(0.0, 0.2, win);
+
+	// lit windows at night (per window random, with slow flicker-free stability)
+	float lit = step(0.62 - 0.1 * glass_w, hash(cell + floor(wpos.xz * 0.013)));
+	float warm_sel = hash(cell * 1.7 + 3.0);
+	vec3 wcol = mix(window_cool, window_warm, step(0.35, warm_sel));
+	float emis = win * lit * night * window_glow;
+	// dimmer upper floors so skyline is not uniform
+	emis *= 0.6 + 0.4 * hash(cell.yy);
+
+	// ground floor shop signage glow strip
+	float sign = step(0.78, fract(fy)) * step(fy, 1.0) * step(0.2, fr.x) * step(fr.x, 0.8);
+	vec3 sign_col = mix(vec3(1.0, 0.3, 0.6), vec3(0.2, 0.9, 1.0), step(0.5, hash(cell.xx + 11.0)));
+	emis += sign * night * 1.5 * step(0.55, hash(floor(wpos.xz * 0.05) + 5.0));
+	vec3 emis_col = mix(wcol, sign_col, sign);
+
+	// wet facades darken slightly at the base
+	float wet = wetness * (1.0 - smoothstep(0.0, 3.0, fuv.y));
+	col *= 1.0 - 0.3 * wet;
+	rough = mix(rough, 0.2, wet);
+
+	// dirt gradient at the bottom
+	col *= 0.78 + 0.22 * smoothstep(0.0, 2.5, fuv.y);
+
+	ALBEDO = col;
+	ROUGHNESS = rough;
+	METALLIC = metal;
+	SPECULAR = 0.5;
+	NORMAL_MAP = nrm;
+	NORMAL_MAP_DEPTH = 0.5 * (1.0 - win);
+	EMISSION = emis_col * emis;
+}

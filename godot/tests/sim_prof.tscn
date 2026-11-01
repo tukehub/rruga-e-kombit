@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b0simprof000001"]
+
+[ext_resource type="Script" path="res://tests/sim_prof.gd" id="1_t"]
+
+[node name="SimProf" type="Node"]
+script = ExtResource("1_t")
