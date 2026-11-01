@@ -30,9 +30,31 @@ func _ready() -> void:
 	menu.show_page("car")
 	Game.race_opts.laps = 1
 	button(menu, "Nisu!").pressed.emit()
+	check(Game.has_node("TransitionOverlay") and is_instance_valid(menu), "loading feedback appears before scene teardown")
 	await wait_scene("race")
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
+	check(scene.views.mirror_panel.visible, "rear mirror visible by default")
+	scene.views._toggle_view()
+	check(scene.cam.cabin and scene.views.cabin_overlay.visible and not scene.cam.get_cull_mask_value(2), "cabin view hides own car and shows dashboard")
+	scene.views._toggle_view()
+	check(not scene.cam.cabin and scene.cam.get_cull_mask_value(2), "exterior view restores own car")
+	scene.views._toggle_mirror()
+	check(not scene.views.mirror_panel.visible and scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "mirror can be disabled")
+	scene.views._toggle_mirror()
+	check(scene.views.mirror_panel.visible, "mirror can be reenabled")
+	# Standings report live distances from the player on the full race progress,
+	# so the same calculation also works across the start line and multiple laps.
+	var opponent: CarState = scene.race.cars[1]
+	var saved_progress := opponent.progress
+	opponent.progress = scene.player.progress + 12.0
+	scene.hud._process(0.016)
+	var opponent_row: int = scene.race.order.find(opponent)
+	check(scene.hud._board_gaps[opponent_row].text == "+12m", "leaderboard distance ahead")
+	opponent.progress = scene.player.progress - 32.0
+	scene.hud._process(0.016)
+	check(scene.hud._board_gaps[opponent_row].text == "-32m", "leaderboard distance behind updates")
+	opponent.progress = saved_progress
 	# A 120 Hz render frame between fixed simulation steps should visibly move
 	# the car without advancing the simulation. The camera must follow that
 	# same rendered pose, rather than the newer raw simulation position.
@@ -63,6 +85,13 @@ func _ready() -> void:
 	await wait_scene("race")
 	scene = Game._root.get_child(0)
 	scene.set_process(false)
+	# The cinematic's last frame meets the chase camera without a position cut.
+	scene.cam.intro_t = 2.8
+	scene.cam._intro_cam(scene.player, 0.0)
+	var intro_end: Vector3 = scene.cam.global_position
+	scene.cam.follow(scene.player, 0.0)
+	check(intro_end.distance_to(scene.cam.global_position) < 0.01, "intro joins chase camera smoothly")
+	scene.cam.start_intro()
 	scene.player.autopilot = true
 	scene.input.gas = true
 	scene.toggle_pause()

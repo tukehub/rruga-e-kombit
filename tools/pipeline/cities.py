@@ -20,12 +20,21 @@ CITIES = {
         ],
         'landmarks': [
             {'id': 'skanderbeg', 'll': (41.32775, 19.81850), 'yaw': 180},
-            {'id': 'pyramid', 'll': (41.32310, 19.82030), 'yaw': 0},
+            {'id': 'pyramid', 'll': (41.323058, 19.821443), 'yaw': 0},
+            {'id': 'downtown_one', 'll': (41.324082, 19.823911), 'yaw': 0},
+            # Move these two away from the widened arcade circuit, preserving
+            # their approximate positions while keeping chase cameras clear.
+            {'id': 'eyes_tirana', 'll': (41.328561, 19.815744), 'yaw': 0, 'offset_x': -30},
+            {'id': 'bank_albania', 'll': (41.327758, 19.816685), 'yaw': 0, 'offset_x': 20},
+            {'id': 'international_hotel', 'll': (41.329863, 19.818686), 'yaw': 0},
             {'id': 'clocktower', 'll': (41.32800, 19.82000), 'yaw': 0},
             {'id': 'mosque', 'll': (41.32790, 19.81950), 'yaw': 0},
             {'id': 'mother_teresa', 'll': (41.31880, 19.82160), 'yaw': 0},
             {'id': 'blloku_sign', 'll': (41.32070, 19.81600), 'yaw': 90},
         ],
+        # Replace these specific OSM footprints with the original landmarks,
+        # instead of drawing a generic extruded building through each model.
+        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876],
         'style': 'tirana',
     },
     'vlore': {

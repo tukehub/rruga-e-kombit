@@ -9,7 +9,7 @@ signal fire_pressed(back: bool)
 const DEAD_DEG := 2.2
 const TILT_SMOOTH := 14.0
 const EDGE := 20.0
-const PEDAL_SIZE := Vector2(96, 112)
+const PEDAL_SIZE := Vector2(112, 128)
 const FIRE_SIZE := Vector2(164, 64)
 const STEER_SIZE := Vector2(204, 96)
 
@@ -60,11 +60,11 @@ func control_rect(zone: String) -> Rect2:
 		"brake":
 			return Rect2(Vector2(EDGE, size.y - EDGE - PEDAL_SIZE.y), PEDAL_SIZE)
 		"fire":
-			return Rect2(Vector2(size.x - EDGE - FIRE_SIZE.x, size.y - 148 - FIRE_SIZE.y), FIRE_SIZE)
+			return Rect2(Vector2(size.x - EDGE - FIRE_SIZE.x, size.y - EDGE - PEDAL_SIZE.y - 16 - FIRE_SIZE.y), FIRE_SIZE)
 		"back":
-			return Rect2(Vector2(EDGE, size.y - 148 - FIRE_SIZE.y), FIRE_SIZE)
+			return Rect2(Vector2(EDGE, size.y - EDGE - PEDAL_SIZE.y - 16 - FIRE_SIZE.y), FIRE_SIZE)
 		"steer":
-			return Rect2(Vector2(132, size.y - 28 - STEER_SIZE.y), STEER_SIZE)
+			return Rect2(Vector2(EDGE + PEDAL_SIZE.x + 16, size.y - 28 - STEER_SIZE.y), STEER_SIZE)
 	return Rect2()
 
 
@@ -123,8 +123,8 @@ func _mk_button(text: String, zone: String, col: Color) -> Button:
 	if zone in ["gas", "brake"]:
 		for row in 3:
 			var rib := ColorRect.new()
-			rib.position = Vector2(24, 83 + row * 7)
-			rib.size = Vector2(48, 3)
+			rib.position = Vector2(28, 99 + row * 7)
+			rib.size = Vector2(56, 3)
 			rib.color = Color(col, 0.48)
 			rib.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			b.add_child(rib)

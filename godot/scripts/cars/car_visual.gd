@@ -106,12 +106,12 @@ func _paint() -> StandardMaterial3D:
 	if mat_paint == null:
 		mat_paint = StandardMaterial3D.new()
 		mat_paint.albedo_color = color
-		mat_paint.metallic = 0.35
-		mat_paint.metallic_specular = 0.6
-		mat_paint.roughness = 0.24
+		mat_paint.metallic = 0.28
+		mat_paint.metallic_specular = 0.48
+		mat_paint.roughness = 0.32
 		mat_paint.clearcoat_enabled = true
-		mat_paint.clearcoat = 0.9
-		mat_paint.clearcoat_roughness = 0.05
+		mat_paint.clearcoat = 0.6
+		mat_paint.clearcoat_roughness = 0.18
 	return mat_paint
 
 

@@ -171,7 +171,20 @@ class Builder:
             v = signed_volume(p['pos'], p['idx'])
             if v < -1e-4:
                 print(f'  WARNING: {name} primitive with material #{p["mat"]} looks inside-out (volume {v:.4f})')
-        mid = self.g.mesh(name, self.prims)
+        # A glTF primitive becomes a separate surface/draw call in Godot.
+        # Combine disconnected details with the same material so the lights,
+        # trim and wheel spokes do not each cost another draw per car.
+        groups = {}
+        for p in self.prims:
+            group = groups.setdefault(p['mat'], {'pos': [], 'nrm': [], 'uv': [], 'idx': [], 'count': 0})
+            for key in ('pos', 'nrm', 'uv'):
+                group[key].append(p[key])
+            group['idx'].append(np.asarray(p['idx'], dtype=np.uint32) + group['count'])
+            group['count'] += len(p['pos'])
+        merged = []
+        for mat, group in groups.items():
+            merged.append({key: np.concatenate(group[key]) for key in ('pos', 'nrm', 'uv', 'idx')} | {'mat': mat})
+        mid = self.g.mesh(name, merged)
         self.prims = []
         return mid
 
@@ -376,15 +389,24 @@ def add_modern_details(b, spec, geo):
         b.box((x, .385, front - .028), (.012, .095, .008), 'chrome')
     b.box((0, .254, front + .055), (1.55, .034, .15), 'trim')
     b.box((0, .390, front - .040), (.40, .092, .014), 'plate')
+    # Dark lens surround adds depth and keeps the thin lamps legible in sunlight.
+    xs = np.linspace(-.81, .81, 32)
+    lens = [[x, .735 + .025 * (1 - (x / .81) ** 2), rear + .026 - .10 * (x / .83) ** 2] for x in xs]
+    light_ribbon(b, lens, .082, .026, 'trim')
     # Continuous red rear light blade above the diffuser; a second brake signature.
     xs = np.linspace(-.79, .79, 30)
-    tail = [[x, .744 + .025 * (1 - (x / .79) ** 2), rear + .019 - .10 * (x / .83) ** 2] for x in xs]
+    tail = [[x, .744 + .025 * (1 - (x / .79) ** 2), rear + .055 - .10 * (x / .83) ** 2] for x in xs]
     light_ribbon(b, tail, .036, .025, 'light_rear')
     for side in [-1, 1]:
         b.box((side * .725, .686, rear - .060), (.13, .022, .025), 'light_rear')
         b.box((side * .91, .300, .10), (.035, .075, 1.68), 'trim')
-    b.box((0, .385, rear + .010), (1.52, .14, .065), 'trim')
-    b.box((0, .499, rear + .028), (.40, .092, .015), 'plate')
+    # Recessed plate surround, lower valance, and a separated diffuser give
+    # the rear a readable three-dimensional shape in the chase camera.
+    b.box((0, .390, rear + .035), (1.50, .13, .045), 'trim')
+    b.box((0, .500, rear + .034), (.48, .14, .024), 'trim')
+    b.box((0, .500, rear + .051), (.38, .075, .012), 'plate')
+    for side in [-1, 1]:
+        b.box((side * .62, .335, rear + .048), (.24, .035, .025), 'chrome')
     for x in [-.50, -.25, 0, .25, .50]:
         b.box((x, .323, rear - .08), (.022, .13, .27), 'trim')
     # An integrated, understated ducktail rather than a tall racing wing.
@@ -413,8 +435,9 @@ def build_wheel(b: Builder, spec):
             (tw / 2 - 0.07, R), (tw / 2 - 0.04, R - 0.01), (tw / 2, R - 0.05), (tw / 2, rr - 0.01)]
     b.lathe_x(prof, 'tyre', seg=56)
     # rim: outer lip -> barrel -> dish -> hub
-    rim = [(tw / 2 + 0.005, rr), (tw / 2 + 0.01, rr - 0.02), (tw / 2 - 0.01, rr - 0.045), (tw / 2 - 0.09, rr * 0.5),
-           (tw / 2 - 0.09, rr * 0.33), (tw / 2 - 0.05, rr * 0.3), (tw / 2 - 0.05, 0.001)]
+    # Keep the centre open: a solid silver disc concealed the spokes and
+    # brakes, making wheels look like flat circles from the racing camera.
+    rim = [(tw / 2 + 0.005, rr), (tw / 2 + 0.01, rr - 0.02), (tw / 2 - 0.01, rr - 0.045)]
     b.lathe_x(rim, 'rim', seg=48)
     # barrel (inner cylinder from dish to inner side; seen from the axle side through the spokes)
     b.lathe_x([(tw / 2 - 0.01, rr - 0.045), (-tw / 2 + 0.01, rr - 0.045), (-tw / 2 + 0.01, rr * 0.5)], 'trim', seg=32,
@@ -427,6 +450,8 @@ def build_wheel(b: Builder, spec):
         rc = (r_in + r_out) / 2
         b.box((tw / 2 - 0.06, rc * math.cos(a), rc * math.sin(a)), (0.045, r_out - r_in, max(0.05, rr * 0.22)),
               'rim', rot_x=a)
+    b.lathe_x([(tw / 2 - 0.09, 0.001), (tw / 2 - 0.09, rr * 0.32),
+               (tw / 2 - 0.045, rr * 0.32), (tw / 2 - 0.045, 0.001)], 'rim', seg=32)
     # brake disc + calliper
     b.lathe_x([(tw / 2 - 0.16, 0.001), (tw / 2 - 0.16, rr - 0.08), (tw / 2 - 0.13, rr - 0.08), (tw / 2 - 0.13, 0.001)],
               'chrome', seg=32)

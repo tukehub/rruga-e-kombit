@@ -126,24 +126,34 @@ func _build_lamps(lamps: Array, tl: Array) -> void:
 
 
 func _tree_meshes() -> Array:
-	# low-poly canopy (2 stacked cones) and trunk
+	# A rounded broadleaf crown, rather than the old stacked conifers.  The
+	# small irregularities make a three-dimensional silhouette from every angle.
+	# One shared 32-triangle mesh still renders in a single MultiMesh draw call.
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var cone := func(base_y: float, h: float, r: float, col: Color) -> void:
-		var segs := 7
-		for i in segs:
-			var a0 := TAU * i / segs
-			var a1 := TAU * (i + 1) / segs
-			var p0 := Vector3(cos(a0) * r, base_y, sin(a0) * r)
-			var p1 := Vector3(cos(a1) * r, base_y, sin(a1) * r)
-			var tip := Vector3(0, base_y + h, 0)
-			var n := (p1 - p0).cross(tip - p0).normalized()
-			for v in [p0, tip, p1]:
-				st.set_normal(n)
-				st.set_color(col)
-				st.add_vertex(v)
-	cone.call(2.2, 3.4, 2.4, Color(0.18, 0.36, 0.14))
-	cone.call(4.2, 3.0, 1.8, Color(0.22, 0.42, 0.16))
+	var segments := 8
+	var rings := 3
+	var vertex := func(ring: int, segment: int) -> void:
+		var phi := PI * float(ring) / float(rings)
+		var angle := TAU * float(segment) / float(segments)
+		var uneven := 1.0 + 0.09 * sin(angle * 3.0 + phi * 1.7) + 0.05 * cos(angle * 5.0 - phi)
+		var unit := Vector3(sin(phi) * cos(angle), cos(phi), sin(phi) * sin(angle))
+		var normal := Vector3(unit.x / 2.5, unit.y / 2.35, unit.z / 2.5).normalized()
+		st.set_normal(normal)
+		var variation := 0.025 * sin(angle * 3.0 + phi * 2.0)
+		st.set_color(Color(0.15 + variation, 0.27 + unit.y * 0.04 + variation, 0.105 + variation * 0.5))
+		st.add_vertex(Vector3(unit.x * 2.5 * uneven, 4.8 + unit.y * 2.35, unit.z * 2.5 * uneven))
+	for ring in rings:
+		for segment in segments:
+			# Skip the degenerate triangles at the two poles.
+			if ring > 0:
+				vertex.call(ring, segment)
+				vertex.call(ring, segment + 1)
+				vertex.call(ring + 1, segment + 1)
+			if ring < rings - 1:
+				vertex.call(ring, segment)
+				vertex.call(ring + 1, segment + 1)
+				vertex.call(ring + 1, segment)
 	var canopy_mat := StandardMaterial3D.new()
 	canopy_mat.vertex_color_use_as_albedo = true
 	canopy_mat.roughness = 0.95
@@ -151,7 +161,7 @@ func _tree_meshes() -> Array:
 	var canopy := st.commit()
 	var st2 := SurfaceTool.new()
 	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_box(st2, Vector3(0, 1.2, 0), Vector3(0.4, 2.4, 0.4), Color(0.3, 0.2, 0.12))
+	_box(st2, Vector3(0, 1.5, 0), Vector3(0.48, 3.0, 0.48), Color(0.30, 0.22, 0.15))
 	var trunk_mat := StandardMaterial3D.new()
 	trunk_mat.vertex_color_use_as_albedo = true
 	trunk_mat.roughness = 0.9
@@ -176,7 +186,11 @@ func _build_trees(trees: Array, terrain: Terrain) -> void:
 		var y := float(t[1])
 		if terrain:
 			y = terrain.height_at(float(t[0]), float(t[2]))
-		var b := Basis(Vector3.UP, float(i) * 1.37).scaled(Vector3(sc, sc, sc))
+		# Small shape variations preserve the existing positions and sizes while
+		# avoiding identical crowns along the street.
+		var breadth := 0.91 + 0.18 * (0.5 + 0.5 * sin(float(i) * 2.31))
+		var height := 0.94 + 0.12 * (0.5 + 0.5 * sin(float(i) * 1.73))
+		var b := Basis(Vector3.UP, float(i) * 1.37).scaled(Vector3(sc * breadth, sc * height, sc * (2.0 - breadth)))
 		var tr := Transform3D(b, Vector3(float(t[0]), y, float(t[2])))
 		mm.set_instance_transform(i, tr)
 		mm2.set_instance_transform(i, tr)

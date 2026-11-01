@@ -64,6 +64,12 @@ func goto(name: String) -> void:
 	if _loading or not SCENES.has(name):
 		return
 	_loading = true
+	# Constructing and freeing the city can block the main thread. Show a
+	# transition first and give the renderer a frame to present it.
+	var overlay := _transition_overlay(name)
+	add_child(overlay)
+	await get_tree().process_frame
+	await get_tree().process_frame
 	for c in _root.get_children():
 		c.queue_free()
 	await get_tree().process_frame
@@ -71,8 +77,32 @@ func goto(name: String) -> void:
 	var inst := ps.instantiate()
 	_root.add_child(inst)
 	current = name
+	await get_tree().process_frame
+	overlay.queue_free()
 	_loading = false
 	scene_changed.emit(name)
+
+
+func _transition_overlay(name: String) -> CanvasLayer:
+	var layer := CanvasLayer.new()
+	layer.name = "TransitionOverlay"
+	layer.layer = 100
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	var bg := ColorRect.new()
+	bg.color = Color(0.035, 0.06, 0.09, 1.0)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(bg)
+	var label := Label.new()
+	label.text = "Duke përgatitur garën…" if name == "race" else ("Duke u kthyer në menu…" if name == "menu" else "Duke përgatitur rezultatet…")
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 32)
+	label.add_theme_color_override("font_color", Color.WHITE)
+	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.add_child(label)
+	return layer
 
 
 func start_race() -> void:

@@ -435,10 +435,12 @@ def clean_ring(ring):
     return out
 
 
-def build_buildings(osm, ref, hw, terrain_sample, style, out_path):
+def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buildings=()):
     footprints = []
     for w in osm.ways.values():
         tags = w.get('tags') or {}
+        if w['id'] in landmark_buildings:
+            continue
         if 'building' not in tags or tags.get('building') == 'no':
             continue
         if w['nodes'][0] != w['nodes'][-1]:
@@ -699,6 +701,8 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf)
     landmarks = []
     for lm in city.get('landmarks', []):
         x, z = proj.to_xz(*lm['ll'])
+        x += lm.get('offset_x', 0)
+        z += lm.get('offset_z', 0)
         y = float(terrain_sample([x], [z])[0])
         landmarks.append({'id': lm['id'], 'x': round(x, 1), 'y': round(y, 1), 'z': round(z, 1), 'yaw': lm.get('yaw', 0)})
     save_json(out_json, {'lamps': lamps, 'track_lamps': track_lamps, 'trees': trees, 'landmarks': landmarks})
@@ -818,7 +822,7 @@ def build(cid, route_only=False):
     log(f'  track.json {len(pts)} control points, elevation {y.min():.1f}..{y.max():.1f} m')
 
     # 4. buildings, splat, props
-    build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'))
+    build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()))
     build_side_roads(osm, ref, hw, terrain_sample, os.path.join(out, 'roads.glb'))
     build_splat(osm, ref, hw, os.path.join(out, 'splat.png'))
     build_props(osm, ref, hw, terrain_sample, city, proj, os.path.join(out, 'props.json'), None)

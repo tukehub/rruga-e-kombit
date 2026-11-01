@@ -17,6 +17,7 @@ var sky: SkyEnv
 var terrain: Terrain
 var road: RoadMesh
 var cam: ChaseCam
+var views: RaceViews
 var hud: Hud
 var input: RaceInput
 var effects: FxVisual
@@ -126,6 +127,9 @@ func _build_race() -> void:
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	views = RaceViews.new()
+	add_child(views)
+	views.setup(cam, cars[race.cars.find(player)], layer)
 	input = RaceInput.new()
 	layer.add_child(input)
 	hud = Hud.new()
@@ -261,6 +265,10 @@ func _process(dt: float) -> void:
 		if state in ["race", "finish"]:
 			pose = RenderPose.sample(_previous_poses[i], race.cars[i], acc / DT, track.L)
 		cars[i].apply_state(race.cars[i], track, dt, pose)
+	var view_pose := {}
+	if state in ["race", "finish"]:
+		view_pose = RenderPose.sample(_previous_poses[race.cars.find(player)], player, acc / DT, track.L)
+	views.update_pose(player, view_pose, dt)
 	sky.follow(cam.global_position)
 	Sfx.listener_pos = cam.global_position
 

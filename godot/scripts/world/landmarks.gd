@@ -51,12 +51,46 @@ func build(root: Node3D, id: String) -> void:
 	var bronze := Color("546656")
 	match id:
 		"pyramid":
-			for level in 12:
-				var span := 54.0 - level * 3.5
-				_box(root, Vector3(0, level * 1.4 + 0.7, 0), Vector3(span, 1.4, span), Color("e5dfcf"))
+			# Low, broad white pyramid with sloping stairways and a glass centre.
+			_box(root, Vector3(0, 1, 0), Vector3(58, 2, 58), Color("d7d2c9"))
+			for level in 10:
+				var span := 52.0 - level * 4.2
+				_box(root, Vector3(0, 2.6 + level * 1.25, 0), Vector3(span, 1.25, span), Color("e7e4dc"))
+			_box(root, Vector3(0, 10, 0), Vector3(11, 15, 11), Color("667f8b"))
 			for side in [-1.0, 1.0]:
-				var ramp := _box(root, Vector3(side * 14, 9, 0), Vector3(1.2, 1.2, 48), Color("ccc5b9"))
-				ramp.rotation.x = side * 0.35
+				var stair := _box(root, Vector3(side * 13, 8, 0), Vector3(27, 0.7, 6), Color("f4f2e9"))
+				stair.rotation.z = side * 0.48
+				var stair2 := _box(root, Vector3(0, 8, side * 13), Vector3(6, 0.7, 27), Color("f4f2e9"))
+				stair2.rotation.x = -side * 0.48
+		"downtown_one":
+			# Tall glazed slab with an original pattern of projecting white volumes.
+			_box(root, Vector3(0, 69, 0), Vector3(35, 138, 26), Color("6e8896"))
+			_box(root, Vector3(0, 3, 0), Vector3(44, 6, 34), Color("c5c7c4"))
+			for row in 9:
+				for col in 3:
+					if (row * 3 + col * 5) % 4 != 0:
+						var x := -11.0 + col * 11.0 + (3.0 if row % 2 == 0 else -1.0)
+						_box(root, Vector3(x, 14.0 + row * 13.0, -14.0), Vector3(8, 7.5, 4), Color("deded8"))
+		"eyes_tirana":
+			# Four subtly rotated glass volumes give a stepped silhouette.
+			_box(root, Vector3(0, 4, 0), Vector3(35, 8, 38), Color("c5cac9"))
+			for i in 4:
+				var section := _box(root, Vector3(0, 24 + i * 30, 0), Vector3(31 + i * 2, 30, 30 + i * 2), Color("8aa4ad"))
+				section.rotation.y = deg_to_rad(float(i - 1) * 5.0)
+				for side in [-1.0, 1.0]:
+					var rim := _box(root, Vector3(side * (16 + i), 24 + i * 30, 0), Vector3(1.2, 29, 31 + i * 2), Color("e2e1db"))
+					rim.rotation.y = deg_to_rad(float(i - 1) * 5.0)
+		"bank_albania":
+			_box(root, Vector3(0, 8, 0), Vector3(36, 16, 30), Color("d3c4ac"))
+			_box(root, Vector3(0, 16.5, 0), Vector3(38, 1, 32), Color("e3d7c3"))
+			_box(root, Vector3(0, 10, -15.4), Vector3(22, 11, 1.0), Color("c1aa8e"))
+			for x in [-14.0, -9.0, -4.0, 1.0, 6.0, 11.0, 16.0]:
+				_box(root, Vector3(x, 9, -15.6), Vector3(2.6, 7, 0.3), Color("6f7b7c"))
+		"international_hotel":
+			_box(root, Vector3(0, 24, 0), Vector3(50, 48, 23), Color("d4d3cc"))
+			_box(root, Vector3(0, 3, 0), Vector3(56, 6, 32), Color("c7c4ba"))
+			for floor_no in 9:
+				_box(root, Vector3(0, 8 + floor_no * 4.1, -11.6), Vector3(45, 2.5, 0.2), Color("728b96"))
 		"skanderbeg":
 			_box(root, Vector3(0, 1.6, 0), Vector3(10, 3.2, 6), stone)
 			# Horse body, four legs, head and raised neck; mounted rider and sword.

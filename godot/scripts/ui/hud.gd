@@ -21,6 +21,7 @@ var _lap: Label
 var _time: Label
 var _board: VBoxContainer
 var _board_key := ""
+var _board_gaps: Array[Label] = []
 var _feed: VBoxContainer
 var _center: Label
 var _center_sub: Label
@@ -86,14 +87,14 @@ func _build() -> void:
 	v.add_child(_time)
 	var standings := UiTheme.panel(12)
 	standings.position = Vector2(16, 102)
-	standings.custom_minimum_size.x = 208
+	standings.custom_minimum_size.x = 270
 	standings.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	standings.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.24), Color(1, 1, 1, 0.13), 12, 1))
 	add_child(standings)
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 3)
 	standings.add_child(bv)
-	bv.add_child(UiTheme.label("RENDITJA", 18, UiTheme.CYAN))
+	bv.add_child(UiTheme.label("RENDITJA · ±m NGA TI", 18, UiTheme.CYAN))
 	_board = VBoxContainer.new()
 	_board.add_theme_constant_override("separation", 0)
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -156,8 +157,8 @@ func _build() -> void:
 	# Compact digital speed and damage bar, rather than an opaque corner dial.
 	_gauge = Control.new()
 	_gauge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_gauge.offset_left = -78
-	_gauge.offset_right = 78
+	_gauge.offset_left = -323
+	_gauge.offset_right = -167
 	_gauge.offset_top = 12
 	_gauge.offset_bottom = 100
 	_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -209,8 +210,8 @@ func _build() -> void:
 		_slots.append(button)
 	_fps = UiTheme.label("", 18, UiTheme.TEXT)
 	_fps.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_fps.offset_left = -190
-	_fps.offset_right = 190
+	_fps.offset_left = -350
+	_fps.offset_right = -140
 	_fps.offset_top = 112
 	_fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_fps)
@@ -346,6 +347,7 @@ func _process(dt: float) -> void:
 		key += str(c.id) + ("f" if c.finished else "") + ","
 	if key != _board_key:
 		_board_key = key
+		_board_gaps.clear()
 		for ch in _board.get_children():
 			_board.remove_child(ch)
 			ch.queue_free()
@@ -363,10 +365,22 @@ func _process(dt: float) -> void:
 			dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(dot)
 			var nm := UiTheme.label(c.name + (" ✓" if c.finished else ""), 23, UiTheme.CYAN if c == player else UiTheme.TEXT)
+			nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 			nm.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 			nm.add_theme_constant_override("outline_size", 3)
 			row.add_child(nm)
+			var gap := UiTheme.label("", 20, UiTheme.CYAN if c == player else UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_RIGHT)
+			gap.custom_minimum_size.x = 70
+			gap.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+			gap.add_theme_constant_override("outline_size", 3)
+			row.add_child(gap)
+			_board_gaps.append(gap)
 			_board.add_child(row)
+	for i in mini(race.order.size(), _board_gaps.size()):
+		var c: CarState = race.order[i]
+		var metres := roundi(c.progress - player.progress)
+		_board_gaps[i].text = "TI" if c == player else ("+%dm" % metres if metres > 0 else "%dm" % metres)
 	# slots
 	var sk := ""
 	for s in player.slots:

@@ -81,6 +81,10 @@ func _ready() -> void:
 	add_child(controls)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	controls.size = Vector2(1280, 720)
+	check(controls.control_rect("gas").size.x > 96.0 and controls.control_rect("gas").size.y > 112.0, "larger pedals")
+	check(not controls.control_rect("gas").intersects(controls.control_rect("fire")), "gas and fire do not overlap")
+	check(not controls.control_rect("brake").intersects(controls.control_rect("back")), "brake and rear fire do not overlap")
+	check(not controls.control_rect("brake").intersects(controls.control_rect("steer")), "brake and steering do not overlap")
 	var touch := InputEventScreenTouch.new()
 	touch.index = 1
 	touch.position = controls.control_rect("gas").get_center()
