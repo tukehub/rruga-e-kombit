@@ -4,11 +4,11 @@ Native Godot **4.4.1**, GDScript, Forward+ / Vulkan combat racer for Android.
 Package: `al.tukehub.rruga`. The fixed release key remains at
 `android/app/rruga.jks`; changing it would break updates to existing installs.
 
-The native game has a complete playable Tirana race, six configurable procedural
+The native game has six real city tracks, six configurable procedural
 cars and drivers, five AI rivals, eight power-ups, Albanian menus/HUD/results,
 tilt/touch controls, SFX mixer, quality presets and smoothly changing weather.
-The other five cities still need their real OSM/Copernicus datasets generated;
-they are disabled in the menu rather than substituted with invented geography.
+Tiranë, Vlorë, Berat, Gjirokastër, Shkodër and Tetovë use OSM streets/buildings
+and Copernicus terrain, including side roads and landmark anchors.
 See [milestone status and verification](docs/STATUS.md) for the exact limits.
 
 ## Develop and test
@@ -21,7 +21,8 @@ python3 tools/run_tests.py --godot godot
 godot --path godot
 ```
 
-Tests exercise all available city simulations on three difficulties, all six car
+Tests exercise all available city simulations on three difficulties, load every
+city through the production race scene, and check all six car
 models (25k–60k triangles and four wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop. The runner rejects script errors even
@@ -72,8 +73,11 @@ python3 tools/pipeline/build_all.py vlore berat gjirokaster shkoder tetove
 This requires HTTPS access to `overpass-api.de`, `overpass.private.coffee` and
 `copernicus-dem-30m.s3.amazonaws.com`. Raw downloads are cached in `tools/cache/`;
 processed track, terrain, buildings, side roads and props belong in
-`godot/assets/cities/<id>/`. Tirana's existing dataset predates the side-road
-export; regenerate it to add `roads.glb`. No data is fabricated if access fails.
+`godot/assets/cities/<id>/`. All six processed datasets include `roads.glb`.
+The builder rejects routes that double back, and terrain validation fails if the
+ground intersects the road. No data is fabricated if access fails.
+
+Pipeline regression test: `python3 tools/pipeline/test_terrain.py`.
 
 Car regeneration: `python3 tools/gen_cars.py`. SFX: `python3 tools/gen_sfx.py`.
 The central lists and model paths live in `godot/scripts/data/data.gd`.

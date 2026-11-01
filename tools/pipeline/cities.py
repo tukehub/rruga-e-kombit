@@ -34,13 +34,10 @@ CITIES = {
         'near_km': 4.5, 'far_km': 24.0,
         'half_width': 10.0,
         'waypoints': [
-            (40.4572, 19.4892),   # Flag Square north
-            (40.4548, 19.4858),   # towards the harbour road
-            (40.4505, 19.4842),   # Lungomare north end
-            (40.4452, 19.4812),   # Lungomare
-            (40.4446, 19.4848),   # turn inland
-            (40.4486, 19.4886),   # Rruga Ismail Qemali back north
-            (40.4532, 19.4905),
+            (40.4572235, 19.4891185),  # Flag Square north
+            (40.4546913, 19.4867492),  # west side of the centre
+            (40.4513451, 19.4888815),  # southern street junction
+            (40.4566135, 19.4922383),  # eastern junction, back to Flag Square
         ],
         'landmarks': [
             {'id': 'independence', 'll': (40.45640, 19.48900), 'yaw': 0},
@@ -57,9 +54,6 @@ CITIES = {
         'half_width': 9.0,
         'waypoints': [
             (40.7050, 19.9522),   # centre
-            (40.7062, 19.9590),   # Bulevardi Republika east
-            (40.7075, 19.9660),
-            (40.7050, 19.9672),   # cross the Osum
             (40.7035, 19.9600),   # Gorica side, west
             (40.7038, 19.9510),   # Gorica bridge area
             (40.7046, 19.9478),   # under Mangalem
@@ -84,7 +78,6 @@ CITIES = {
             (40.0836, 20.1398),
             (40.0803, 20.1370),
             (40.0770, 20.1380),   # climb towards the bazaar
-            (40.0758, 20.1405),
         ],
         'landmarks': [
             {'id': 'castle_gjirokaster', 'll': (40.07350, 20.13950), 'yaw': 0},
@@ -101,10 +94,8 @@ CITIES = {
         'waypoints': [
             (42.0665, 19.5125),   # Sheshi Demokracia
             (42.0640, 19.5160),
-            (42.0585, 19.5130),
             (42.0548, 19.5048),   # towards the castle road
             (42.0570, 19.4985),
-            (42.0618, 19.5010),
             (42.0652, 19.5068),
         ],
         'landmarks': [
@@ -121,13 +112,12 @@ CITIES = {
         'near_km': 4.5, 'far_km': 24.0,
         'half_width': 10.0,
         'waypoints': [
-            (42.0092, 20.9700),   # Painted Mosque
-            (42.0085, 20.9770),   # along the Pena
-            (42.0125, 20.9790),
-            (42.0150, 20.9735),   # Ilindenska
-            (42.0140, 20.9655),
-            (42.0105, 20.9640),
-            (42.0082, 20.9668),
+            (42.0092789, 20.9708636),
+            (42.0083544, 20.9773683),
+            (42.0121508, 20.9791749),
+            (42.0152582, 20.9730666),
+            (42.0103832, 20.9640644),
+            (42.0073634, 20.9668280),
         ],
         'landmarks': [
             {'id': 'painted_mosque', 'll': (42.00850, 20.97050), 'yaw': 0},

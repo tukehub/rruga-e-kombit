@@ -7,7 +7,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--godot', default='godot')
 args = ap.parse_args()
 root = Path(__file__).resolve().parents[1]
-for scene in ['readiness', 'flow_test']:
+for scene in ['readiness', 'city_worlds', 'flow_test']:
     try:
         run = subprocess.run([args.godot, '--headless', '--path', str(root / 'godot'),
                               'res://tests/' + scene + '.tscn'], stdout=subprocess.PIPE,

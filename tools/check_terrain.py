@@ -105,3 +105,6 @@ if (~inside).any():
 else:
     print('  OK: far mesh removed under the whole track')
 
+if (ex_all > 0.05).any() or (~inside).any():
+    raise SystemExit('FAIL: terrain intersects the carriageway or the track leaves the near grid')
+

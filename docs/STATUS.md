@@ -13,9 +13,11 @@
   SDK 34; strict aapt manifest, arm64, activity, version and signature checks pass.
 - CI changed from Capacitor to checksum-verified Godot and matching templates,
   native tests, signed export and fixed-name release asset/versioning.
-- Outstanding: run the workflow on GitHub; install and validate on a physical phone.
-  This report records local validation; consult GitHub Actions for remote build
-  and release results.
+- GitHub release 1.0.15 published successfully after fixing SDK setup: the Android
+  action's default `tools` package is retired; explicitly request `platform-tools`.
+  Failed run: https://github.com/tukehub/rruga-e-kombit/actions/runs/41335494256
+  Successful retry: https://github.com/tukehub/rruga-e-kombit/actions/runs/41335883587
+- Outstanding: install and validate the native release on a physical phone.
 
 ## Milestone 2: cars, combat and race flow
 
@@ -35,19 +37,29 @@
 ## Milestone 3: cities, landmarks, weather and quality
 
 - Added original simplified landmark meshes for all configured anchor types.
-  Tirana's named landmarks are 26–99 m from its route. Other cities have model
-  implementations and anchor specifications, but do not yet have processed data.
+  Tirana's named landmarks are 26–99 m from its route. All six cities now have
+  processed datasets and landmark anchors; these are simplified original models.
 - Added smooth HDRI, sun, fog, ambient, wetness and reflection transitions, with a
   persistent Albanian setting. Road/terrain/buildings, lamps, cars and tyre grip
   follow weather changes. Drying switches rain/reflections back off.
 - Existing GPU/RAM automatic quality selection and low/medium/high presets retained.
 - Fixed terrain chunk transforms so distance detail selection uses each chunk's
   centre; medium uses a shorter high-detail range. Added OSM side-road mesh export.
-- BLOCKED: Vlorë, Berat, Gjirokastër, Shkodër and Tetovë source downloads receive
-  proxy policy 403 responses. The required three hosts were saved to the current
-  environment draft; enable them in environment settings, then run build_all.py,
-  inspect track maps/terrain, import assets and rerun all-city/native/render tests.
-  This also blocks checking the final sea/mountain horizons in those cities.
+- Resolved the network blocker: OSM and Copernicus downloads succeeded for all
+  six cities. Overpass needed one retry after a 502. Raw sources stay in the
+  ignored cache; processed terrain, buildings, side roads, props and tracks ship.
+- Corrected offshore/dead-end waypoints and removed detours that caused street
+  reuse. The exporter now rejects routes that revisit nodes. Track lengths:
+  Tiranë 4.89 km, Vlorë 2.10 km, Berat 5.55 km, Gjirokastër 3.06 km,
+  Shkodër 8.61 km, Tetovë 4.75 km.
+- Fixed hillside terrain crossing the road: carve all supporting grid corners
+  below the lowest nearby road height. All six terrain checks report zero ground
+  intrusion across the carriageway and no far mesh underneath the track.
+- Verified locally: pipeline regression and six terrain checks pass; Godot 4.6.3
+  import, 18 full simulations, six production world loads and the scene-flow test
+  pass. Release CI remains pinned to Godot 4.4.1 and validates that engine too.
+  In-game visual approval of the five new cities,
+  particularly sea/lake/mountain horizons and landmark placement, remains open.
 
 ## Milestone 4: polish, credits and performance
 

@@ -318,51 +318,38 @@ class TrackRef:
 
 # --------------------------------------------------------------------------- terrain
 def conform_terrain(h, x0, z0, cell, ref, hw):
-    """Pull the heightmap down to the road centreline height (minus an embankment
-    offset, so the road skirt always hides the terrain) within `inner`, blending
-    back to the DEM by `outer`."""
+    """Carve every grid corner supporting the road below its lowest nearby height.
+
+    A 15 m DEM cell straddles narrow roads. Averaging heights only inside the
+    road width leaves uphill corners poking through when Godot interpolates the
+    grid, especially on hairpins. Include a full cell diagonal and take the
+    minimum nearby road elevation instead of averaging opposing slopes.
+    """
     n = h.shape[0]
-    inner, outer = hw + 5.0, hw + 16.0
-    embank = 0.5
+    inner = hw + math.sqrt(2.0) * cell + 3.0
+    outer = inner + 2.0 * cell
     r = int(math.ceil(outer / cell)) + 1
-    target = np.full_like(h, np.nan)
-    wsum = np.zeros_like(h)
-    for i in range(len(ref.xz)):
-        x, z = ref.xz[i]
+    target = np.full_like(h, np.inf)
+    for i, (x, z) in enumerate(ref.xz):
         cx = int(round((x - x0) / cell))
         cz = int(round((z - z0) / cell))
         for dz in range(-r, r + 1):
             rz = cz + dz
-            if rz < 0 or rz >= n:
+            if not 0 <= rz < n:
                 continue
             for dx in range(-r, r + 1):
                 rx = cx + dx
-                if rx < 0 or rx >= n:
+                if not 0 <= rx < n:
                     continue
-                px, pz = x0 + rx * cell, z0 + rz * cell
-                d = math.hypot(px - x, pz - z)
-                if d > outer:
-                    continue
-                w = 1.0 / (0.5 + d)
-                if np.isnan(target[rz, rx]):
-                    target[rz, rx] = 0.0
-                target[rz, rx] += ref.y[i] * w
-                wsum[rz, rx] += w
-    m = wsum > 0
-    target[m] /= wsum[m]
-    # blend factor by true distance to the centreline
-    ys, xs = np.nonzero(m)
-    for rz, rx in zip(ys, xs):
-        px, pz = x0 + rx * cell, z0 + rz * cell
-        d, _ = ref.nearest(px, pz)
-        if d <= inner:
-            t = 1.0
-        elif d >= outer:
-            t = 0.0
-        else:
-            u = (d - inner) / (outer - inner)
-            t = 1.0 - (u * u * (3 - 2 * u))
-        h[rz, rx] = h[rz, rx] * (1 - t) + (target[rz, rx] - embank) * t
+                d = math.hypot(x0 + rx * cell - x, z0 + rz * cell - z)
+                if d <= outer:
+                    target[rz, rx] = min(target[rz, rx], ref.y[i] - 0.5)
+    for rz, rx in zip(*np.nonzero(np.isfinite(target))):
+        d, _ = ref.nearest(x0 + rx * cell, z0 + rz * cell)
+        u = min(1.0, max(0.0, (d - inner) / (outer - inner)))
+        blend = 1.0 - u * u * (3.0 - 2.0 * u)
+        # Only cut terrain; do not raise it above a lower road on a nearby bend.
+        h[rz, rx] = min(h[rz, rx], h[rz, rx] * (1 - blend) + target[rz, rx] * blend)
     return h
 
 
@@ -782,6 +769,8 @@ def build(cid, route_only=False):
     g = Graph(osm)
     wps = [proj.to_xz(lat, lon) for lat, lon in city['waypoints']]
     raw = route_loop(g, wps)
+    if len(raw) != len(set(map(tuple, raw))):
+        raise RuntimeError(f'{cid}: route doubles back; correct the city waypoints before export')
     dense, length = resample_closed(raw, SAMPLE)
     dense = smooth_closed(dense, 7, 3)
     dense, length = resample_closed(dense, SAMPLE)
