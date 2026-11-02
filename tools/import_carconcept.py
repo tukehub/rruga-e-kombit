@@ -84,13 +84,17 @@ turn = Matrix.Rotation(math.pi, 4, 'Z')
 scale = Matrix.Diagonal(Vector((0.84, 1.0, 1.0, 1.0)))
 # Translate the visual length midpoint to the simulation center; source body
 # is slightly offset toward its nose. Its tires already sit on the ground.
-center = Matrix.Translation(Vector((0, 0.17, 0.15)))
+center = Matrix.Translation(Vector((0, -0.24, 0.0)))
 world_to_car = center @ scale @ turn
 car_pivots = {k: world_to_car @ v for k, v in pivots.items()}
 groups = {'body': []}
 for w in wheels:
     groups[w] = []
 objects = [o for o in bpy.data.objects if o.type == 'MESH']
+# Snapshot before any parent is detached or changed. The source nests most
+# parts under BodyUnderside; editing a parent changes child world matrices.
+world_matrices = {obj: obj.matrix_world.copy() for obj in objects}
+wheel_groups = {obj: wheel_group(obj) for obj in objects}
 for obj in objects:
     if obj.name in remove or obj.name.startswith(('InteriorPedal', 'InteriorDoor')):
         bpy.data.objects.remove(obj, do_unlink=True)
@@ -99,8 +103,8 @@ for obj in objects:
     # Otherwise the exporter silently resurrects original non-tintable materials.
     obj.data.gltf2_variant_mesh_data.clear()
     obj.data.gltf2_variant_default_materials.clear()
-    group = wheel_group(obj)
-    transform = obj.matrix_world.copy()
+    group = wheel_groups[obj]
+    transform = world_matrices[obj]
     if group and group.startswith('WheelFront'):
         pivot = pivots[group]
         transform = Matrix.Translation(pivot) @ Matrix.Rotation(math.pi / 6.0, 4, 'Z') @ Matrix.Translation(-pivot) @ transform

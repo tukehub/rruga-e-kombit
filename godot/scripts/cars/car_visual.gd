@@ -44,7 +44,6 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 			ch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			ch.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
 			_override_materials(ch)
-	_make_rear_lights()
 	_make_nitro()
 	_make_shield()
 	if is_player:
@@ -139,20 +138,6 @@ func _rear() -> StandardMaterial3D:
 		mat_rear.emission = Color(1.0, 0.08, 0.03)
 		mat_rear.emission_energy_multiplier = 0.65
 	return mat_rear
-
-
-func _make_rear_lights() -> void:
-	# The source's optics are a texture atlas, so add separate emissive lenses
-	# to retain the original brake-light feedback without lighting the headlights.
-	var lens := BoxMesh.new()
-	lens.size = Vector3(0.38, 0.065, 0.025)
-	for side in [-1.0, 1.0]:
-		var lamp := MeshInstance3D.new()
-		lamp.mesh = lens
-		lamp.material_override = _rear()
-		lamp.position = Vector3(side * 0.48, 0.55, 2.33)
-		lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(lamp)
 
 
 func _make_shield() -> void:

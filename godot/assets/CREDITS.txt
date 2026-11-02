@@ -22,11 +22,11 @@ Chakra Petch — Cadson Demak, SIL Open Font License 1.1.
 [b]Tingujt[/b]
 Të gjithë efektet zanore janë të sintetizuara proceduralisht për këtë lojë (tools/gen_sfx.py).
 
-[b]Modelet e makinave[/b]
-“Generic passenger car pack” nga Comrade1280, Creative Commons Attribution 4.0.
-sketchfab.com/3d-models/20f9af9b8a404d5cb022ac6fe87f21f5
+[b]Modeli i makinës[/b]
+“Car Concept” © 2024 Darmstadt Graphics Group GmbH dhe Eric Chadwick, CC BY 4.0.
+github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept
 creativecommons.org/licenses/by/4.0/
-Përshtatur nga modeli i optimizuar në github.com/pedrosoandre/carros: format, orientim, madhësi, ngjyra dhe rrota të ndryshuara për lojën.
+Përshtatur për Vortex: gjeometri e thjeshtuar, rrota të animuara, materiale dhe ngjyra të reja; teksturat dhe markat origjinale janë hequr.
 
 [b]Kodi burimor[/b]
 github.com/tukehub/rruga-e-kombit
