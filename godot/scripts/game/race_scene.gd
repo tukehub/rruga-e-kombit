@@ -243,8 +243,10 @@ func _process(dt: float) -> void:
 				race.step(DT)
 				acc -= DT
 				n += 1
-			if n >= 5:
-				acc = 0.0
+			# Bound catch-up work after a stall, but retain the fractional tick so
+			# interpolation and simulation timing do not lose it on every slow frame.
+			if n >= 5 and acc >= DT:
+				acc = fmod(acc, DT)
 			_events()
 			if state == "race" and not last500:
 				var left := race.laps * race.L - player.progress

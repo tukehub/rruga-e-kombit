@@ -80,6 +80,14 @@ func _ready() -> void:
 	var tangent: Vector3 = scene.track.tangent(pose_s)
 	var expected_look := Vector3(car_pos.x - sin(psi) * 12.0, car_pos.y + 1.0 + tangent.y * 12.0, car_pos.z + cos(psi) * 12.0)
 	check(scene.cam.look.distance_to(expected_look) < 0.001, "camera follows rendered car pose")
+	# A slow frame that reaches the 5-step cap should preserve the fraction of
+	# the next step; a longer stall should drop only excess whole steps.
+	scene.acc = 0.0
+	scene._process(0.09)
+	check(absf(scene.acc - (0.09 - 5.0 * scene.DT)) < 0.000001, "slow frame preserves fractional simulation step")
+	var before_stall: float = scene.acc
+	scene._process(0.1)
+	check(absf(scene.acc - before_stall) < 0.000001, "stall drops excess whole simulation steps only")
 	# Rebuild so the flow test starts with an untouched race.
 	Game.goto("race")
 	await wait_scene("race")
