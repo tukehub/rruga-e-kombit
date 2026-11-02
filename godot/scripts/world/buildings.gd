@@ -22,9 +22,13 @@ func load_city(city_id: String) -> void:
 	facade_mat.set_shader_parameter("tex_plaster_n", load("res://assets/textures/plaster_nor.jpg"))
 	facade_mat.set_shader_parameter("tex_concrete", load("res://assets/textures/concrete_wall_diff.jpg"))
 	if city_id == "tirane":
-		# Trial more detailed windows around the first part of this circuit.
+		# Keep the material preview with the starting grid when the route changes.
 		facade_mat.set_shader_parameter("detail_preview", 1.0)
-		facade_mat.set_shader_parameter("detail_origin", Vector2(77.72, 35.84))
+		var track_path := "res://assets/cities/%s/track.json" % city_id
+		var track_data = JSON.parse_string(FileAccess.get_file_as_string(track_path))
+		if track_data is Dictionary and not track_data.get("pts", []).is_empty():
+			var first: Array = track_data.pts[0]
+			facade_mat.set_shader_parameter("detail_origin", Vector2(float(first[0]), float(first[2])))
 	roof_mat = StandardMaterial3D.new()
 	roof_mat.vertex_color_use_as_albedo = true
 	roof_mat.albedo_texture = load("res://assets/textures/rooftiles_diff.jpg")

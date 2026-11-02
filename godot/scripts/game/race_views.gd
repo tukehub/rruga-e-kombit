@@ -4,7 +4,9 @@ extends Node
 ## can be switched off during a race to recover performance on slower devices.
 
 const PLAYER_LAYER := 2
-const MIRROR_INTERVAL := 1.0 / 24.0
+# One secondary pass every three displayed frames gives even pacing and cuts
+# its work relative to the old alternating two/three-frame 24 Hz schedule.
+const MIRROR_FRAME_INTERVAL := 3
 
 var race_camera: ChaseCam
 var rear: Camera3D
@@ -15,7 +17,7 @@ var view_button: Button
 var mirror_button: Button
 var cabin_overlay: Control
 var enabled := true
-var clock := 0.0
+var _mirror_frames := MIRROR_FRAME_INTERVAL - 1
 
 
 class CabinOverlay extends Control:
@@ -110,10 +112,12 @@ func _toggle_mirror() -> void:
 	mirror_button.text = "PASQYRA: PO" if enabled else "PASQYRA: JO"
 	if not enabled:
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	else:
+		_mirror_frames = MIRROR_FRAME_INTERVAL - 1
 	Sfx.ui_click()
 
 
-func update_pose(c: CarState, pose: Dictionary, dt: float) -> void:
+func update_pose(c: CarState, pose: Dictionary, _dt: float) -> void:
 	if not enabled:
 		return
 	var s := float(pose.get("s", c.s))
@@ -126,7 +130,7 @@ func update_pose(c: CarState, pose: Dictionary, dt: float) -> void:
 	var backwards := Vector3(sin(psi), -tangent.y, -cos(psi)).normalized()
 	rear.global_position = p
 	rear.look_at(p + backwards * 30.0, Vector3.UP)
-	clock += dt
-	if clock >= MIRROR_INTERVAL:
-		clock = fmod(clock, MIRROR_INTERVAL)
+	_mirror_frames += 1
+	if _mirror_frames >= MIRROR_FRAME_INTERVAL:
+		_mirror_frames = 0
 		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE

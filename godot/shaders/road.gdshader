@@ -40,7 +40,11 @@ void fragment() {
 	// second asphalt sample rotated to kill repetition
 	vec2 tuv2 = vec2(along, -across) / 7.3;
 	vec3 asphalt = mix(texture(tex_asphalt, tuv).rgb, texture(tex_asphalt, tuv2).rgb, 0.5) * asphalt_tint;
-	vec3 nrm = mix(texture(tex_asphalt_n, tuv).rgb, texture(tex_asphalt_n, tuv2).rgb, 0.5);
+	vec3 n1 = texture(tex_asphalt_n, tuv).rgb;
+	vec3 n2 = texture(tex_asphalt_n, tuv2).rgb;
+	// The second sample's UVs are rotated 90 degrees; rotate its tangent-space
+	// direction back before blending or the surface grain lights incorrectly.
+	vec3 nrm = mix(n1, vec3(1.0 - n2.g, n2.r, n2.b), 0.5);
 	float rough = texture(tex_asphalt_r, tuv).r * 0.45 + 0.5;
 
 	// darker tyre tracks in the lanes
@@ -59,7 +63,7 @@ void fragment() {
 		if (abs(float(i) * 2.0 - lane_count) < 0.5) continue; // centre handled separately
 		lane_line = max(lane_line, (1.0 - smoothstep(0.1, 0.18, abs(across - lx))) * dash);
 	}
-	float worn = 0.88 + 0.12 * vnoise(vec2(across, along) * 1.7);
+	float worn = 0.78 + 0.20 * vnoise(vec2(across, along) * 1.7);
 	vec3 col = asphalt;
 	col = mix(col, line_white * worn, edge * 0.9);
 	col = mix(col, line_white * worn, lane_line * 0.85);

@@ -43,6 +43,20 @@ func _ready() -> void:
 	check(not scene.views.mirror_panel.visible and scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "mirror can be disabled")
 	scene.views._toggle_mirror()
 	check(scene.views.mirror_panel.visible, "mirror can be reenabled")
+	# Enabling refreshes immediately, then schedules one rear pass every three
+	# rendered frames; leaving it off schedules none.
+	scene.views.update_pose(scene.player, {}, 1.0 / 60.0)
+	check(scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_ONCE, "reenabled mirror refreshes")
+	scene.views.viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	for i in 2:
+		scene.views.update_pose(scene.player, {}, 1.0 / 60.0)
+		check(scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "mirror skips intermediate frame")
+	scene.views.update_pose(scene.player, {}, 1.0 / 60.0)
+	check(scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_ONCE, "mirror updates on third frame")
+	scene.views._toggle_mirror()
+	scene.views.update_pose(scene.player, {}, 1.0 / 60.0)
+	check(scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "disabled mirror schedules no rendering")
+	scene.views._toggle_mirror()
 	# Standings report live distances from the player on the full race progress,
 	# so the same calculation also works across the start line and multiple laps.
 	var opponent: CarState = scene.race.cars[1]

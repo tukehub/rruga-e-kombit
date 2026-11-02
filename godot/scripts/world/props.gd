@@ -5,8 +5,7 @@ extends Node3D
 ## the quality preset); the rest are emissive meshes only.
 
 var lamp_mm: MultiMeshInstance3D
-var tree_mm: MultiMeshInstance3D
-var trunk_mm: MultiMeshInstance3D
+const TREE_CHUNK_SIZE := 400.0
 var track_lamps: Array = []          # [x,y,z,yaw]
 var lights: Array[OmniLight3D] = []
 var light_slots := 0
@@ -249,58 +248,54 @@ func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
 		candidates.sort_custom(func(a, b): return a[0] < b[0] if a[0] != b[0] else a[1] < b[1])
 		for i in mini(24, candidates.size()):
 			selected[candidates[i][2]] = true
-	var pilot := MultiMesh.new()
-	pilot.transform_format = MultiMesh.TRANSFORM_3D
-	pilot.mesh = _pilot_leaf_mesh() if not selected.is_empty() else null
-	pilot.instance_count = selected.size()
-	var pilot_index := 0
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = meshes[0]
-	mm.instance_count = keep - selected.size()
-	var mm2 := MultiMesh.new()
-	mm2.transform_format = MultiMesh.TRANSFORM_3D
-	mm2.mesh = meshes[1]
-	mm2.instance_count = keep
-	var base_index := 0
+	# A single world-sized MultiMesh has one bounding box and cannot cull its
+	# individual trees. Split by location so camera/frustum and distance culling
+	# can omit whole groups, including from the rear-view camera.
+	var chunks := {}
 	for i in keep:
 		var t: Array = trees[i]
 		var sc := float(t[3])
 		var y := float(t[1])
 		if terrain:
 			y = terrain.height_at(float(t[0]), float(t[2]))
-		# Small shape variations preserve the existing positions and sizes while
-		# avoiding identical crowns along the street.
 		var breadth := 0.91 + 0.18 * (0.5 + 0.5 * sin(float(i) * 2.31))
 		var height := 0.94 + 0.12 * (0.5 + 0.5 * sin(float(i) * 1.73))
-		var b := Basis(Vector3.UP, float(i) * 1.37).scaled(Vector3(sc * breadth, sc * height, sc * (2.0 - breadth)))
-		var tr := Transform3D(b, Vector3(float(t[0]), y, float(t[2])))
-		if selected.has(i):
-			pilot.set_instance_transform(pilot_index, tr)
-			pilot_index += 1
-		else:
-			mm.set_instance_transform(base_index, tr)
-			base_index += 1
-		mm2.set_instance_transform(i, tr)
-	if pilot.instance_count > 0:
-		var detail := MultiMeshInstance3D.new()
-		detail.multimesh = pilot
-		detail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		detail.visibility_range_end = float(Quality.p.props_dist) * 1.3
-		detail.visibility_range_end_margin = 80.0
-		add_child(detail)
-	tree_mm = MultiMeshInstance3D.new()
-	tree_mm.multimesh = mm
-	tree_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if Quality.preset != "low" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	tree_mm.visibility_range_end = float(Quality.p.props_dist) * 1.3
-	tree_mm.visibility_range_end_margin = 80.0
-	add_child(tree_mm)
-	trunk_mm = MultiMeshInstance3D.new()
-	trunk_mm.multimesh = mm2
-	trunk_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	trunk_mm.visibility_range_end = float(Quality.p.props_dist)
-	trunk_mm.visibility_range_end_margin = 60.0
-	add_child(trunk_mm)
+		var basis := Basis(Vector3.UP, float(i) * 1.37).scaled(Vector3(sc * breadth, sc * height, sc * (2.0 - breadth)))
+		var key := Vector2i(floori(float(t[0]) / TREE_CHUNK_SIZE), floori(float(t[2]) / TREE_CHUNK_SIZE))
+		if not chunks.has(key):
+			chunks[key] = {"normal": [], "pilot": [], "trunk": []}
+		var centre := Vector3((key.x + 0.5) * TREE_CHUNK_SIZE, 0, (key.y + 0.5) * TREE_CHUNK_SIZE)
+		var tr := Transform3D(basis, Vector3(float(t[0]), y, float(t[2])) - centre)
+		chunks[key]["pilot" if selected.has(i) else "normal"].append(tr)
+		chunks[key]["trunk"].append(tr)
+	var pilot_mesh := _pilot_leaf_mesh() if not selected.is_empty() else null
+	for key: Vector2i in chunks:
+		var origin := Vector3((key.x + 0.5) * TREE_CHUNK_SIZE, 0, (key.y + 0.5) * TREE_CHUNK_SIZE)
+		var groups: Dictionary = chunks[key]
+		_tree_chunk(meshes[0], groups.normal, origin, float(Quality.p.props_dist) * 1.3, Quality.preset != "low", "TreeCanopy")
+		_tree_chunk(meshes[1], groups.trunk, origin, float(Quality.p.props_dist), false, "TreeTrunk")
+		if pilot_mesh != null:
+			_tree_chunk(pilot_mesh, groups.pilot, origin, float(Quality.p.props_dist) * 1.3, false, "TreeDetail")
+
+
+func _tree_chunk(mesh: Mesh, transforms: Array, origin: Vector3, distance: float, shadows: bool, node_name: String) -> void:
+	if transforms.is_empty():
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = transforms.size()
+	for i in transforms.size():
+		mm.set_instance_transform(i, transforms[i])
+	var node := MultiMeshInstance3D.new()
+	node.name = node_name
+	node.position = origin
+	node.multimesh = mm
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Include the chunk half-diagonal to avoid popping nearby trees at its edge.
+	node.visibility_range_end = distance + TREE_CHUNK_SIZE * 0.71
+	node.visibility_range_end_margin = 80.0
+	add_child(node, true)
 
 
 func set_night(n: float) -> void:
