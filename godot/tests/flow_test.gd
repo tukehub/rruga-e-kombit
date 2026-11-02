@@ -35,6 +35,10 @@ func _ready() -> void:
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
 	check(scene.views.mirror_panel.visible, "rear mirror visible by default")
+	var player_visual: CarVisual = scene.cars[scene.race.cars.find(scene.player)]
+	check(player_visual.body.layers == 2, "player body isolated from rear mirror")
+	for wheel in player_visual.wheels.values():
+		check(wheel.layers == 2, "player wheel isolated from rear mirror")
 	scene.views._toggle_view()
 	check(scene.cam.cabin and scene.views.cabin_overlay.visible and not scene.cam.get_cull_mask_value(2), "cabin view hides own car and shows dashboard")
 	scene.views._toggle_view()

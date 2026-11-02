@@ -10,11 +10,38 @@ func check(ok: bool, message: String) -> void:
 func _ready() -> void:
 	Quality.set_preset("medium")
 	Settings.dynamic_weather = true
+	var visual_track := RaceTrack.load_city("tirane")
 	for def in Data.CARS:
 		var car := CarVisual.new()
 		add_child(car)
-		car.setup(def, Color.WHITE, true)
+		var paint := Color.html(def.color)
+		car.setup(def, paint, true)
 		check(car.body != null and car.wheels.size() == 4, "car meshes " + def.id)
+		check(car.mat_paint != null and car.mat_paint.albedo_color.is_equal_approx(paint), "selected car paint " + def.id)
+		for wheel_name in ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"]:
+			check(car.wheels.has(wheel_name), "named wheel " + def.id + " " + wheel_name)
+			if not car.wheels.has(wheel_name):
+				continue
+			var wheel: MeshInstance3D = car.wheels[wheel_name]
+			var expected_left: bool = wheel_name.ends_with("l")
+			var expected_front: bool = wheel_name.begins_with("wheel_f")
+			check((wheel.position.x < -0.1 if expected_left else wheel.position.x > 0.1), "wheel left/right position " + wheel_name)
+			check((wheel.position.z < -0.1 if expected_front else wheel.position.z > 0.1), "wheel front/rear position " + wheel_name)
+			check(wheel.position.y > 0.1 and wheel.position.y < def.size.y, "wheel height " + wheel_name)
+		if car.wheels.size() == 4:
+			var state := CarState.new(0, def, "test", true, paint)
+			state.v = 12.0
+			state.steer = 0.4
+			state.braking = true
+			car.apply_state(state, visual_track, 0.01)
+			var fl: MeshInstance3D = car.wheels.wheel_fl
+			var fr: MeshInstance3D = car.wheels.wheel_fr
+			var rl: MeshInstance3D = car.wheels.wheel_rl
+			var rr: MeshInstance3D = car.wheels.wheel_rr
+			check(fl.rotation.x < -0.1 and fr.rotation.x > 0.1, "front wheels spin " + def.id)
+			check(rl.rotation.x < -0.1 and rr.rotation.x > 0.1, "rear wheels spin " + def.id)
+			check(absf(fr.rotation.y) > 0.001 and absf(rr.rotation.y) < 0.001, "only front wheels steer " + def.id)
+			check(car.mat_rear != null and car.mat_rear.emission_energy_multiplier > 1.0, "brake lights respond " + def.id)
 		var triangles := 0
 		for mi in car.model.get_children():
 			if mi is MeshInstance3D:
