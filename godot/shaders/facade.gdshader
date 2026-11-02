@@ -14,6 +14,11 @@ uniform vec3 window_warm : source_color = vec3(1.0, 0.78, 0.45);
 uniform vec3 window_cool : source_color = vec3(0.75, 0.85, 1.0);
 uniform float window_glow = 2.4;
 uniform float seed = 0.0;
+// A small preview area near the Tirana starting grid. Outside it the original
+// facade is retained, keeping this visual trial local to one stretch.
+uniform float detail_preview = 0.0;
+uniform vec2 detail_origin = vec2(0.0);
+uniform float detail_radius = 220.0;
 
 varying vec3 wpos;
 varying vec4 vcol;
@@ -55,6 +60,27 @@ void fragment() {
 	vec3 col = mix(base, glass, win);
 	float rough = mix(mix(0.85, 0.5, glass_w), 0.12, win);
 	float metal = mix(0.0, 0.2, win);
+
+	// Give windows a thin frame, inset shadow and subtle daylight reflection.
+	// This adds no meshes or texture fetches and fades out beyond the preview.
+	float preview = detail_preview * (1.0 - smoothstep(detail_radius - 35.0, detail_radius, distance(wpos.xz, detail_origin)));
+	if (preview > 0.001) {
+		float inner = smoothstep(inset.x + 0.035, inset.x + 0.055, fr.x)
+			* (1.0 - smoothstep(1.0 - inset.x - 0.055, 1.0 - inset.x - 0.035, fr.x))
+			* smoothstep(inset.y + 0.035, inset.y + 0.055, fr.y)
+			* (1.0 - smoothstep(1.0 - inset.y - 0.055, 1.0 - inset.y - 0.035, fr.y)) * win;
+		float frame = max(win - inner, 0.0);
+		float pane_var = hash(cell + floor(wpos.xz * 0.011));
+		float reflect_amount = mix(0.1, 0.36, pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 2.0));
+		vec3 pane = mix(vec3(0.11, 0.16, 0.19), vec3(0.37, 0.48, 0.52), reflect_amount + pane_var * 0.14);
+		vec3 detailed_col = mix(col, mix(vec3(0.16, 0.17, 0.16), vec3(0.35, 0.36, 0.34), glass_w), frame);
+		detailed_col = mix(detailed_col, pane, inner * (1.0 - night * 0.5));
+		// Pale sills below masonry windows add a little depth at street level.
+		float sill = step(inset.x - 0.04, fr.x) * step(fr.x, 1.0 - inset.x + 0.04)
+			* step(inset.y - 0.045, fr.y) * step(fr.y, inset.y) * step(0.95, fy) * (1.0 - glass_w);
+		detailed_col = mix(detailed_col, wall * 0.78, sill);
+		col = mix(col, detailed_col, preview);
+	}
 
 	// lit windows at night (per window random, with slow flicker-free stability)
 	float lit = step(0.62 - 0.1 * glass_w, hash(cell + floor(wpos.xz * 0.013)));

@@ -26,7 +26,7 @@ func load_city(city_id: String, terrain: Terrain) -> void:
 	add_child(models)
 	models.load_anchors(landmarks)
 	_build_lamps(p.get("lamps", []), track_lamps)
-	_build_trees(p.get("trees", []), terrain)
+	_build_trees(p.get("trees", []), terrain, city_id)
 	light_slots = int(Quality.p.lamp_lights)
 	for i in light_slots:
 		var l := OmniLight3D.new()
@@ -169,17 +169,70 @@ func _tree_meshes() -> Array:
 	return [canopy, st2.commit()]
 
 
-func _build_trees(trees: Array, terrain: Terrain) -> void:
+# Shared cutout leaf clusters form a genuinely volumetric crown.  Only a small
+# grove near the start uses them; the existing inexpensive crown is the far LOD.
+func _pilot_leaf_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1949
+	for i in 160:
+		var az := rng.randf_range(0.0, TAU)
+		var y := rng.randf_range(-1.0, 1.0)
+		var r := sqrt(maxf(0.0, 1.0 - y * y)) * rng.randf_range(0.28, 1.0)
+		var centre := Vector3(cos(az) * r * 2.15, 4.9 + y * 1.9, sin(az) * r * 2.15)
+		var rot := rng.randf_range(0.0, TAU)
+		var axis := Vector3(cos(rot), 0.0, sin(rot))
+		var up := Vector3(0.0, 1.0, 0.0).rotated(axis, rng.randf_range(-0.65, 0.65))
+		var right := axis * rng.randf_range(0.45, 0.70)
+		up *= rng.randf_range(0.65, 0.95)
+		var normal := right.cross(up).normalized()
+		var corners := [centre - right - up, centre + right - up, centre + right + up, centre - right + up]
+		var uvs := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for index in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(normal)
+			st.set_uv(uvs[index])
+			st.add_vertex(corners[index])
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = load("res://assets/foliage/polyhaven_tree_leaves.png")
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	material.alpha_scissor_threshold = 0.45
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.roughness = 1.0
+	st.set_material(material)
+	return st.commit()
+
+
+func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
 	var meshes := _tree_meshes()
 	var keep := int(trees.size() * float(Quality.p.tree_mul))
+	var selected: Dictionary = {}
+	if city_id == "tirane":
+		var route: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/tirane/track.json"))
+		var start: Array = route.pts[0]
+		var candidates := []
+		for i in keep:
+			var t: Array = trees[i]
+			var distance := Vector2(float(t[0]) - float(start[0]), float(t[2]) - float(start[2])).length_squared()
+			if distance < 150.0 * 150.0:
+				candidates.append([distance, i])
+		candidates.sort_custom(func(a, b): return a[0] < b[0])
+		for i in mini(24, candidates.size()):
+			selected[candidates[i][1]] = true
+	var pilot := MultiMesh.new()
+	pilot.transform_format = MultiMesh.TRANSFORM_3D
+	pilot.mesh = _pilot_leaf_mesh() if not selected.is_empty() else null
+	pilot.instance_count = selected.size()
+	var pilot_index := 0
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = meshes[0]
-	mm.instance_count = keep
+	mm.instance_count = keep - selected.size()
 	var mm2 := MultiMesh.new()
 	mm2.transform_format = MultiMesh.TRANSFORM_3D
 	mm2.mesh = meshes[1]
 	mm2.instance_count = keep
+	var base_index := 0
 	for i in keep:
 		var t: Array = trees[i]
 		var sc := float(t[3])
@@ -192,8 +245,20 @@ func _build_trees(trees: Array, terrain: Terrain) -> void:
 		var height := 0.94 + 0.12 * (0.5 + 0.5 * sin(float(i) * 1.73))
 		var b := Basis(Vector3.UP, float(i) * 1.37).scaled(Vector3(sc * breadth, sc * height, sc * (2.0 - breadth)))
 		var tr := Transform3D(b, Vector3(float(t[0]), y, float(t[2])))
-		mm.set_instance_transform(i, tr)
+		if selected.has(i):
+			pilot.set_instance_transform(pilot_index, tr)
+			pilot_index += 1
+		else:
+			mm.set_instance_transform(base_index, tr)
+			base_index += 1
 		mm2.set_instance_transform(i, tr)
+	if pilot.instance_count > 0:
+		var detail := MultiMeshInstance3D.new()
+		detail.multimesh = pilot
+		detail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		detail.visibility_range_end = float(Quality.p.props_dist) * 1.3
+		detail.visibility_range_end_margin = 80.0
+		add_child(detail)
 	tree_mm = MultiMeshInstance3D.new()
 	tree_mm.multimesh = mm
 	tree_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if Quality.preset != "low" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

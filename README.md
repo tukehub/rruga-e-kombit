@@ -83,10 +83,10 @@ ground intersects the road. No data is fabricated if access fails.
 
 Pipeline regression test: `python3 tools/pipeline/test_terrain.py`.
 
-Car regeneration: `python3 tools/gen_cars.py`. SFX: `python3 tools/gen_sfx.py`.
+Car source: Comrade1280’s CC BY 4.0 Generic passenger car pack, adapted from the optimized derivative in `pedrosoandre/carros`; conversion instructions are in `tools/import_comrade_car.py`. SFX: `python3 tools/gen_sfx.py`.
 The central lists and model paths live in `godot/scripts/data/data.gd`.
 Original landmark interpretations use the geographic anchors in `props.json`.
-Credits include OSM ODbL, Copernicus DEM, Poly Haven CC0, Godot MIT and the font
+Credits include the CC BY 4.0 car, OSM ODbL, Copernicus DEM, Poly Haven CC0, Godot MIT and the font
 OFL texts. [Architecture and source/licence table](docs/PLAN.md).
 
 ## Profiling on the target phones

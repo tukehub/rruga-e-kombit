@@ -21,6 +21,10 @@ func load_city(city_id: String) -> void:
 	facade_mat.set_shader_parameter("tex_plaster", load("res://assets/textures/plaster_diff.jpg"))
 	facade_mat.set_shader_parameter("tex_plaster_n", load("res://assets/textures/plaster_nor.jpg"))
 	facade_mat.set_shader_parameter("tex_concrete", load("res://assets/textures/concrete_wall_diff.jpg"))
+	if city_id == "tirane":
+		# Trial more detailed windows around the first part of this circuit.
+		facade_mat.set_shader_parameter("detail_preview", 1.0)
+		facade_mat.set_shader_parameter("detail_origin", Vector2(77.72, 35.84))
 	roof_mat = StandardMaterial3D.new()
 	roof_mat.vertex_color_use_as_albedo = true
 	roof_mat.albedo_texture = load("res://assets/textures/rooftiles_diff.jpg")

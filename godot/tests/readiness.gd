@@ -20,7 +20,7 @@ func _ready() -> void:
 			if mi is MeshInstance3D:
 				for i in mi.mesh.get_surface_count():
 					triangles += mi.mesh.surface_get_array_index_len(i) / 3
-		check(triangles >= 25000 and triangles <= 60000, "car triangle budget " + def.id)
+		check(triangles >= 3000 and triangles <= 60000, "car triangle budget " + def.id)
 		car.queue_free()
 	# Render interpolation must advance smoothly even when a frame contains no
 	# simulation step, cross the start line correctly, and snap on respawn.

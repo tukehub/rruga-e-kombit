@@ -29,6 +29,26 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> MeshInst
 	mesh.size = size
 	return _part(parent, mesh, pos, color)
 
+
+func _boxes(parent: Node3D, parts: Array, color: Color, metal := 0.0) -> void:
+	# Batch repeated architectural features so windows and balconies do not
+	# become hundreds of individual draw calls on phones.
+	var unit := BoxMesh.new()
+	unit.size = Vector3.ONE
+	unit.material = _material(color, metal)
+	var instances := MultiMesh.new()
+	instances.transform_format = MultiMesh.TRANSFORM_3D
+	instances.mesh = unit
+	instances.instance_count = parts.size()
+	for i in parts.size():
+		var p: Vector3 = parts[i][0]
+		var sz: Vector3 = parts[i][1]
+		instances.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(sz), p))
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = instances
+	node.visibility_range_end = 2200.0
+	parent.add_child(node)
+
 func _column(parent: Node3D, pos: Vector3, radius: float, height: float, color: Color, top := -1.0) -> MeshInstance3D:
 	var mesh := CylinderMesh.new()
 	mesh.bottom_radius = radius
@@ -63,23 +83,81 @@ func build(root: Node3D, id: String) -> void:
 				var stair2 := _box(root, Vector3(0, 8, side * 13), Vector3(6, 0.7, 27), Color("f4f2e9"))
 				stair2.rotation.x = -side * 0.48
 		"downtown_one":
-			# Tall glazed slab with an original pattern of projecting white volumes.
-			_box(root, Vector3(0, 69, 0), Vector3(35, 138, 26), Color("6e8896"))
-			_box(root, Vector3(0, 3, 0), Vector3(44, 6, 34), Color("c5c7c4"))
-			for row in 9:
-				for col in 3:
-					if (row * 3 + col * 5) % 4 != 0:
-						var x := -11.0 + col * 11.0 + (3.0 if row % 2 == 0 else -1.0)
-						_box(root, Vector3(x, 14.0 + row * 13.0, -14.0), Vector3(8, 7.5, 4), Color("deded8"))
+			# MVRDV's 140 m tower has a pale grid and projecting balconies that
+			# form a pixelated outline of Albania on the main facades.
+			_box(root, Vector3(0, 70, 0), Vector3(37, 140, 30), Color("718d9a"))
+			_box(root, Vector3(0, 3, 0), Vector3(49, 6, 39), Color("d6d4c9"))
+			var grid := []
+			for side in [-1.0, 1.0]:
+				for i in 13:
+					grid.append([Vector3(-18.0 + i * 3.0, 71, side * 15.12), Vector3(0.26, 138, 0.26)])
+				for i in 37:
+					grid.append([Vector3(0, 5.0 + i * 3.65, side * 15.14), Vector3(37, 0.22, 0.24)])
+			_boxes(root, grid, Color("d5d2c8"))
+			var rows := ["000110000", "001111000", "011111100", "001111110", "001111100", "000111110", "001111100", "001111100", "000111000", "000111000", "000110000", "000100000"]
+			var balconies := []
+			for side in [-1.0, 1.0]:
+				for row in rows.size():
+					for col in rows[row].length():
+						if rows[row].substr(col, 1) == "1":
+							var p := Vector3((col - 4) * 3.6, 122.0 - row * 9.0, side * 16.6)
+							balconies.append([p, Vector3(3.0, 0.42, 3.2)])
+							balconies.append([p + Vector3(0, 1.1, side * 1.55), Vector3(3.0, 1.7, 0.15)])
+			_boxes(root, balconies, Color("dedbd1"))
 		"eyes_tirana":
-			# Four subtly rotated glass volumes give a stepped silhouette.
-			_box(root, Vector3(0, 4, 0), Vector3(35, 8, 38), Color("c5cac9"))
+			# Four offset dark glazed volumes with the distinctive recessed bands.
+			_box(root, Vector3(0, 4, 0), Vector3(35, 8, 38), Color("283541"))
 			for i in 4:
-				var section := _box(root, Vector3(0, 24 + i * 30, 0), Vector3(31 + i * 2, 30, 30 + i * 2), Color("8aa4ad"))
-				section.rotation.y = deg_to_rad(float(i - 1) * 5.0)
+				var x := 3.0 if i % 2 == 1 else -3.0
+				_box(root, Vector3(x, 23 + i * 30, 0), Vector3(29, 28, 29), Color("25394b"))
+				var fins := []
 				for side in [-1.0, 1.0]:
-					var rim := _box(root, Vector3(side * (16 + i), 24 + i * 30, 0), Vector3(1.2, 29, 31 + i * 2), Color("e2e1db"))
-					rim.rotation.y = deg_to_rad(float(i - 1) * 5.0)
+					for col in 10:
+						fins.append([Vector3(x - 13.5 + col * 3.0, 23 + i * 30, side * 14.58), Vector3(0.23, 28, 0.2)])
+				_boxes(root, fins, Color("171d29"))
+			_box(root, Vector3(0, 129, 0), Vector3(25, 2, 26), Color("262a35"))
+		"polytechnic":
+			# Mother Teresa Square: central tower with two symmetrical lower wings.
+			var stone_col := Color("c9c0ad")
+			_box(root, Vector3(0, 15, 0), Vector3(24, 30, 18), stone_col)
+			for side in [-1.0, 1.0]:
+				_box(root, Vector3(side * 28, 8, 0), Vector3(32, 16, 18), stone_col)
+			_box(root, Vector3(0, 0.6, -12), Vector3(88, 1.2, 7), Color("b6ae9f"))
+			var windows := []
+			for side in [-1.0, 1.0]:
+				for row in 3:
+					for col in 5:
+						windows.append([Vector3(side * (15.0 + col * 5.7), 4.5 + row * 4.2, -9.1), Vector3(2.0, 2.7, 0.2)])
+			for row in 5:
+				for col in 5:
+					windows.append([Vector3(-8.0 + col * 4, 8.5 + row * 4.0, -9.1), Vector3(2.1, 2.5, 0.2)])
+			for col in [-6.5, 0.0, 6.5]:
+				windows.append([Vector3(col, 3.7, -9.15), Vector3(3.2, 5.2, 0.2)])
+			_boxes(root, windows, Color("3f5055"))
+		"toptani":
+			# Main mass based on the six-storey, approximately 36 m OSM footprint.
+			_box(root, Vector3(0, 18, 0), Vector3(85, 36, 55), Color("697f86"))
+			var cladding := []
+			for side in [-1.0, 1.0]:
+				for i in 20:
+					cladding.append([Vector3(-40 + i * 4.2, 18, side * 27.6), Vector3(0.3, 35, 0.2)])
+				for i in 7:
+					cladding.append([Vector3(0, 3 + i * 5, side * 27.62), Vector3(85, 0.4, 0.2)])
+			_boxes(root, cladding, Color("b7b3a8"))
+		"cathedral":
+			# Orthodox cathedral and separate bell tower. Dome 32.2 m, tower 46 m.
+			_column(root, Vector3(0, 9, 0), 17, 18, Color("ddd8c8"))
+			_column(root, Vector3(0, 20, 0), 12, 4, Color("d0c8b5"))
+			var dome := SphereMesh.new()
+			dome.radius = 11.0
+			dome.height = 22.0
+			dome.is_hemisphere = true
+			dome.radial_segments = 24
+			dome.rings = 12
+			_part(root, dome, Vector3(0, 21.2, 0), Color("96a3a2"), 0.1)
+			_column(root, Vector3(0, 31.7, 0), 0.3, 1.0, Color("c6ac6d"))
+			_column(root, Vector3(22, 21, 0), 2.0, 42, Color("d7d0c0"))
+			_column(root, Vector3(22, 44, 0), 2.5, 4, Color("b6aa8d"), 0.3)
 		"bank_albania":
 			_box(root, Vector3(0, 8, 0), Vector3(36, 16, 30), Color("d3c4ac"))
 			_box(root, Vector3(0, 16.5, 0), Vector3(38, 1, 32), Color("e3d7c3"))

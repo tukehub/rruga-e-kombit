@@ -8,25 +8,28 @@ CITIES = {
         'origin': (41.3275, 19.8187),          # Skanderbeg Square
         'near_km': 4.5, 'far_km': 24.0,
         'half_width': 10.0,
+        'exclude_pedestrian': True,
         'waypoints': [
-            (41.32718, 19.81960),   # boulevard just south of Skanderbeg Square (start/finish)
-            (41.32379, 19.81978),   # Lana bridge
-            (41.32094, 19.82004),   # boulevard at Rruga Ismail Qemali
-            (41.31963, 19.82044),   # Mother Teresa Square, west side
-            (41.32022, 19.81630),   # Blloku south
-            (41.32081, 19.81342),   # Blloku west, south end
-            (41.32302, 19.81336),   # same street at the Lana
-            (41.32809, 19.81702),   # Rruga e Kavajes near the square
+            (41.3242813, 19.8236043),  # Bajram Curri, Downtown One (start/finish)
+            (41.3232735, 19.8224131),  # Papa Gjon Pali II, by the Pyramid
+            (41.3173730, 19.8214600),  # Nënë Tereza Square, facing Polytechnic
+            (41.3263000, 19.8170000),  # Dëshmorët e 4 Shkurtit, cathedral
+            (41.3282280, 19.8158110),  # Kavajës, Eyes of Tirana
+            (41.3303501, 19.8180710),  # Urani Pano, International Hotel
+            (41.3274517, 19.8226091),  # Abdi Toptani, mall and square perimeter
         ],
         'landmarks': [
             {'id': 'skanderbeg', 'll': (41.32775, 19.81850), 'yaw': 180},
             {'id': 'pyramid', 'll': (41.323058, 19.821443), 'yaw': 0},
-            {'id': 'downtown_one', 'll': (41.324082, 19.823911), 'yaw': 0},
+            {'id': 'downtown_one', 'll': (41.324082, 19.823911), 'yaw': 0, 'offset_x': 5, 'offset_z': 12},
             # Move these two away from the widened arcade circuit, preserving
             # their approximate positions while keeping chase cameras clear.
             {'id': 'eyes_tirana', 'll': (41.328561, 19.815744), 'yaw': 0, 'offset_x': -30},
             {'id': 'bank_albania', 'll': (41.327758, 19.816685), 'yaw': 0, 'offset_x': 20},
             {'id': 'international_hotel', 'll': (41.329863, 19.818686), 'yaw': 0},
+            {'id': 'polytechnic', 'll': (41.3166196, 19.8217354), 'yaw': 0},
+            {'id': 'cathedral', 'll': (41.326518, 19.81753), 'yaw': 0},
+            {'id': 'toptani', 'll': (41.327064, 19.822743), 'yaw': 0, 'offset_z': 6},
             {'id': 'clocktower', 'll': (41.32800, 19.82000), 'yaw': 0},
             {'id': 'mosque', 'll': (41.32790, 19.81950), 'yaw': 0},
             {'id': 'mother_teresa', 'll': (41.31880, 19.82160), 'yaw': 0},
@@ -34,7 +37,7 @@ CITIES = {
         ],
         # Replace these specific OSM footprints with the original landmarks,
         # instead of drawing a generic extruded building through each model.
-        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876],
+        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121],
         'style': 'tirana',
     },
     'vlore': {

@@ -3,7 +3,7 @@
 Original architecture decisions (retained; see STATUS.md for current verification):
 - **Engine: Godot 4.4.1 stable** (use matching official binary and export templates). GDScript only; matching official Android Gradle export template (see STATUS.md for the direct-export manifest issue).
 - **Renderer: Forward+ (Vulkan)** on Android (`rendering_method.mobile = forward_plus`). Low/medium presets switch off SDFGI/SSR/volumetrics; high keeps everything.
-- **Cars: procedural** (`tools/pipeline/gen_cars.py` → GLB). Kenney.nl is unreachable from the build network and Sketchfab needs an account; procedural models are licence-clean and 25k–60k tris. Swapping in a downloaded model is a one-line change in `cars.gd`.
+- **Car:** adapted generic sports car by Comrade1280, CC BY 4.0; see `tools/import_comrade_car.py` and in-app credits for the optimized derivative and modifications.
 - Package name, keystore (`android/app/rruga.jks`, alias `rruga`), workflow file name and release asset name are unchanged so installs update in place and `releases/latest/download/rruga-e-kombit.apk` keeps working.
 
 ## 1. Architecture
@@ -18,7 +18,7 @@ godot/                         Godot 4.4 project (res://)
   scripts/world/               terrain.gd · road_mesh.gd · city_loader.gd · sky_weather.gd · landmarks.gd
   scripts/cars/                car_visual.gd (wheels, lights, damage, nitro)
   scenes/                      main.tscn · race.tscn · ui/*.tscn
-  assets/cars/*.glb            generated cars
+  assets/cars/*.glb            adapted shared car
   assets/cities/<id>/          track.json · height.png · height.json · buildings.glb · roads.glb · splat.png
   assets/textures/             Poly Haven 1k sets
   assets/hdri/                 Poly Haven skies
@@ -41,14 +41,14 @@ Rendering: `Track` → `RoadMesh` (asphalt + kerbs + shoulders conforming to the
 | Roads, buildings, land use, water | OpenStreetMap via Overpass API | ODbL 1.0 | "© OpenStreetMap contributors" |
 | Terrain textures: `aerial_grass_rock`, `asphalt_02`, `asphalt_04`, `rocky_terrain_02`, `concrete_floor_02`, `cobblestone_floor_08`, `coast_sand_rocks_02`, `rock_face_03` | Poly Haven | CC0 | "Textures: Poly Haven (CC0)" |
 | Skies: `kloofendal_48d_partly_cloudy_puresky` (day), `qwantani_dusk_2_puresky` (sunset), `belfast_sunset_puresky` (golden), `satara_night`, `moonless_golf` (night), `kiara_1_dawn` (dusk) | Poly Haven | CC0 | "HDRIs: Poly Haven (CC0)" |
-| One Vortex GT, six paint variants | `gen_cars.py`, this repo | CC0 (ours) | — |
+| One car, six paint variants | Comrade1280, Generic passenger car pack, via `pedrosoandre/carros` | CC BY 4.0 | See `godot/assets/CREDITS.txt` |
 | Landmarks (Skanderbeg statue, Pyramid, Flag Monument, castles, Painted Mosque, …) | `landmarks.gd`, this repo | CC0 (ours) | — |
 | Sound effects | `gen_sfx.py`, this repo | CC0 (ours) | — |
 | Fonts Big Shoulders Display, Chakra Petch | Google Fonts via `@fontsource` | SIL OFL 1.1 | font names |
 | Logo / icon | `assets/` (existing) | ours | — |
 | Engine | Godot Engine 4.4.1 | MIT | Godot licence text |
 
-No Google 3D Tiles, no photos. Everything above is reproducible with `python tools/pipeline/<script>.py`.
+No Google 3D Tiles are used. See the asset credits and individual conversion scripts for sources and reproduction details.
 
 ## 3. OSM / DEM pipeline
 
