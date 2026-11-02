@@ -210,10 +210,10 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	var roll := 0.0
 	var pitch := asin(clampf(t.y, -0.5, 0.5))
 	if c.wreck_t > 0.0:
-		wreck_roll += dt * 9.0
-		roll = sin(wreck_roll) * 0.35
-		pitch += sin(wreck_roll * 0.7) * 0.2
-		p.y += absf(sin(wreck_roll * 0.5)) * 0.5
+		# Settle into a slight damaged tilt instead of repeatedly bouncing.
+		wreck_roll = minf(wreck_roll + dt * 3.0, 1.0)
+		roll = 0.12 * wreck_roll
+		pitch += 0.04 * wreck_roll
 	else:
 		wreck_roll = 0.0
 		# lean into corners and under braking

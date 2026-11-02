@@ -417,7 +417,8 @@ func _engine_audio(ratio: float, gas_on: bool, alive: bool, scrape: float, dt: f
 		Sfx.set_loop("engine_loop", "Engine", clampf(0.15 + r * 0.6, 0.0, 0.8) * load, 0.7 + r * 1.1)
 		Sfx.set_loop("engine_idle_loop", "Engine", clampf(0.4 - r * 0.6, 0.0, 0.4), 1.0)
 	Sfx.set_loop("wind_loop", "Tyres", clampf(r - 0.35, 0.0, 0.6), 0.8 + r * 0.4)
-	Sfx.set_loop("screech_loop", "Tyres", clampf(player.drift * 0.8, 0.0, 0.7) if player else 0.0, 0.9 + r * 0.2)
+	var tyre_slip := maxf(player.drift * 0.8, (clampf(r * 0.55, 0.0, 0.55) if player.braking else 0.0)) if player and alive else 0.0
+	Sfx.set_loop("screech_loop", "Tyres", clampf(tyre_slip, 0.0, 0.7), 0.9 + r * 0.2)
 	Sfx.set_loop("scrape_loop", "Impacts", clampf(scrape, 0.0, 0.6), 1.0)
 	Sfx.set_loop("rain_loop", "Tyres", 0.35 * sky.wet, 1.0)
 
