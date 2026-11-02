@@ -56,6 +56,19 @@ class RoadsideLandmarkTest(unittest.TestCase):
             for item in props[category]:
                 self.assertFalse(overlaps_landmark_bounds([(item[0], item[2])], zones))
 
+    def test_pyramid_sightline_excludes_only_configured_tree_points(self):
+        city = CITIES['tirane']
+        with open(os.path.join(OUT, 'tirane', 'props.json'), encoding='utf8') as f:
+            trees = json.load(f)['trees']
+        exclusions = city['tree_view_exclusions']
+        self.assertEqual(len(exclusions), 3)
+        for tree in trees:
+            for x, z, radius in exclusions:
+                self.assertGreater(math.hypot(tree[0] - x, tree[2] - z), radius)
+        for city_id, other in CITIES.items():
+            if city_id != 'tirane':
+                self.assertNotIn('tree_view_exclusions', other)
+
 
 if __name__ == '__main__':
     unittest.main()

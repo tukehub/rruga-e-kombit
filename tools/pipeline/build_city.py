@@ -735,6 +735,9 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf)
     zones = landmark_clearance_zones(city, proj)
     lamps = [l for l in lamps if not overlaps_landmark_bounds([(l[0], l[2])], zones)]
     trees = [t for t in trees if not overlaps_landmark_bounds([(t[0], t[2])], zones)]
+    # Preserve the landmark sightline without clearing the surrounding grove.
+    trees = [t for t in trees if not any((t[0] - x) ** 2 + (t[2] - z) ** 2 <= radius ** 2
+                                         for x, z, radius in city.get('tree_view_exclusions', ()))]
     landmarks = []
     for lm in city.get('landmarks', []):
         x, z = proj.to_xz(*lm['ll'])

@@ -9,6 +9,9 @@ CITIES = {
         'near_km': 4.5, 'far_km': 24.0,
         'half_width': 10.0,
         'exclude_pedestrian': True,
+        # Three roadside trees obscure the Pyramid on the race approach.  The
+        # coordinates are local metres relative to the Tirana origin.
+        'tree_view_exclusions': [(293.2, 460.9, 1.0), (284.1, 442.0, 1.0), (287.1, 448.7, 1.0)],
         'waypoints': [
             (41.3242813, 19.8236043),  # Bajram Curri, Downtown One (start/finish)
             (41.3232735, 19.8224131),  # Papa Gjon Pali II, by the Pyramid
