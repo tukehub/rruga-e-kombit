@@ -36,7 +36,7 @@ CITIES = {
         ],
         # Replace these specific OSM footprints with the original landmarks,
         # instead of drawing a generic extruded building through each model.
-        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121],
+        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121, 410277109, 410277110],
         'style': 'tirana',
     },
     'vlore': {

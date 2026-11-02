@@ -183,8 +183,15 @@ func build(root: Node3D, id: String) -> void:
 		"international_hotel":
 			_box(root, Vector3(0, 24, 0), Vector3(50, 48, 23), Color("d4d3cc"))
 			_box(root, Vector3(0, 3, 0), Vector3(56, 6, 32), Color("c7c4ba"))
-			for floor_no in 9:
-				_box(root, Vector3(0, 8 + floor_no * 4.1, -11.6), Vector3(45, 2.5, 0.2), Color("728b96"))
+			# The hotel's characteristic continuous window bands run around its
+			# perimeter. Show them on every side, including the race approach.
+			var windows := []
+			for floor_no in 14:
+				var y := 4.8 + floor_no * 3.05
+				for side in [-1.0, 1.0]:
+					windows.append([Vector3(0, y, side * 11.6), Vector3(48, 1.8, 0.18)])
+					windows.append([Vector3(side * 25.1, y, 0), Vector3(0.18, 1.8, 22)])
+			_boxes(root, windows, Color("728b96"))
 		"skanderbeg":
 			_box(root, Vector3(0, 1.6, 0), Vector3(10, 3.2, 6), stone)
 			# Horse body, four legs, head and raised neck; mounted rider and sword.

@@ -5,6 +5,16 @@ from glb import GLB
 from cities import ROAD_WIDTH
 
 
+def _clear_of_track(ref, midpoint, segment_length, road_half_width, track_half_width):
+    """Keep the whole side-road quad, not just its midpoint, outside the track.
+
+    The track index samples every 2m, so add 1m for its sampling error. The
+    circumradius bounds every point of the rectangular 8m road segment.
+    """
+    radius = math.hypot(segment_length / 2.0, road_half_width)
+    return ref.nearest(*midpoint)[0] >= track_half_width + 2.0 + radius + 1.0
+
+
 def build_side_roads(osm, ref, half_width, height, path):
     chunks = {}
     for way in osm.ways.values():
@@ -22,12 +32,12 @@ def build_side_roads(osm, ref, half_width, height, path):
             for step in range(steps):
                 start, end = a + (b - a) * step / steps, a + (b - a) * (step + 1) / steps
                 mid = (start + end) / 2
-                # Avoid z-fighting with the detailed racing ribbon.
-                if ref.nearest(*mid)[0] < half_width + 2 or np.linalg.norm(mid) > 2600:
+                # Avoid side-road quads bridging over the detailed racing ribbon.
+                width = float(ROAD_WIDTH[road_type]) / 2
+                if not _clear_of_track(ref, mid, float(np.linalg.norm(end - start)), width, half_width) or np.linalg.norm(mid) > 2600:
                     continue
                 key = tuple(np.floor(mid / 250).astype(int))
                 quads = chunks.setdefault(key, [])
-                width = float(ROAD_WIDTH[road_type]) / 2
                 quad = [start - normal * width, start + normal * width,
                         end + normal * width, end - normal * width]
                 quads.append([[x, float(height(x, z)) + 0.08, z] for x, z in quad])

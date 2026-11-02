@@ -209,16 +209,46 @@ func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
 	var selected: Dictionary = {}
 	if city_id == "tirane":
 		var route: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/tirane/track.json"))
-		var start: Array = route.pts[0]
+		# Prefer trees along the first ~250 m of road, rather than trees behind
+		# buildings that happen to be close to the start in a straight line.
+		# Keep their mapped positions, with a margin beyond the 10 m road edge.
+		var points: Array = route.pts
+		var start: Array = points[0]
+		var segments := []
+		var along_m := 0.0
+		for j in range(1, points.size()):
+			var a: Array = points[j - 1]
+			var b: Array = points[j]
+			var p0 := Vector2(float(a[0]), float(a[2]))
+			var p1 := Vector2(float(b[0]), float(b[2]))
+			var length := p0.distance_to(p1)
+			segments.append([p0, p1, along_m, length])
+			along_m += length
+			if along_m >= 250.0:
+				break
 		var candidates := []
 		for i in keep:
 			var t: Array = trees[i]
-			var distance := Vector2(float(t[0]) - float(start[0]), float(t[2]) - float(start[2])).length_squared()
-			if distance < 150.0 * 150.0:
-				candidates.append([distance, i])
-		candidates.sort_custom(func(a, b): return a[0] < b[0])
+			var pos := Vector2(float(t[0]), float(t[2]))
+			if pos.distance_squared_to(Vector2(float(start[0]), float(start[2]))) > 300.0 * 300.0:
+				continue
+			var nearest := INF
+			var along := 0.0
+			for segment in segments:
+				var p0: Vector2 = segment[0]
+				var p1: Vector2 = segment[1]
+				var direction := p1 - p0
+				var denom := direction.length_squared()
+				var fraction := clampf((pos - p0).dot(direction) / denom, 0.0, 1.0) if denom > 0.0 else 0.0
+				var d := pos.distance_squared_to(p0 + direction * fraction)
+				if d < nearest:
+					nearest = d
+					along = float(segment[2]) + fraction * float(segment[3])
+			if nearest >= 14.0 * 14.0 and nearest <= 34.0 * 34.0:
+				candidates.append([along, nearest, i])
+		candidates.sort_custom(func(a, b): return a[0] < b[0] if a[0] != b[0] else a[1] < b[1])
 		for i in mini(24, candidates.size()):
-			selected[candidates[i][1]] = true
+			selected[candidates[i][2]] = true
 	var pilot := MultiMesh.new()
 	pilot.transform_format = MultiMesh.TRANSFORM_3D
 	pilot.mesh = _pilot_leaf_mesh() if not selected.is_empty() else null

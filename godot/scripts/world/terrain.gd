@@ -38,6 +38,11 @@ func load_city(city_id: String, splat: Texture2D) -> void:
 	mat.set_shader_parameter("tex_urban", load("res://assets/textures/concrete_diff.jpg"))
 	mat.set_shader_parameter("tex_urban_n", load("res://assets/textures/concrete_nor.jpg"))
 	mat.set_shader_parameter("tex_road", load("res://assets/textures/asphalt_diff.jpg"))
+	if city_id == "tirane":
+		# The central square is a paved public space.  Blend it into the terrain
+		# rather than placing another mesh above the race road.
+		mat.set_shader_parameter("skanderbeg_square", true)
+		mat.set_shader_parameter("tex_square", load("res://assets/textures/cobble_diff.jpg"))
 	mat.set_shader_parameter("sea_level", sea_level)
 	_build_near()
 	_build_far()

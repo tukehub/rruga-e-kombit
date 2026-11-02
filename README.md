@@ -4,8 +4,8 @@ Native Godot **4.4.1**, GDScript, Forward+ / Vulkan combat racer for Android.
 Package: `al.tukehub.rruga`. The fixed release key remains at
 `android/app/rruga.jks`; changing it would break updates to existing installs.
 
-This review build focuses on **daylight Tirana**. It has one smooth modern
-Vortex GT shared by all six drivers, six paint choices with identical performance,
+This review build focuses on **daylight Tirana**. It has one shared sports car
+for all six drivers, six paint choices with identical performance,
 recognizable eagle/lightning/etc power-up badges, larger phone text, explicit
 corner pedals and forward/back shooting buttons, and always-visible translucent
 standings. The middle of the screen stays clear for the road and car.
@@ -27,7 +27,7 @@ godot --path godot
 
 Tests exercise all available city simulations on three difficulties, load every
 city through the production race scene, and check the shared
-car model (42,236 triangles and four wheels), all eight power-ups and their transient
+car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.

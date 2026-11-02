@@ -436,10 +436,15 @@ def clean_ring(ring):
 
 
 def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buildings=()):
+    excluded_ids = set(landmark_buildings)
+    excluded_ways = set(excluded_ids)
+    for rel in osm.rels:
+        if rel['id'] in excluded_ids:
+            excluded_ways.update(m['ref'] for m in rel.get('members', []) if m['type'] == 'way')
     footprints = []
     for w in osm.ways.values():
         tags = w.get('tags') or {}
-        if w['id'] in landmark_buildings:
+        if w['id'] in excluded_ways:
             continue
         if 'building' not in tags or tags.get('building') == 'no':
             continue
@@ -447,6 +452,8 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
             continue
         footprints.append((w['id'], tags, osm.coords(w)))
     for rel in osm.rels:
+        if rel['id'] in excluded_ids:
+            continue
         tags = rel.get('tags') or {}
         if 'building' not in tags:
             continue

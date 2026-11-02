@@ -11,6 +11,8 @@ uniform sampler2D tex_rock_n : hint_normal, filter_linear_mipmap_anisotropic, re
 uniform sampler2D tex_urban : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tex_urban_n : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tex_road : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_square : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform bool skanderbeg_square = false;
 uniform float sea_level = -50.0;
 uniform float wetness : hint_range(0.0, 1.0) = 0.0;
 uniform float snow : hint_range(0.0, 1.0) = 0.0;
@@ -82,6 +84,18 @@ void fragment() {
 
 	// vegetation darkens / greens a little
 	base = mix(base, base * vec3(0.72, 0.9, 0.6), sp.g * 0.6 * (1.0 - road_w));
+
+	// A geographically placed, softly edged paving area around the monument.
+	// The road is separate geometry above the terrain, so this cannot cover it.
+	if (skanderbeg_square) {
+		vec2 square = abs(wpos.xz - vec2(20.0, -55.0));
+		float square_w = (1.0 - smoothstep(76.0, 84.0, square.x))
+			* (1.0 - smoothstep(75.0, 83.0, square.y));
+		vec3 paving = texture(tex_square, wpos.xz / 5.0).rgb * vec3(0.96, 0.94, 0.89);
+		base = mix(base, paving, square_w);
+		nrm = mix(nrm, vec3(0.5, 0.5, 1.0), square_w);
+		rough = mix(rough, 0.88, square_w);
+	}
 
 	// water
 	float water_w = max(smoothstep(0.3, 0.8, sp.b), 1.0 - smoothstep(-1.5, 0.5, wpos.y - sea_level));
