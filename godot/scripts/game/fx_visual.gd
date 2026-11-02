@@ -139,6 +139,65 @@ func _make_dome(dm: Dictionary) -> Node3D:
 	return root
 
 
+func powerup_used(c: CarState, kind: String, back: bool) -> void:
+	# Small, short-lived energy geometry; the established projectile, shield,
+	# nitro and mine visuals continue to show the ability after activation.
+	if not Data.PW.has(kind) or get_tree() == null:
+		return
+	var color := Color.html(Data.PW[kind].col)
+	var root := Node3D.new()
+	add_child(root)
+	root.position = _wpos(c.s, c.d, 0.35)
+	var tan := track.tangent(c.s)
+	if tan.length_squared() > 0.001:
+		root.look_at(root.position + tan, Vector3.UP)
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.88
+	ring.outer_radius = 1.0
+	ring.rings = 24
+	ring.ring_segments = 8
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(color, 0.7)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.emission_enabled = true
+	material.emission = color
+	material.emission_energy_multiplier = 1.2
+	var node := _mk(ring, material)
+	root.add_child(node)
+	var stretch := Vector3.ONE
+	var duration := 0.4
+	match kind:
+		"eagle":
+			node.rotation.x = PI * 0.5
+			stretch = Vector3(1.4, 1.4, 1.4)
+		"bolt":
+			node.rotation.x = PI * 0.5
+			stretch = Vector3(0.7, 0.7, 0.7)
+			duration = 0.22
+		"barge": stretch = Vector3(4.0, 1.0, 4.0)
+		"mine":
+			root.position -= tan * (4.0 if back else -4.0)
+			stretch = Vector3(1.5, 1.0, 1.5)
+		"shock": stretch = Vector3(3.0, 1.0, 3.0)
+		"nitro":
+			root.position -= tan * 2.0
+			node.rotation.x = PI * 0.5
+			stretch = Vector3(1.0, 1.0, 2.0)
+		"shield": stretch = Vector3(1.8, 1.8, 1.8)
+		"repair":
+			root.position.y += 0.8
+			stretch = Vector3(1.6, 1.0, 1.6)
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(node, "scale", stretch, duration).from(Vector3(0.35, 0.35, 0.35)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(material, "albedo_color:a", 0.0, duration)
+	if kind == "repair":
+		tween.tween_property(root, "position:y", root.position.y + 1.5, duration)
+	elif kind in ["eagle", "bolt", "nitro"]:
+		tween.tween_property(root, "position", root.position + tan * (-3.0 if back else 3.0), duration)
+	tween.chain().tween_callback(root.queue_free)
+
+
 func boom(pos: Vector3, col: Color, r: float = 3.0, ttl: float = 0.45) -> void:
 	var sph := SphereMesh.new()
 	sph.radius = 1.0

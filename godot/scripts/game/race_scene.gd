@@ -318,6 +318,7 @@ func _events() -> void:
 				else:
 					Sfx.play_at("pickup", _wpos(c.s, c.d, 1.0), "Pickups", -10.0)
 			"fire":
+				effects.powerup_used(c, str(e.type), bool(e.back))
 				var vol := _near_vol(c.s)
 				if vol > 0.05:
 					var snd: String = {"eagle": "fire_eagle", "bolt": "fire_bolt", "barge": "barge", "mine": "mine_drop",

@@ -96,6 +96,7 @@ func _ready() -> void:
 	check(effects._skids.visible_instance_count == 2, "hard braking leaves two tire marks")
 	combat.player.braking = false
 	for type in Data.PW_KEYS:
+		effects.powerup_used(combat.player, type, false)
 		combat.player.health = 1.0
 		combat.player.slots = [{"type": type, "ammo": 1}]
 		combat.use_item(combat.player, false)
