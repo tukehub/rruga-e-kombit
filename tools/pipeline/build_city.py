@@ -435,7 +435,30 @@ def clean_ring(ring):
     return out
 
 
-def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buildings=()):
+def landmark_clearance_zones(city, proj, margin=1.0):
+    """Small local keepouts around explicitly relocated racing landmarks."""
+    zones = []
+    for landmark in city.get('landmarks', []):
+        if 'clear_half' not in landmark:
+            continue
+        x, z = proj.to_xz(*landmark['ll'])
+        x += landmark.get('offset_x', 0)
+        z += landmark.get('offset_z', 0)
+        hx, hz = landmark['clear_half']
+        zones.append((x - hx - margin, z - hz - margin, x + hx + margin, z + hz + margin))
+    return zones
+
+
+def overlaps_landmark_bounds(points, zones):
+    """Conservatively reject footprints or points inside landmark keepouts."""
+    arr = np.asarray(points)
+    xmin, zmin = arr.min(axis=0)
+    xmax, zmax = arr.max(axis=0)
+    return any(xmax >= x0 and xmin <= x1 and zmax >= z0 and zmin <= z1
+               for x0, z0, x1, z1 in zones)
+
+
+def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buildings=(), landmark_zones=()):
     excluded_ids = set(landmark_buildings)
     excluded_ways = set(excluded_ids)
     for rel in osm.rels:
@@ -467,6 +490,8 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
     for bid, tags, ring in footprints:
         ring = clean_ring(ring)
         if len(ring) < 3:
+            continue
+        if overlaps_landmark_bounds(ring, landmark_zones):
             continue
         arr = np.array(ring)
         cx, cz = arr.mean(axis=0)
@@ -502,6 +527,8 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
             # still intersecting? (corner cases around curves)
             if min(ref.nearest(x, z)[0] for x, z in ring) < hw + 1.0:
                 continue
+        if overlaps_landmark_bounds(ring, landmark_zones):
+            continue
         height = parse_height(tags, bid, style)
         base = float(terrain_sample(arr[:, 0], arr[:, 1]).min()) - 0.6
         top = base + height
@@ -705,6 +732,9 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf)
         side = 1 if (i // step) % 2 == 0 else -1
         p = ref.xz[i] + ref.nrm[i] * (hw + 1.2) * side
         track_lamps.append([round(float(p[0]), 1), round(float(ref.y[i]), 1), round(float(p[1]), 1), round(float(math.atan2(-ref.tan[i][0], -ref.tan[i][1])), 3)])
+    zones = landmark_clearance_zones(city, proj)
+    lamps = [l for l in lamps if not overlaps_landmark_bounds([(l[0], l[2])], zones)]
+    trees = [t for t in trees if not overlaps_landmark_bounds([(t[0], t[2])], zones)]
     landmarks = []
     for lm in city.get('landmarks', []):
         x, z = proj.to_xz(*lm['ll'])
@@ -829,7 +859,7 @@ def build(cid, route_only=False):
     log(f'  track.json {len(pts)} control points, elevation {y.min():.1f}..{y.max():.1f} m')
 
     # 4. buildings, splat, props
-    build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()))
+    build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()), landmark_clearance_zones(city, proj))
     build_side_roads(osm, ref, hw, terrain_sample, os.path.join(out, 'roads.glb'))
     build_splat(osm, ref, hw, os.path.join(out, 'splat.png'))
     build_props(osm, ref, hw, terrain_sample, city, proj, os.path.join(out, 'props.json'), None)

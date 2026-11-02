@@ -20,15 +20,21 @@ CITIES = {
         ],
         'landmarks': [
             {'id': 'skanderbeg', 'll': (41.32775, 19.81850), 'yaw': 180},
-            {'id': 'pyramid', 'll': (41.323058, 19.821443), 'yaw': 0},
+            {'id': 'pyramid', 'll': (41.323058, 19.821443), 'yaw': 0,
+             'offset_x': 29, 'offset_z': -9, 'clear_half': (29, 29)},
             {'id': 'downtown_one', 'll': (41.324082, 19.823911), 'yaw': 0, 'offset_x': 5, 'offset_z': 12},
-            # Move these two away from the widened arcade circuit, preserving
-            # their approximate positions while keeping chase cameras clear.
-            {'id': 'eyes_tirana', 'll': (41.328561, 19.815744), 'yaw': 0, 'offset_x': -30},
-            {'id': 'bank_albania', 'll': (41.327758, 19.816685), 'yaw': 0, 'offset_x': 20},
-            {'id': 'international_hotel', 'll': (41.329863, 19.818686), 'yaw': 0},
-            {'id': 'polytechnic', 'll': (41.3166196, 19.8217354), 'yaw': 0},
-            {'id': 'cathedral', 'll': (41.326518, 19.81753), 'yaw': 0},
+            # Roadside offsets are deliberate racing-game adaptations.
+            # Keep full footprints outside the road and camera corridor.
+            {'id': 'eyes_tirana', 'll': (41.328561, 19.815744), 'yaw': 0,
+             'offset_x': -19.1, 'offset_z': 6.4, 'clear_half': (21, 19)},
+            {'id': 'bank_albania', 'll': (41.327758, 19.816685), 'yaw': 0,
+             'offset_x': 8, 'offset_z': 2.8, 'clear_half': (19, 16)},
+            {'id': 'international_hotel', 'll': (41.329863, 19.818686), 'yaw': 0,
+             'offset_x': -70, 'offset_z': -10, 'clear_half': (28, 16)},
+            {'id': 'polytechnic', 'll': (41.3166196, 19.8217354), 'yaw': 0,
+             'offset_x': -20.7, 'offset_z': -45.1, 'clear_half': (44, 12)},
+            {'id': 'cathedral', 'll': (41.326518, 19.81753), 'yaw': 0,
+             'offset_x': -25, 'offset_z': -7, 'clear_half': (25, 17)},
             {'id': 'toptani', 'll': (41.327064, 19.822743), 'yaw': 0, 'offset_z': 6},
             {'id': 'clocktower', 'll': (41.32800, 19.82000), 'yaw': 0},
             {'id': 'mosque', 'll': (41.32790, 19.81950), 'yaw': 0},
