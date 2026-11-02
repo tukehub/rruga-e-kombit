@@ -111,13 +111,13 @@ class Osm:
 
 # --------------------------------------------------------------------------- routing
 class Graph:
-    def __init__(self, osm):
+    def __init__(self, osm, exclude_pedestrian=False):
         self.adj = {}
         self.pos = {}
         for w in osm.ways.values():
             tags = w.get('tags') or {}
             hw = tags.get('highway')
-            if hw not in ROUTABLE:
+            if hw not in ROUTABLE or (exclude_pedestrian and hw == 'pedestrian'):
                 continue
             if tags.get('area') == 'yes' or tags.get('tunnel') in ('yes', 'building_passage'):
                 continue
@@ -770,7 +770,7 @@ def build(cid, route_only=False):
     osm = Osm(os.path.join(CACHE, 'osm', f'{cid}.json'), proj)
 
     # 1. route the loop
-    g = Graph(osm)
+    g = Graph(osm, exclude_pedestrian=city.get('exclude_pedestrian', False))
     wps = [proj.to_xz(lat, lon) for lat, lon in city['waypoints']]
     raw = route_loop(g, wps)
     if len(raw) != len(set(map(tuple, raw))):

@@ -82,6 +82,22 @@ func build(root: Node3D, id: String) -> void:
 				stair.rotation.z = side * 0.48
 				var stair2 := _box(root, Vector3(0, 8, side * 13), Vector3(6, 0.7, 27), Color("f4f2e9"))
 				stair2.rotation.x = -side * 0.48
+			# MVRDV's 2023 renovation introduced small colourful pavilions
+			# amongst the white stairways. Keep them within the monument footprint.
+			_boxes(root, [
+				[Vector3(-19, 3.7, -17), Vector3(6.2, 5.2, 5.4)],
+				[Vector3(16, 3.7, 18), Vector3(5.6, 5.2, 5.8)],
+			], Color("e3ac54"))
+			_boxes(root, [
+				[Vector3(18, 3.7, -15), Vector3(5.6, 5.2, 5.8)],
+				[Vector3(-16, 3.7, 17), Vector3(6.0, 5.2, 5.4)],
+			], Color("a6bbc2"))
+			_boxes(root, [
+				[Vector3(-17, 4.2, -19.8), Vector3(3.1, 2.7, 0.15)],
+				[Vector3(18, 4.2, -18.0), Vector3(3.1, 2.7, 0.15)],
+				[Vector3(-16, 4.2, 19.8), Vector3(3.1, 2.7, 0.15)],
+				[Vector3(16, 4.2, 21.0), Vector3(3.1, 2.7, 0.15)],
+			], Color("607983"), 0.1)
 		"downtown_one":
 			# MVRDV's 140 m tower has a pale grid and projecting balconies that
 			# form a pixelated outline of Albania on the main facades.

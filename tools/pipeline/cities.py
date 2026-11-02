@@ -32,7 +32,6 @@ CITIES = {
             {'id': 'toptani', 'll': (41.327064, 19.822743), 'yaw': 0, 'offset_z': 6},
             {'id': 'clocktower', 'll': (41.32800, 19.82000), 'yaw': 0},
             {'id': 'mosque', 'll': (41.32790, 19.81950), 'yaw': 0},
-            {'id': 'mother_teresa', 'll': (41.31880, 19.82160), 'yaw': 0},
             {'id': 'blloku_sign', 'll': (41.32070, 19.81600), 'yaw': 90},
         ],
         # Replace these specific OSM footprints with the original landmarks,
