@@ -117,13 +117,11 @@ def engine_idle_loop() -> np.ndarray:
 def screech_loop(sec: float = 1.5) -> np.ndarray:
     n = int(SR * sec)
     t = np.arange(n) / SR
-    base = 1250 + 90 * np.sin(2 * np.pi * 7.3 * t) + 40 * np.sin(2 * np.pi * 23 * t)
-    ph = np.cumsum(2 * np.pi * base / SR)
-    x = np.sin(ph) + 0.5 * np.sin(2 * ph + 0.2) + 0.25 * np.sin(3 * ph)
-    x *= 0.6 + 0.4 * np.sin(2 * np.pi * 31 * t)
-    x += 0.5 * highpass(rng.standard_normal(n), 1800)
-    x = LP(x, 5000)
-    return seamless(normalize(x, 0.7))
+    # Soft broadband tire scrub rather than a piercing continuous tone.
+    noise = LP(rng.standard_normal(n), 1500)
+    rumble = LP(rng.standard_normal(n), 350)
+    x = (noise * 0.65 + rumble * 0.35) * (0.8 + 0.2 * np.sin(2 * np.pi * 3 * t))
+    return seamless(normalize(x, 0.38))
 
 
 def scrape_loop(sec: float = 1.2) -> np.ndarray:
@@ -151,14 +149,12 @@ def rain_loop(sec: float = 3.0) -> np.ndarray:
 
 # ------------------------------------------------------------------ one shots
 def impact(hard: bool) -> np.ndarray:
-    sec = 0.6 if hard else 0.35
+    sec = 0.32 if hard else 0.20
     n = int(SR * sec)
     t = np.arange(n) / SR
-    thump = np.sin(2 * np.pi * (70 if hard else 110) * t * np.exp(-t * 3)) * env_ad(n, 0.004, 0.12)
-    crunch = highpass(rng.standard_normal(n), 400) * env_ad(n, 0.002, 0.06 if hard else 0.03)
-    metal = sum(np.sin(2 * np.pi * f * t) * env_ad(n, 0.002, 0.15) * a for f, a in [(820, 0.3), (1340, 0.2), (2210, 0.12)])
-    x = thump * 1.0 + crunch * (0.9 if hard else 0.6) + metal * (0.7 if hard else 0.3)
-    return normalize(x, 0.95 if hard else 0.75)
+    thump = np.sin(2 * np.pi * (85 if hard else 120) * t) * env_ad(n, 0.003, 0.055)
+    body = LP(rng.standard_normal(n), 1300) * env_ad(n, 0.003, 0.045)
+    return normalize(thump + body * 0.55, 0.58 if hard else 0.45)
 
 
 def boom(big: bool) -> np.ndarray:
@@ -282,11 +278,7 @@ def finish() -> np.ndarray:
 
 
 def wreck() -> np.ndarray:
-    x = boom(True)
-    n = len(x)
-    t = np.arange(n) / SR
-    glass = highpass(rng.standard_normal(n), 4000) * env_ad(n, 0.01, 0.25) * 0.5
-    return normalize(x + glass, 0.95)
+    return impact(True)
 
 
 def respawn() -> np.ndarray:

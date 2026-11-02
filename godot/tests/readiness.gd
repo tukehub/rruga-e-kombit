@@ -90,6 +90,11 @@ func _ready() -> void:
 	var effects := FxVisual.new()
 	add_child(effects)
 	effects.setup(combat, combat.track)
+	combat.player.v = 20.0
+	combat.player.braking = true
+	effects._process(0.1)
+	check(effects._skids.visible_instance_count == 2, "hard braking leaves two tire marks")
+	combat.player.braking = false
 	for type in Data.PW_KEYS:
 		combat.player.health = 1.0
 		combat.player.slots = [{"type": type, "ammo": 1}]
