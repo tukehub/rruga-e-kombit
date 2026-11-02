@@ -309,6 +309,7 @@ func _events() -> void:
 		match e.t:
 			"pickup":
 				if c == player:
+					hud.animate_pickup(str(e.type), player.slots.size() - 1)
 					Sfx.play("pickup", "Pickups", -3.0)
 					hud.feed("+ " + Data.PW[e.type].name, Color.html(Data.PW[e.type].col), 1.6)
 					if not Settings.seen_pw(e.type):

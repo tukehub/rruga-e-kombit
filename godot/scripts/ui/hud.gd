@@ -47,6 +47,24 @@ var _mm_scale := 1.0
 var _mm_min := Vector2.ZERO
 
 
+func animate_pickup(kind: String, index: int) -> void:
+	# A brief icon travels into the newly filled slot without covering the road.
+	var icon := TextureRect.new()
+	icon.texture = PowerupIcons.texture(kind)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.size = Vector2(44, 44)
+	icon.position = Vector2(size.x * 0.5 - 22, size.y - 155)
+	add_child(icon)
+	var destination := Vector2(size.x * 0.5 - 112 + clampi(index, 0, 2) * 80, size.y - 70)
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(icon, "position", destination, 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(icon, "scale", Vector2(0.68, 0.68), 0.32)
+	tween.tween_property(icon, "modulate:a", 0.0, 0.1).set_delay(0.25)
+	tween.chain().tween_callback(icon.queue_free)
+
+
 func _ready() -> void:
 	add_to_group("debug_ui")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
