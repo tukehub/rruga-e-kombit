@@ -125,81 +125,29 @@ func _build_lamps(lamps: Array, tl: Array) -> void:
 
 
 func _tree_meshes() -> Array:
-	# A rounded broadleaf crown, rather than the old stacked conifers.  The
-	# small irregularities make a three-dimensional silhouette from every angle.
-	# One shared 32-triangle mesh still renders in a single MultiMesh draw call.
+	# Crossed photographic cutouts provide volume at a small geometry cost.
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var segments := 8
-	var rings := 3
-	var vertex := func(ring: int, segment: int) -> void:
-		var phi := PI * float(ring) / float(rings)
-		var angle := TAU * float(segment) / float(segments)
-		var uneven := 1.0 + 0.09 * sin(angle * 3.0 + phi * 1.7) + 0.05 * cos(angle * 5.0 - phi)
-		var unit := Vector3(sin(phi) * cos(angle), cos(phi), sin(phi) * sin(angle))
-		var normal := Vector3(unit.x / 2.5, unit.y / 2.35, unit.z / 2.5).normalized()
-		st.set_normal(normal)
-		var variation := 0.025 * sin(angle * 3.0 + phi * 2.0)
-		st.set_color(Color(0.15 + variation, 0.27 + unit.y * 0.04 + variation, 0.105 + variation * 0.5))
-		st.add_vertex(Vector3(unit.x * 2.5 * uneven, 4.8 + unit.y * 2.35, unit.z * 2.5 * uneven))
-	for ring in rings:
-		for segment in segments:
-			# Skip the degenerate triangles at the two poles.
-			if ring > 0:
-				vertex.call(ring, segment)
-				vertex.call(ring, segment + 1)
-				vertex.call(ring + 1, segment + 1)
-			if ring < rings - 1:
-				vertex.call(ring, segment)
-				vertex.call(ring + 1, segment + 1)
-				vertex.call(ring + 1, segment)
-	var canopy_mat := StandardMaterial3D.new()
-	canopy_mat.vertex_color_use_as_albedo = true
-	canopy_mat.roughness = 0.95
-	st.set_material(canopy_mat)
-	var canopy := st.commit()
-	var st2 := SurfaceTool.new()
-	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_box(st2, Vector3(0, 1.5, 0), Vector3(0.48, 3.0, 0.48), Color(0.30, 0.22, 0.15))
-	var trunk_mat := StandardMaterial3D.new()
-	trunk_mat.vertex_color_use_as_albedo = true
-	trunk_mat.roughness = 0.9
-	st2.set_material(trunk_mat)
-	return [canopy, st2.commit()]
-
-
-# Shared cutout leaf clusters form a genuinely volumetric crown.  Only a small
-# grove near the start uses them; the existing inexpensive crown is the far LOD.
-func _pilot_leaf_mesh() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1949
-	for i in 160:
-		var az := rng.randf_range(0.0, TAU)
-		var y := rng.randf_range(-1.0, 1.0)
-		var r := sqrt(maxf(0.0, 1.0 - y * y)) * rng.randf_range(0.28, 1.0)
-		var centre := Vector3(cos(az) * r * 2.15, 4.9 + y * 1.9, sin(az) * r * 2.15)
-		var rot := rng.randf_range(0.0, TAU)
-		var axis := Vector3(cos(rot), 0.0, sin(rot))
-		var up := Vector3(0.0, 1.0, 0.0).rotated(axis, rng.randf_range(-0.65, 0.65))
-		var right := axis * rng.randf_range(0.45, 0.70)
-		up *= rng.randf_range(0.65, 0.95)
-		var normal := right.cross(up).normalized()
-		var corners := [centre - right - up, centre + right - up, centre + right + up, centre - right + up]
+	for angle in [0.0, PI * 0.5]:
+		var axis := Vector3(cos(angle), 0.0, sin(angle)) * 2.7
+		var points := [-axis, axis, axis + Vector3.UP * 8.4, -axis + Vector3.UP * 8.4]
 		var uvs := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
 		for index in [0, 1, 2, 0, 2, 3]:
-			st.set_normal(normal)
+			st.set_normal(Vector3(-sin(angle), 0.0, cos(angle)))
 			st.set_uv(uvs[index])
-			st.add_vertex(corners[index])
+			st.add_vertex(points[index])
 	var material := StandardMaterial3D.new()
-	material.albedo_texture = load("res://assets/foliage/polyhaven_tree_leaves.png")
+	material.albedo_texture = load("res://assets/foliage/photographic_tree.png")
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-	material.alpha_scissor_threshold = 0.45
+	material.alpha_scissor_threshold = 0.25
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.roughness = 1.0
 	st.set_material(material)
-	return st.commit()
+	return [st.commit()]
+
+
+func _pilot_leaf_mesh() -> ArrayMesh:
+	return _tree_meshes()[0]
 
 
 func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
@@ -273,7 +221,6 @@ func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
 		var origin := Vector3((key.x + 0.5) * TREE_CHUNK_SIZE, 0, (key.y + 0.5) * TREE_CHUNK_SIZE)
 		var groups: Dictionary = chunks[key]
 		_tree_chunk(meshes[0], groups.normal, origin, float(Quality.p.props_dist) * 1.3, Quality.preset != "low", "TreeCanopy")
-		_tree_chunk(meshes[1], groups.trunk, origin, float(Quality.p.props_dist), false, "TreeTrunk")
 		if pilot_mesh != null:
 			_tree_chunk(pilot_mesh, groups.pilot, origin, float(Quality.p.props_dist) * 1.3, false, "TreeDetail")
 

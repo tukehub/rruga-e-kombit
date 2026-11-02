@@ -18,18 +18,15 @@ func _ready() -> void:
 			# renderer can cull independently.
 			var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/tirane/props.json"))
 			var count_expected := int(data.trees.size() * float(Quality.p.tree_mul))
-			var trunks := 0
 			var crowns := 0
 			var batches := 0
 			for node in scene.props.get_children():
 				if not node is MultiMeshInstance3D:
 					continue
-				if str(node.name).begins_with("TreeTrunk"):
+				if str(node.name).begins_with("TreeCanopy") or str(node.name).begins_with("TreeDetail"):
 					batches += 1
-					trunks += node.multimesh.instance_count
-				elif str(node.name).begins_with("TreeCanopy") or str(node.name).begins_with("TreeDetail"):
 					crowns += node.multimesh.instance_count
-			assert(batches > 1 and trunks == count_expected and crowns == count_expected)
+			assert(batches > 1 and crowns == count_expected)
 		await get_tree().process_frame
 		print("CITY WORLD: ", city.id, " loaded with six cars")
 		Sfx.stop_all()
