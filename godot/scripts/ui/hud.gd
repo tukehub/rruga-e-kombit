@@ -38,6 +38,7 @@ var _slot_key := ""
 var _minimap: Control
 var _me: Label
 var _fps: Label
+var diagnostic_fps := false
 var _pop: Label
 var _pop_t := 0.0
 var _pause: Button
@@ -423,7 +424,7 @@ func _process(dt: float) -> void:
 		_slot_name.text = Data.PW[player.slots[0].type].name.to_upper() if not player.slots.is_empty() else ""
 	_minimap.queue_redraw()
 	_gauge.queue_redraw()
-	if Settings.show_fps:
+	if Settings.show_fps or diagnostic_fps:
 		_fps.text = "%.1f ms  (max %.1f)  %d fps" % [Game.frame_ms_avg, Game.frame_ms_max, Engine.get_frames_per_second()]
 	else:
 		_fps.text = ""

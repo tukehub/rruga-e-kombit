@@ -25,7 +25,9 @@ Big Shoulders Display — Patric King, SIL Open Font License 1.1.
 Chakra Petch — Cadson Demak, SIL Open Font License 1.1.
 
 [b]Tingujt[/b]
-Të gjithë efektet zanore janë të sintetizuara proceduralisht për këtë lojë (tools/gen_sfx.py).
+Shumica e efekteve zanore janë sintetizuar proceduralisht për këtë lojë (tools/gen_sfx.py).
+Përplasja anësore: regjistrim nga PauliusI, CC0; shkurtuar, filtruar dhe ulur në volum.
+freesound.org/people/PauliusI/sounds/346299/
 
 [b]Modeli i makinës[/b]
 “Car Concept” © 2024 Darmstadt Graphics Group GmbH dhe Eric Chadwick, CC BY 4.0.

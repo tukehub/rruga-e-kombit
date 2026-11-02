@@ -86,7 +86,9 @@ func detect() -> String:
 		tier = mini(tier, 0)
 	elif ram_gb > 0.0 and ram_gb < 7.5:
 		tier = mini(tier, 1)
-	return ["low", "medium", "high"][tier]
+	# Auto mode avoids the costly high-tier GI and shadow configuration on
+	# mobile; players may still explicitly select high in the settings.
+	return ["low", "medium", "high"][mini(tier, 1)]
 
 
 func apply_viewport(vp: Viewport) -> void:

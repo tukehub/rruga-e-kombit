@@ -126,11 +126,12 @@ def screech_loop(sec: float = 1.5) -> np.ndarray:
 
 def scrape_loop(sec: float = 1.2) -> np.ndarray:
     n = int(SR * sec)
-    x = highpass(rng.standard_normal(n), 900)
     t = np.arange(n) / SR
-    x *= 0.6 + 0.4 * np.sin(2 * np.pi * 47 * t) * np.sin(2 * np.pi * 3 * t)
-    x += 0.4 * np.sin(np.cumsum(2 * np.pi * (3200 + 500 * np.sin(2 * np.pi * 9 * t)) / SR))
-    return seamless(normalize(LP(x, 7000), 0.7))
+    # Low, uneven friction texture instead of a piercing sustained whistle.
+    grit = LP(rng.standard_normal(n), 1100)
+    body = LP(rng.standard_normal(n), 260)
+    x = (0.6 * grit + 0.4 * body) * (0.8 + 0.2 * np.sin(2 * np.pi * 5 * t))
+    return seamless(normalize(x, 0.35))
 
 
 def wind_loop(sec: float = 3.0) -> np.ndarray:

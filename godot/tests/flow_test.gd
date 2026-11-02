@@ -34,6 +34,11 @@ func _ready() -> void:
 	await wait_scene("race")
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
+	scene.set_scenery_visible(false)
+	check(not scene.buildings.visible and not scene.props.visible and not scene.terrain.visible and scene.road.visible, "scenery comparison hides world while keeping road")
+	check(scene.side_roads == null or not scene.side_roads.visible, "scenery comparison hides side roads")
+	scene.set_scenery_visible(true)
+	check(scene.buildings.visible and scene.props.visible and scene.terrain.visible and scene.hud.diagnostic_fps, "scenery comparison restores world and keeps FPS display")
 	check(scene.views.mirror_panel.visible, "rear mirror visible by default")
 	var player_visual: CarVisual = scene.cars[scene.race.cars.find(scene.player)]
 	check(player_visual.body.layers == 2, "player body isolated from rear mirror")

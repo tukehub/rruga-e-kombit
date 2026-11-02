@@ -67,7 +67,7 @@ func _override_materials(mi: MeshInstance3D) -> void:
 			"chrome": ov = _shared("chrome", func(): return _mk_simple(Color(0.9, 0.9, 0.92), 1.0, 0.12))
 			"interior": ov = _shared("interior", func(): return _mk_simple(Color(0.07, 0.07, 0.08), 0.0, 0.95))
 			"tyre": ov = _shared("tyre", func(): return _mk_simple(Color(0.035, 0.035, 0.04), 0.0, 0.9))
-			"rim": ov = _shared("rim", func(): return _mk_simple(Color(0.8, 0.8, 0.84), 1.0, 0.22))
+			"rim": ov = _shared("rim", func(): return _mk_simple(Color(0.48, 0.50, 0.53), 0.7, 0.38))
 			"brake": ov = _shared("brake", func(): return _mk_simple(Color(0.75, 0.12, 0.08), 0.3, 0.5))
 			"plate": ov = _shared("plate", func(): return _mk_simple(Color(0.95, 0.95, 0.9), 0.0, 0.5))
 		if ov:
@@ -104,16 +104,15 @@ static func _mk_glass() -> StandardMaterial3D:
 
 func _paint(source: Material = null) -> StandardMaterial3D:
 	if mat_paint == null:
-		# Keep the artist's body texture and roughness map while tinting the
-		# neutralized paint per driver. Each car gets its own material instance.
+		# Each car retains its own tint with a softer satin-clearcoat finish.
 		mat_paint = source.duplicate() as StandardMaterial3D if source is StandardMaterial3D else StandardMaterial3D.new()
 		mat_paint.albedo_color = color
-		mat_paint.metallic = 0.28
-		mat_paint.metallic_specular = 0.48
-		mat_paint.roughness = 0.32
+		mat_paint.metallic = 0.20
+		mat_paint.metallic_specular = 0.35
+		mat_paint.roughness = 0.42
 		mat_paint.clearcoat_enabled = true
-		mat_paint.clearcoat = 0.6
-		mat_paint.clearcoat_roughness = 0.18
+		mat_paint.clearcoat = 0.30
+		mat_paint.clearcoat_roughness = 0.30
 	return mat_paint
 
 

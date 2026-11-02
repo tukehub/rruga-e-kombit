@@ -9,7 +9,8 @@ var track: RaceTrack
 var _nodes: Dictionary = {}  # id -> Node3D
 var _flashes: Array = []     # [{node, t, ttl, r}]
 var _t := 0.0
-var _skid_clock := 0.0
+var _skid_car: CarVisual
+var _skid_previous := {}
 var _skid_next := 0
 var _skid_count := 0
 var _skids: MultiMesh
@@ -34,13 +35,14 @@ static func _mat(key: String, col: Color, energy: float, alpha: float = 1.0) -> 
 	return m
 
 
-func setup(p_race: Race, p_track: RaceTrack) -> void:
+func setup(p_race: Race, p_track: RaceTrack, p_car: CarVisual = null) -> void:
 	race = p_race
 	track = p_track
+	_skid_car = p_car
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(0.18, 1.0)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.07, 0.065, 0.06, 0.45)
+	mat.albedo_color = Color(0.07, 0.065, 0.06, 0.34)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -228,24 +230,48 @@ func _wpos(s: float, d: float, y: float) -> Vector3:
 	return p
 
 
+func _update_skids(dt: float) -> void:
+	var c := race.player
+	if c == null or c.wreck_t > 0.0 or c.hop > 0.15 or absf(c.v) <= 10.0 or not (c.drift > 0.25 or c.braking):
+		_skid_previous.clear()
+		return
+	var road := track.pos(c.s, c.d)
+	var tangent := track.tangent(c.s)
+	var flat := Vector3(tangent.x, 0.0, tangent.z).normalized()
+	var normal := track.normal(c.s)
+	for side in [-1, 1]:
+		var wheel_name := "wheel_rl" if side < 0 else "wheel_rr"
+		var pos: Vector3
+		if is_instance_valid(_skid_car) and _skid_car.wheels.has(wheel_name):
+			# The wheel mesh pivot follows the rendered car, including heading/yaw.
+			pos = (_skid_car.wheels[wheel_name] as Node3D).global_position
+		else:
+			# Tests and callers without a visual use the same approximate rear axle.
+			var forward := flat * cos(c.yaw) + normal * sin(c.yaw)
+			var right := normal * cos(c.yaw) - flat * sin(c.yaw)
+			pos = road - forward * float(c.def.size.z) * 0.33 + right * float(side) * float(c.def.size.x) * 0.36
+		pos.y = road.y + (pos - road).dot(flat) * tangent.y + 0.045
+		if _skid_previous.has(side):
+			var previous: Vector3 = _skid_previous[side]
+			var delta := pos - previous
+			var length := delta.length()
+			# Break after a teleport or long stall rather than drawing across the map.
+			if length >= 0.3 and length <= maxf(3.0, absf(c.v) * dt * 2.5 + 1.0):
+				var basis := Basis.looking_at(-delta.normalized(), Vector3.UP) * Basis.from_scale(Vector3(1.0, 1.0, length))
+				_skids.set_instance_transform(_skid_next, Transform3D(basis, (previous + pos) * 0.5))
+				_skid_next = (_skid_next + 1) % MAX_SKIDS
+				_skid_count = mini(_skid_count + 1, MAX_SKIDS)
+				_skids.visible_instance_count = _skid_count
+			elif length < 0.3:
+				continue
+		_skid_previous[side] = pos
+
+
 func _process(dt: float) -> void:
 	if race == null:
 		return
 	_t += dt
-	_skid_clock += dt
-	if _skid_clock >= 0.08:
-		_skid_clock = 0.0
-		var c := race.player
-		if c != null and c.wreck_t <= 0.0 and absf(c.v) > 10.0 and (c.drift > 0.25 or c.braking):
-			var tangent := track.tangent(c.s)
-			var basis := Basis.looking_at(-tangent, Vector3.UP).scaled(Vector3(1.0, 1.0, clampf(absf(c.v) * 0.08, 0.6, 4.0)))
-			for side in [-0.7, 0.7]:
-				var pos := track.pos(c.s, c.d + side)
-				pos.y += 0.08
-				_skids.set_instance_transform(_skid_next, Transform3D(basis, pos))
-				_skid_next = (_skid_next + 1) % MAX_SKIDS
-				_skid_count = mini(_skid_count + 1, MAX_SKIDS)
-			_skids.visible_instance_count = _skid_count
+	_update_skids(dt)
 	var live: Dictionary = {}
 	for p in race.projs:
 		var n: Node3D = _nodes.get(p.id)

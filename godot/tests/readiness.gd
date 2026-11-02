@@ -92,8 +92,28 @@ func _ready() -> void:
 	effects.setup(combat, combat.track)
 	combat.player.v = 20.0
 	combat.player.braking = true
+	combat.player.yaw = 0.4
 	effects._process(0.1)
-	check(effects._skids.visible_instance_count == 2, "hard braking leaves two tire marks")
+	check(effects._skids.visible_instance_count == 0, "skid starts at wheel contacts")
+	var first_left: Vector3 = effects._skid_previous[-1]
+	var first_right: Vector3 = effects._skid_previous[1]
+	check(first_left.distance_to(first_right) > 1.0, "skids start at separate tyres")
+	combat.player.progress += 2.0
+	combat.player.s = combat.track.mod_s(combat.player.progress)
+	combat.player.d += 0.6
+	effects._process(0.1)
+	check(effects._skids.visible_instance_count == 2, "hard braking joins both tyre paths")
+	check(first_left.distance_to(effects._skid_previous[-1]) > 1.0, "skid follows tyre movement through a turn")
+	combat.player.progress += 100.0
+	combat.player.s = combat.track.mod_s(combat.player.progress)
+	effects._process(0.1)
+	check(effects._skids.visible_instance_count == 2, "skids do not connect teleports")
+	combat.player.braking = false
+	effects._process(0.1)
+	check(effects._skid_previous.is_empty(), "skid stops when braking ends")
+	combat.player.braking = true
+	effects._process(0.1)
+	check(effects._skids.visible_instance_count == 2, "new braking does not bridge the gap")
 	combat.player.braking = false
 	for type in Data.PW_KEYS:
 		effects.powerup_used(combat.player, type, false)

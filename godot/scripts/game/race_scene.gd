@@ -23,6 +23,8 @@ var input: RaceInput
 var effects: FxVisual
 var buildings: Buildings
 var props: Props
+var side_roads: Node3D
+var scenery_visible := true
 var _weather_clock := 0.0
 var _weather_step := 0
 var _light_clock := 0.0
@@ -72,7 +74,8 @@ func _build_world() -> void:
 	var side_path := "res://assets/cities/%s/roads.glb" % city_id
 	if ResourceLoader.exists(side_path):
 		var side_scene: PackedScene = load(side_path)
-		add_child(side_scene.instantiate())
+		side_roads = side_scene.instantiate()
+		add_child(side_roads)
 	var bld := buildings
 	add_child(bld)
 	bld.load_city(city_id)
@@ -116,7 +119,7 @@ func _build_race() -> void:
 	pickups.setup(race, track)
 	effects = FxVisual.new()
 	add_child(effects)
-	effects.setup(race, track)
+	effects.setup(race, track, cars[race.cars.find(player)])
 	cam = ChaseCam.new()
 	add_child(cam)
 	cam.setup(track)
@@ -156,8 +159,8 @@ func _build_pause(layer: CanvasLayer) -> void:
 	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	box.offset_left = -220
 	box.offset_right = 220
-	box.offset_top = -170
-	box.offset_bottom = 170
+	box.offset_top = -205
+	box.offset_bottom = 205
 	pause_ui.add_child(box)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
@@ -168,12 +171,29 @@ func _build_pause(layer: CanvasLayer) -> void:
 	var b_resume := UiTheme.button("Vazhdo", UiTheme.CYAN.darkened(0.4))
 	b_resume.pressed.connect(func(): Sfx.ui_click(); toggle_pause())
 	v.add_child(b_resume)
+	var b_compare := UiTheme.button("Test: fshih peizazhin")
+	b_compare.pressed.connect(func():
+		set_scenery_visible(not scenery_visible)
+		b_compare.text = "Test: fshih peizazhin" if scenery_visible else "Test: shfaq peizazhin"
+		Sfx.ui_click())
+	v.add_child(b_compare)
 	var b_restart := UiTheme.button("Rifillo")
 	b_restart.pressed.connect(func(): Sfx.ui_click(); get_tree().paused = false; Game.goto("race"))
 	v.add_child(b_restart)
 	var b_quit := UiTheme.button("Dil")
 	b_quit.pressed.connect(func(): Sfx.ui_back(); get_tree().paused = false; Sfx.stop_loops(); Game.goto("menu"))
 	v.add_child(b_quit)
+
+
+func set_scenery_visible(enabled: bool) -> void:
+	scenery_visible = enabled
+	buildings.visible = enabled
+	props.visible = enabled
+	terrain.visible = enabled
+	if side_roads:
+		side_roads.visible = enabled
+	# Keep the display on for both halves of the comparison.
+	hud.diagnostic_fps = true
 
 
 func toggle_pause() -> void:
@@ -360,8 +380,8 @@ func _events() -> void:
 				if c == player:
 					Sfx.play("respawn", "Pickups", -6.0)
 			"wall":
-				if c == player and _limited("wall", 0.15):
-					Sfx.play("impact_soft", "Impacts", _vol_db(clampf(float(e.imp) / 20.0, 0.3, 1.0)))
+				if c == player and _limited("wall", 0.45):
+					Sfx.play("wall_impact", "Impacts", _vol_db(clampf(float(e.imp) / 20.0, 0.3, 1.0)))
 					cam.add_shake(minf(0.5, float(e.imp) / 40.0))
 					Sfx.haptic(15)
 			"bump":
@@ -421,7 +441,7 @@ func _engine_audio(ratio: float, gas_on: bool, alive: bool, scrape: float, dt: f
 	Sfx.set_loop("wind_loop", "Tyres", clampf(r - 0.35, 0.0, 0.6), 0.8 + r * 0.4)
 	var tyre_slip := maxf(player.drift * 0.8, (clampf(r * 0.55, 0.0, 0.55) if player.braking else 0.0)) if player and alive else 0.0
 	Sfx.set_loop("screech_loop", "Tyres", clampf(tyre_slip, 0.0, 0.7), 0.9 + r * 0.2)
-	Sfx.set_loop("scrape_loop", "Impacts", clampf(scrape, 0.0, 0.6), 1.0)
+	Sfx.set_loop("scrape_loop", "Impacts", clampf(scrape * 0.5, 0.0, 0.3), 1.0)
 	Sfx.set_loop("rain_loop", "Tyres", 0.35 * sky.wet, 1.0)
 
 
