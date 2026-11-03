@@ -116,6 +116,10 @@ for obj in objects:
     old_names = [slot.material.name if slot.material else '' for slot in obj.material_slots]
     used = [find_material(n) for n in old_names] or ['trim']
     idx = [used[min(p.material_index, len(used)-1)] for p in obj.data.polygons]
+    # The imported lenses sit above the low rear lip.  Keep their geometry as
+    # dark trim and put the working lights on the fascia below the lip instead.
+    if obj.name in ('BodyTaillights', 'BodyTurnsignalsRear'):
+        idx = ['trim' if name == 'light_rear' else name for name in idx]
     obj.data.materials.clear()
     ordered = list(dict.fromkeys(idx))
     for name in ordered:
@@ -180,6 +184,34 @@ for location, size in [((0.0, -1.88, 0.96), (1.25, 0.17, 0.045))]:
     bevel.segments = 2
     bpy.ops.object.modifier_apply(modifier=bevel.name)
     aero_parts.append(wing)
+
+# Slim rear light clusters: dark bezels and inset red lenses, below the lip.
+# All pieces join the existing body, and the red material follows braking.
+for side in (-1.0, 1.0):
+    for y, z, size, material in [
+            (-2.139, 0.695, (0.62, 0.025, 0.11), 'trim'),
+            (-2.156, 0.701, (0.56, 0.018, 0.052), 'light_rear')]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(side * 0.46, y, z))
+        part = bpy.context.object
+        part.dimensions = size
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        part.data.materials.append(materials[material])
+        bevel = part.modifiers.new('rounded lamp edges', 'BEVEL')
+        bevel.width = 0.012
+        bevel.segments = 2
+        bpy.ops.object.modifier_apply(modifier=bevel.name)
+        aero_parts.append(part)
+# Unbranded recessed plate and lower diffuser details on the rear fascia.
+for location, size, material in [
+        ((0.0, -2.19, 0.47), (0.48, 0.025, 0.17), 'trim'),
+        ((0.0, -2.208, 0.47), (0.40, 0.012, 0.11), 'rim'),
+        ((0.0, -2.18, 0.24), (0.75, 0.025, 0.035), 'trim')]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    part = bpy.context.object
+    part.dimensions = size
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    part.data.materials.append(materials[material])
+    aero_parts.append(part)
 bpy.ops.object.select_all(action='DESELECT')
 body.select_set(True)
 for part in aero_parts:
