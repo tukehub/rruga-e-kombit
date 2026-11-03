@@ -26,14 +26,27 @@ func _ready() -> void:
 	add_child(main)
 	await wait_scene("menu")
 	var menu: Menu = Game._root.get_child(0)
+	Game.race_opts.laps = 0
+	menu.show_page("title")
+	var default_laps := Game.city_laps("tirane")
+	menu._lap_plus.pressed.emit()
+	check(int(Game.race_opts.laps) == default_laps + 1 and menu._lap_value.text == str(default_laps + 1), "lap selector updates race options")
+	menu._lap_minus.pressed.emit()
+	menu._lap_minus.pressed.emit()
+	check(int(Game.race_opts.laps) == 1 and menu._lap_minus.disabled, "lap selector bounds minimum")
+	Game.race_opts.laps = 9
+	menu._refresh_city()
+	check(menu._lap_plus.disabled and menu._lap_value.text == "9", "lap selector bounds maximum")
+	Game.race_opts.laps = 1
+	menu._refresh_city()
 	menu.show_page("city")
 	menu.show_page("car")
-	Game.race_opts.laps = 1
 	button(menu, "Nisu!").pressed.emit()
 	check(Game.has_node("TransitionOverlay") and is_instance_valid(menu), "loading feedback appears before scene teardown")
 	await wait_scene("race")
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
+	check(scene.race.laps == 1 and Settings.laps_override == 1, "selected laps applied and saved")
 	scene.set_scenery_visible(false)
 	check(not scene.buildings.visible and not scene.props.visible and not scene.terrain.visible and scene.road.visible, "scenery comparison hides world while keeping road")
 	check(scene.side_roads == null or not scene.side_roads.visible, "scenery comparison hides side roads")

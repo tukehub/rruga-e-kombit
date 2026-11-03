@@ -269,9 +269,10 @@ func _draw_minimap() -> void:
 	pts.append(pts[0])
 	_minimap.draw_polyline(pts, Color(0, 0, 0, 0.6), 9.0, true)
 	_minimap.draw_polyline(pts, Color(UiTheme.CYAN, 0.85), 3.5, true)
-	# start line
+	# Start and finish share this circuit point.
 	var p0 := _mm(track.pos(0.0, 0.0))
-	_minimap.draw_circle(p0, 4.0, Color.WHITE)
+	_minimap.draw_circle(p0, 5.0, Color(0.02, 0.02, 0.02, 0.9))
+	_minimap.draw_circle(p0, 3.0, Color(1.0, 0.84, 0.18))
 	for c in race.cars:
 		if c == player:
 			continue
@@ -281,6 +282,14 @@ func _draw_minimap() -> void:
 	var pp := _mm(track.pos(player.s, player.d))
 	_minimap.draw_circle(pp, 6.5, Color(0, 0, 0, 0.8))
 	_minimap.draw_circle(pp, 5.0, Color.WHITE)
+	# High-contrast checkered flag stays visible even when cars cover the line.
+	var flag := Vector2(clampf(p0.x + 7.0, 2.0, _minimap.size.x - 20.0), clampf(p0.y - 20.0, 2.0, _minimap.size.y - 18.0))
+	_minimap.draw_line(p0, flag + Vector2(1, 15), Color(0.02, 0.02, 0.02, 0.9), 3.0, true)
+	_minimap.draw_line(p0, flag + Vector2(1, 15), Color(1.0, 0.84, 0.18), 1.5, true)
+	_minimap.draw_rect(Rect2(flag - Vector2(1, 1), Vector2(18, 14)), Color(0.02, 0.02, 0.02, 0.95))
+	_minimap.draw_rect(Rect2(flag, Vector2(16, 12)), Color.WHITE)
+	_minimap.draw_rect(Rect2(flag, Vector2(8, 6)), Color(0.04, 0.04, 0.04))
+	_minimap.draw_rect(Rect2(flag + Vector2(8, 6), Vector2(8, 6)), Color(0.04, 0.04, 0.04))
 
 
 func _draw_gauge() -> void:

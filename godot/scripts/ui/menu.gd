@@ -13,6 +13,9 @@ var _garage_t := 0.0
 var _car_btns := {}
 var _drv_btns := {}
 var _diff_btns: Array[Button] = []
+var _lap_value: Label
+var _lap_minus: Button
+var _lap_plus: Button
 var _drv_tag: Label
 var _car_desc: Label
 var _set_rows := {}
@@ -215,7 +218,25 @@ func _page_title() -> Control:
 	var tag := UiTheme.label("Shpejtësi. Fuqi. Vendi i parë.", 26, UiTheme.TEXT)
 	v.add_child(tag)
 	v.add_child(UiTheme.spacer(4))
-	v.add_child(UiTheme.label("TIRANË  /  2 XHIRO", 27, UiTheme.CYAN))
+	var lap_row := HBoxContainer.new()
+	lap_row.add_theme_constant_override("separation", 8)
+	var lap_title := UiTheme.label("TIRANË · XHIRO", 25, UiTheme.CYAN)
+	lap_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lap_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lap_row.add_child(lap_title)
+	_lap_minus = UiTheme.button("−")
+	_lap_minus.custom_minimum_size = Vector2(52, 48)
+	_lap_minus.pressed.connect(func(): _change_laps(-1))
+	lap_row.add_child(_lap_minus)
+	_lap_value = UiTheme.headline("", 30, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_lap_value.custom_minimum_size = Vector2(42, 48)
+	_lap_value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lap_row.add_child(_lap_value)
+	_lap_plus = UiTheme.button("+")
+	_lap_plus.custom_minimum_size = Vector2(52, 48)
+	_lap_plus.pressed.connect(func(): _change_laps(1))
+	lap_row.add_child(_lap_plus)
+	v.add_child(lap_row)
 	var names := ["E lehtë", "Normale", "E fortë"]
 	var difficulty := _seg(names, func(i: int): Game.race_opts.diff = i; _refresh_city())
 	_diff_btns.clear()
@@ -247,11 +268,21 @@ func _page_title() -> Control:
 
 
 func _refresh_city() -> void:
+	var laps := Game.city_laps("tirane")
+	_lap_value.text = str(laps)
+	_lap_minus.disabled = laps <= 1
+	_lap_plus.disabled = laps >= 9
 	for i in _diff_btns.size():
 		var b := _diff_btns[i]
 		var selected: bool = i == int(Game.race_opts.diff)
 		b.button_pressed = selected
 		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.25) if selected else Color(1, 1, 1, 0.06), UiTheme.CYAN if selected else Color(1, 1, 1, 0.2), 12))
+
+
+func _change_laps(amount: int) -> void:
+	Sfx.ui_click()
+	Game.race_opts.laps = clampi(Game.city_laps("tirane") + amount, 1, 9)
+	_refresh_city()
 
 
 # ------------------------------------------------------------------ paint / driver
