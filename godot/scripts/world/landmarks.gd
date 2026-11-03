@@ -49,6 +49,113 @@ func _boxes(parent: Node3D, parts: Array, color: Color, metal := 0.0) -> void:
 	node.visibility_range_end = 2200.0
 	parent.add_child(node)
 
+
+func _pyramid_stone() -> StandardMaterial3D:
+	if not _materials.has("pyramid_stone"):
+		var mat := StandardMaterial3D.new()
+		mat.albedo_texture = load("res://assets/textures/landmark_concrete.jpg")
+		mat.uv1_triplanar = true
+		mat.uv1_scale = Vector3(0.3, 0.3, 0.3)
+		mat.roughness = 0.9
+		_materials["pyramid_stone"] = mat
+	return _materials["pyramid_stone"]
+
+
+func _ashlar_stone() -> StandardMaterial3D:
+	if not _materials.has("ashlar_stone"):
+		var mat := StandardMaterial3D.new()
+		mat.albedo_texture = load("res://assets/textures/landmark_ashlar.jpg")
+		mat.uv1_triplanar = true
+		mat.uv1_scale = Vector3(0.55, 0.55, 0.55)
+		mat.roughness = 0.92
+		_materials["ashlar_stone"] = mat
+	return _materials["ashlar_stone"]
+
+
+func _pyramid_roof(parent: Node3D) -> void:
+	# Four sloping glazed planes and batched, individual concrete stair treads.
+	# The coloured pavilions remain separate, as on the renovated building.
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var outer := [Vector3(-26, 2, -26), Vector3(26, 2, -26), Vector3(26, 2, 26), Vector3(-26, 2, 26)]
+	var inner := [Vector3(-4, 16, -4), Vector3(4, 16, -4), Vector3(4, 16, 4), Vector3(-4, 16, 4)]
+	for i in 4:
+		var j := (i + 1) % 4
+		for p in [outer[i], inner[i], outer[j], outer[j], inner[i], inner[j]]:
+			st.add_vertex(p)
+	st.generate_normals()
+	var roof := _part(parent, st.commit(), Vector3.ZERO, Color("e2e1dc"))
+	roof.material_override = _pyramid_stone()
+	(_pyramid_stone() as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
+	var treads := []
+	for i in 37:
+		var r := 25.0 - i * 0.56
+		var y := 2.7 + i * 0.36
+		for side in [-1.0, 1.0]:
+			for offset in [-7.0, 0.0, 7.0]:
+				if r < absf(offset) + 2.5:
+					continue
+				treads.append([Vector3(side * r, y, offset), Vector3(0.58, 0.17, 4.4)])
+				treads.append([Vector3(offset, y, side * r), Vector3(4.4, 0.17, 0.58)])
+	_boxes(parent, treads, Color("ebe9e2"))
+	var steps := parent.get_child(parent.get_child_count() - 1) as MultiMeshInstance3D
+	(steps.multimesh.mesh as BoxMesh).material = _pyramid_stone()
+
+
+func _downtown_glazing(parent: Node3D) -> void:
+	# Opaque glazing avoids expensive transparency sorting; a single MultiMesh
+	# supplies small variations between panes without a draw call per window.
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2.ONE
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color("819ca8")
+	mat.roughness = 0.27
+	mat.metallic = 0.12
+	mat.vertex_color_use_as_albedo = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh.material = mat
+	var transforms := []
+	for side in [-1.0, 1.0]:
+		for floor_no in 37:
+			var y := 5.0 + floor_no * 3.65
+			for col in 12:
+				transforms.append(Transform3D(Basis.IDENTITY.scaled(Vector3(2.74, 3.25, 1)), Vector3(-16.5 + col * 3.0, y, side * 15.03)))
+			for col in 9:
+				var basis := Basis(Vector3.UP, PI * 0.5).scaled(Vector3(1, 3.25, 2.95))
+				transforms.append(Transform3D(basis, Vector3(side * 18.53, y, -12.0 + col * 3.0)))
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = mesh
+	mm.instance_count = transforms.size()
+	for i in transforms.size():
+		mm.set_instance_transform(i, transforms[i])
+		var shade := 0.80 + float((i * 37 + floori(float(i) / 11.0)) % 17) * 0.011
+		mm.set_instance_color(i, Color(shade, shade, shade, 1.0))
+	var panes := MultiMeshInstance3D.new()
+	panes.name = "DowntownGlazing"
+	panes.multimesh = mm
+	panes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	panes.visibility_range_end = 1300.0
+	parent.add_child(panes)
+
+
+func _university_arches(parent: Node3D) -> void:
+	# The front elevation has arched entrance openings and an arched top row.
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for base in [Vector3(-6.5, 6.3, -9.26), Vector3(0, 6.3, -9.26), Vector3(6.5, 6.3, -9.26), Vector3(-8, 26.75, -9.26), Vector3(-4, 26.75, -9.26), Vector3(0, 26.75, -9.26), Vector3(4, 26.75, -9.26), Vector3(8, 26.75, -9.26)]:
+		var radius := 1.6 if base.y < 10.0 else 1.05
+		for i in 12:
+			var a := PI * float(i) / 12.0
+			var b := PI * float(i + 1) / 12.0
+			st.add_vertex(base)
+			st.add_vertex(base + Vector3(cos(a) * radius, sin(a) * radius, 0))
+			st.add_vertex(base + Vector3(cos(b) * radius, sin(b) * radius, 0))
+	st.generate_normals()
+	var arches := _part(parent, st.commit(), Vector3.ZERO, Color("3f5055"))
+	(arches.material_override as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
+
 func _column(parent: Node3D, pos: Vector3, radius: float, height: float, color: Color, top := -1.0) -> MeshInstance3D:
 	var mesh := CylinderMesh.new()
 	mesh.bottom_radius = radius
@@ -72,36 +179,31 @@ func build(root: Node3D, id: String) -> void:
 	match id:
 		"pyramid":
 			# Low, broad white pyramid with sloping stairways and a glass centre.
-			_box(root, Vector3(0, 1, 0), Vector3(58, 2, 58), Color("d7d2c9"))
-			for level in 10:
-				var span := 52.0 - level * 4.2
-				_box(root, Vector3(0, 2.6 + level * 1.25, 0), Vector3(span, 1.25, span), Color("e7e4dc"))
-			_box(root, Vector3(0, 10, 0), Vector3(11, 15, 11), Color("667f8b"))
-			for side in [-1.0, 1.0]:
-				var stair := _box(root, Vector3(side * 13, 8, 0), Vector3(27, 0.7, 6), Color("f4f2e9"))
-				stair.rotation.z = side * 0.48
-				var stair2 := _box(root, Vector3(0, 8, side * 13), Vector3(6, 0.7, 27), Color("f4f2e9"))
-				stair2.rotation.x = -side * 0.48
+			var base := _box(root, Vector3(0, 1, 0), Vector3(58, 2, 58), Color("d7d2c9"))
+			base.material_override = _pyramid_stone()
+			_pyramid_roof(root)
+			_box(root, Vector3(0, 10, 0), Vector3(8, 14, 8), Color("667f8b"))
 			# MVRDV's 2023 renovation introduced small colourful pavilions
 			# amongst the white stairways. Keep them within the monument footprint.
 			_boxes(root, [
-				[Vector3(-19, 3.7, -17), Vector3(6.2, 5.2, 5.4)],
-				[Vector3(16, 3.7, 18), Vector3(5.6, 5.2, 5.8)],
+				[Vector3(-19, 8.0, -17), Vector3(6.2, 5.2, 5.4)],
+				[Vector3(16, 8.0, 18), Vector3(5.6, 5.2, 5.8)],
 			], Color("e3ac54"))
 			_boxes(root, [
-				[Vector3(18, 3.7, -15), Vector3(5.6, 5.2, 5.8)],
-				[Vector3(-16, 3.7, 17), Vector3(6.0, 5.2, 5.4)],
+				[Vector3(18, 8.0, -15), Vector3(5.6, 5.2, 5.8)],
+				[Vector3(-16, 8.0, 17), Vector3(6.0, 5.2, 5.4)],
 			], Color("a6bbc2"))
 			_boxes(root, [
-				[Vector3(-17, 4.2, -19.8), Vector3(3.1, 2.7, 0.15)],
-				[Vector3(18, 4.2, -18.0), Vector3(3.1, 2.7, 0.15)],
-				[Vector3(-16, 4.2, 19.8), Vector3(3.1, 2.7, 0.15)],
-				[Vector3(16, 4.2, 21.0), Vector3(3.1, 2.7, 0.15)],
+				[Vector3(-17, 8.5, -19.8), Vector3(3.1, 2.7, 0.15)],
+				[Vector3(18, 8.5, -18.0), Vector3(3.1, 2.7, 0.15)],
+				[Vector3(-16, 8.5, 19.8), Vector3(3.1, 2.7, 0.15)],
+				[Vector3(16, 8.5, 21.0), Vector3(3.1, 2.7, 0.15)],
 			], Color("607983"), 0.1)
 		"downtown_one":
 			# MVRDV's 140 m tower has a pale grid and projecting balconies that
 			# form a pixelated outline of Albania on the main facades.
 			_box(root, Vector3(0, 70, 0), Vector3(37, 140, 30), Color("718d9a"))
+			_downtown_glazing(root)
 			_box(root, Vector3(0, 3, 0), Vector3(49, 6, 39), Color("d6d4c9"))
 			var grid := []
 			for side in [-1.0, 1.0]:
@@ -135,9 +237,11 @@ func build(root: Node3D, id: String) -> void:
 		"polytechnic":
 			# Mother Teresa Square: central tower with two symmetrical lower wings.
 			var stone_col := Color("c9c0ad")
-			_box(root, Vector3(0, 15, 0), Vector3(24, 30, 18), stone_col)
+			var main := _box(root, Vector3(0, 15, 0), Vector3(24, 30, 18), stone_col)
+			main.material_override = _ashlar_stone()
 			for side in [-1.0, 1.0]:
-				_box(root, Vector3(side * 28, 8, 0), Vector3(32, 16, 18), stone_col)
+				var wing := _box(root, Vector3(side * 28, 8, 0), Vector3(32, 16, 18), stone_col)
+				wing.material_override = _ashlar_stone()
 			_box(root, Vector3(0, 0.6, -12), Vector3(88, 1.2, 7), Color("b6ae9f"))
 			var windows := []
 			for side in [-1.0, 1.0]:
@@ -150,6 +254,20 @@ func build(root: Node3D, id: String) -> void:
 			for col in [-6.5, 0.0, 6.5]:
 				windows.append([Vector3(col, 3.7, -9.15), Vector3(3.2, 5.2, 0.2)])
 			_boxes(root, windows, Color("3f5055"))
+			var reveals := []
+			for window in windows:
+				var p: Vector3 = window[0]
+				var sz: Vector3 = window[1]
+				for edge in [-1.0, 1.0]:
+					reveals.append([p + Vector3(edge * sz.x * 0.5, 0, -0.06), Vector3(0.12, sz.y, 0.12)])
+				reveals.append([p + Vector3(0, sz.y * 0.5, -0.06), Vector3(sz.x, 0.12, 0.12)])
+			_boxes(root, reveals, Color("e2d6c4"))
+			_university_arches(root)
+			_boxes(root, [
+				[Vector3(0, 30.1, 0), Vector3(24.8, 0.5, 18.8)],
+				[Vector3(-28, 16.1, 0), Vector3(32.8, 0.5, 18.8)],
+				[Vector3(28, 16.1, 0), Vector3(32.8, 0.5, 18.8)],
+			], Color("e2d6c4"))
 		"toptani":
 			# Main mass based on the six-storey, approximately 36 m OSM footprint.
 			_box(root, Vector3(0, 18, 0), Vector3(85, 36, 55), Color("697f86"))
@@ -175,7 +293,8 @@ func build(root: Node3D, id: String) -> void:
 			_column(root, Vector3(22, 21, 0), 2.0, 42, Color("d7d0c0"))
 			_column(root, Vector3(22, 44, 0), 2.5, 4, Color("b6aa8d"), 0.3)
 		"bank_albania":
-			_box(root, Vector3(0, 8, 0), Vector3(36, 16, 30), Color("d3c4ac"))
+			var bank := _box(root, Vector3(0, 8, 0), Vector3(36, 16, 30), Color("d3c4ac"))
+			bank.material_override = _ashlar_stone()
 			_box(root, Vector3(0, 16.5, 0), Vector3(38, 1, 32), Color("e3d7c3"))
 			_box(root, Vector3(0, 10, -15.4), Vector3(22, 11, 1.0), Color("c1aa8e"))
 			for x in [-14.0, -9.0, -4.0, 1.0, 6.0, 11.0, 16.0]:
