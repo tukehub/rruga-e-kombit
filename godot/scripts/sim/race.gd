@@ -382,6 +382,19 @@ func physics(c: CarState, dt: float) -> void:
 			c.fans += 5
 
 
+# Collision footprint follows the actual GLB body (about 4.39 x 1.96 m).
+# Clipped corners approximate the tapered bumpers and avoid invisible box corners.
+const CAR_HALF_LENGTH := 2.18
+const CAR_HALF_WIDTH := 0.98
+const CAR_CORNER := 0.30
+
+
+func _footprint_radius(axis: Vector2, forward: Vector2, side: Vector2) -> float:
+	var along := absf(axis.dot(forward))
+	var across := absf(axis.dot(side))
+	return CAR_HALF_LENGTH * along + CAR_HALF_WIDTH * across - CAR_CORNER * minf(along, across)
+
+
 func collisions(dt: float = 1.0 / 60.0) -> void:
 	var T := track
 	for i in cars.size():
@@ -392,42 +405,68 @@ func collisions(dt: float = 1.0 / 60.0) -> void:
 			var b := cars[j]
 			if b.finished or b.wreck_t > 0.0:
 				continue
-			var ds := T.wrap_s(b.s - a.s)
-			if absf(ds) > 4.5:
+			# This is only a broad phase; the actual contact test below uses
+			# rendered world positions and both cars' headings, even on bends.
+			if absf(T.wrap_s(b.s - a.s)) > 8.0 or absf(b.d - a.d) > 8.0:
 				continue
-			var dd := b.d - a.d
-			if absf(dd) > 2.05:
+			var ap := T.pos(a.s, a.d)
+			var bp := T.pos(b.s, b.d)
+			var delta := Vector2(bp.x - ap.x, bp.z - ap.z)
+			var at3 := T.tangent(a.s)
+			var bt3 := T.tangent(b.s)
+			var an3 := T.normal(a.s)
+			var bn3 := T.normal(b.s)
+			var at := Vector2(at3.x, at3.z).normalized()
+			var bt := Vector2(bt3.x, bt3.z).normalized()
+			var an := Vector2(an3.x, an3.z).normalized()
+			var bn := Vector2(bn3.x, bn3.z).normalized()
+			var af := at * cos(a.yaw) + an * sin(a.yaw)
+			var bf := bt * cos(b.yaw) + bn * sin(b.yaw)
+			var ar := an * cos(a.yaw) - at * sin(a.yaw)
+			var br := bn * cos(b.yaw) - bt * sin(b.yaw)
+			var contact_axis := Vector2.ZERO
+			var penetration := INF
+			# Eight axes cover the four edge directions of each clipped box.
+			for axis in [af, ar, (af + ar).normalized(), (af - ar).normalized(), bf, br, (bf + br).normalized(), (bf - br).normalized()]:
+				var overlap := _footprint_radius(axis, af, ar) + _footprint_radius(axis, bf, br) - absf(delta.dot(axis))
+				if overlap <= 0.0:
+					penetration = -1.0
+					break
+				if overlap < penetration:
+					penetration = overlap
+					contact_axis = axis if delta.dot(axis) >= 0.0 else -axis
+			if penetration <= 0.0:
 				continue
-			var pen_s := 4.5 - absf(ds)
-			var pen_d := 2.05 - absf(dd)
 			var ma: float = a.def.mass
 			var mb: float = b.def.mass
 			var tot := ma + mb
-			# Cap positional correction in metres per second, including when
-			# cars are stationary, and scale it by actual simulation time.
+			# Limit correction in metres/second, so overlap cannot teleport cars.
 			var separation_limit := (2.0 + minf(1.0, maxf(absf(a.v), absf(b.v)) * 0.1)) * dt
-			if pen_d < pen_s * 0.75:
-				var sg := 1.0 if dd >= 0.0 else -1.0
-				# Resolve deep overlap over subsequent fixed steps instead of
-				# teleporting both cars sideways by metres in one frame.
-				var separation := minf(pen_d, separation_limit)
-				a.d -= sg * separation * (mb / tot)
-				b.d += sg * separation * (ma / tot)
-				# React to actual closing speed, not a fixed sideways kick when
-				# two cars travel parallel or are already moving apart.
+			var correction := contact_axis * minf(penetration, separation_limit)
+			a.d -= correction.dot(an) * (mb / tot)
+			b.d += correction.dot(bn) * (ma / tot)
+			a.progress -= correction.dot(at) * (mb / tot) / maxf(0.8, 1.0 - T.curv(a.s) * a.d)
+			b.progress += correction.dot(bt) * (ma / tot) / maxf(0.8, 1.0 - T.curv(b.s) * b.d)
+			a.s = T.mod_s(a.progress)
+			b.s = T.mod_s(b.progress)
+			var side_contact := absf(contact_axis.dot(an)) > absf(contact_axis.dot(at))
+			if side_contact:
+				var sg := 1.0 if contact_axis.dot(an) >= 0.0 else -1.0
 				var closing := (a.v * sin(a.yaw) + a.lat_v - b.v * sin(b.yaw) - b.lat_v) * sg
 				var impulse := clampf(closing * 0.5, 0.0, 4.0)
 				a.lat_v -= sg * impulse * (mb / tot)
 				b.lat_v += sg * impulse * (ma / tot)
+				if closing > 0.0:
+					# Stop sustained steering into another body from producing
+					# repeated sliding impulses; let the player steer away.
+					if a.yaw * sg > 0.0:
+						a.yaw = move_toward(a.yaw, 0.0, 2.0 * dt)
+					if b.yaw * sg < 0.0:
+						b.yaw = move_toward(b.yaw, 0.0, 2.0 * dt)
 				emit({"t": "bump", "a": a, "b": b, "side": true})
 			else:
-				var front := b if ds > 0.0 else a
-				var rear := a if ds > 0.0 else b
-				var separation := minf(pen_s, separation_limit)
-				rear.progress -= separation * (front.def.mass / tot)
-				front.progress += separation * (rear.def.mass / tot)
-				rear.s = T.mod_s(rear.progress)
-				front.s = T.mod_s(front.progress)
+				var front := b if contact_axis.dot(at) > 0.0 else a
+				var rear := a if front == b else b
 				var dv := rear.v - front.v
 				if dv > 0.0:
 					rear.v -= dv * (0.55 * front.def.mass / tot + 0.2)
