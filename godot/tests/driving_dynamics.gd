@@ -60,7 +60,7 @@ func _ready() -> void:
 	a.ctrl.steer = 0.0
 	a.ctrl.brake = false
 	race.physics(a, 1.0 / 60.0)
-	assert(absf(a.d) <= 8.0 / 60.0 + 0.001, "lateral motion must remain bounded")
+	assert(absf(a.d) <= 0.75 * 30.0 / 60.0 + 0.01, "lateral motion must remain bounded relative to speed")
 	# Deep overlaps are separated gradually, without a one-frame jump.
 	a.d = 0.0
 	b.d = 0.2
@@ -223,5 +223,55 @@ func _ready() -> void:
 	race.collisions()
 	assert(a.v < 24.0, "inside-lane cars must collide when their world-space bodies touch")
 
+	_test_real_turns()
 	print("DRIVING: 0-100 km/h %.2fs; 100-0 %.2fs, %.1fm" % [acceleration_time, stop_time, stopping_distance])
 	get_tree().quit()
+
+
+func _test_real_turns() -> void:
+	var track := RaceTrack.load_city("tirane")
+	var race := Race.new(track, {"seed": 1})
+	race.started = true
+	var car := race.player
+	var dt := 1.0 / 60.0
+	# Includes sharp corners and the finish-line seam on both sides of the road.
+	for s in [0.0, 1000.0, 3515.9, track.L - 2.0]:
+		for d in [-8.0, -4.0, 0.0, 4.0, 8.0]:
+			for speed in [1.0, 30.0]:
+				for yaw in [0.0, 0.3]:
+					car.progress = s
+					car.s = s
+					car.d = d
+					car.v = speed
+					car.yaw = yaw
+					car.lat_v = 0.0
+					car.steer = 0.0
+					car.ctrl.gas = false
+					car.ctrl.brake = false
+					car.ctrl.steer = 0.0
+					var before := track.pos(s, d)
+					race.physics(car, dt)
+					var after := track.pos(car.s, car.d)
+					var movement := Vector2(after.x - before.x, after.z - before.z)
+					assert(car.v <= speed, "coasting through a turn must not accelerate")
+					assert(movement.length() / dt <= speed + 0.3, "world travel must not exceed the car's speed on bends")
+					var t := track.tangent(s)
+					var n := track.normal(s)
+					var direction := (Vector2(t.x, t.z) * cos(car.yaw) + Vector2(n.x, n.z) * sin(car.yaw)).normalized()
+					# A folded road edge may stop forward progress until the driver
+					# steers away; check heading where normal travel is possible.
+					if movement.length() > maxf(0.02, speed * dt * 0.4):
+						assert(movement.normalized().dot(direction) > 0.90, "body and travel direction should agree in a normal turn")
+	# The new direction limit must not repeatedly drain speed on a sustained turn.
+	car.progress = 3500.0
+	car.s = car.progress
+	car.d = 0.0
+	car.v = 30.0
+	car.yaw = 0.0
+	car.steer = 0.0
+	car.ctrl.gas = true
+	car.ctrl.steer = 0.3
+	for i in 120:
+		race.physics(car, dt)
+	assert(car.v > 25.0, "sustained steering must not repeatedly destroy forward speed")
+	print("TURNING: world speed and heading, coasting, sustained turn passed")

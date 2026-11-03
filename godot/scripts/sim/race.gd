@@ -346,13 +346,51 @@ func physics(c: CarState, dt: float) -> void:
 		asst = BOT_ASSIST
 	c.yaw += (cc * v - k * dsdt - asst * c.yaw * minf(1.0, av / 10.0)) * dt
 	c.yaw = clampf(c.yaw, -1.25, 1.25)
-	# Limit sideways travel relative to road speed: large heading errors or
-	# impact impulses must not move a car sideways faster than it drives.
-	var lateral_limit := minf(8.0, maxf(1.0, absf(v) * 0.35))
+	# Keep the car's direction and velocity aligned during ordinary turning.
+	# A fixed 8 m/s lateral cap made the body point into a bend while its motion
+	# was forced mostly straight ahead. Bound extreme headings instead, with a
+	# speed-relative lateral limit; collisions may still add bounded tyre slip.
+	var lateral_limit := maxf(1.0, absf(v) * 0.75)
+	var max_motion_yaw := asin(minf(1.0, lateral_limit / maxf(absf(v), 0.001)))
+	c.yaw = clampf(c.yaw, -max_motion_yaw, max_motion_yaw)
 	var lateral_speed := clampf(v * sin(c.yaw) + c.lat_v, -lateral_limit, lateral_limit)
-	c.d += lateral_speed * dt
+	var longitudinal_step := v * cos(c.yaw) * dt
+	var s_step := longitudinal_step / maxf(0.8, 1.0 - k * c.d)
+	var lateral_step := lateral_speed * dt
+	# The stored curvature is smoothed, but the rendered offset road uses raw
+	# sample normals. At a few sharp bends its local geometry can differ enough
+	# to multiply world speed or even fold backwards at the road edge. Measure
+	# the actual segment and constrain progress to the intended forward travel.
+	var origin := T.pos(c.s, c.d)
+	var tangent3 := T.tangent(c.s)
+	var normal3 := T.normal(c.s)
+	var tangent := Vector2(tangent3.x, tangent3.z).normalized()
+	var normal := Vector2(normal3.x, normal3.z).normalized()
+	var base_delta := Vector2.ZERO
+	for i in 3:
+		var next := T.pos(c.s + s_step, c.d)
+		base_delta = Vector2(next.x - origin.x, next.z - origin.z)
+		var forward := base_delta.dot(tangent)
+		if forward * longitudinal_step <= 0.0:
+			s_step = 0.0
+			base_delta = Vector2.ZERO
+			break
+		if absf(forward) <= absf(longitudinal_step) + 0.00001:
+			break
+		s_step *= absf(longitudinal_step / forward)
+	# Cancel sideways motion caused by normal interpolation itself, subject to
+	# the same lateral bound as steering and impacts.
+	lateral_step = clampf(lateral_step - base_delta.dot(normal), -lateral_limit * dt, lateral_limit * dt)
+	var end := T.pos(c.s + s_step, c.d + lateral_step)
+	var actual_distance := Vector2(end.x - origin.x, end.z - origin.z).length()
+	var intended_distance := Vector2(longitudinal_step, lateral_speed * dt).length()
+	if actual_distance > intended_distance + 0.00001:
+		var scale := intended_distance / actual_distance
+		s_step *= scale
+		lateral_step *= scale
+	c.d += lateral_step
 	c.lat_v *= exp(-4.0 * dt)
-	c.progress += dsdt * dt
+	c.progress += s_step
 	c.s = T.mod_s(c.progress)
 	# walls
 	var lim := hw - 1.1
