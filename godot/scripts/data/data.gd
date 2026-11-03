@@ -63,22 +63,22 @@ const CITIES := [
 # Legacy IDs remain stable for saved selections. Shared GLB nodes include
 # body/glass/lights/wheel_fl/wheel_fr/wheel_rl/wheel_rr.
 const CARS := [
-	{"id": "benxi", "name": "E kuqe", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#e63138",
+	{"id": "benxi", "name": "E kuqe", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#e63138",
 		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
 		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
-	{"id": "uragani", "name": "Blu", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#246be8",
+	{"id": "uragani", "name": "Blu", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#246be8",
 		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
 		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
-	{"id": "kercyesi", "name": "E bardhë", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#e9eff5",
+	{"id": "kercyesi", "name": "E bardhë", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#e9eff5",
 		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
 		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
-	{"id": "shigjeta", "name": "Grafit", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#536476",
+	{"id": "shigjeta", "name": "Grafit", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#536476",
 		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
 		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
-	{"id": "gelendvagen", "name": "E verdhë", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#f6c82a",
+	{"id": "gelendvagen", "name": "E verdhë", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#f6c82a",
 		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
 		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
-	{"id": "sprinteri", "name": "Jeshile", "kind": "coupe", "vmax": 58.0, "acc": 17.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#26b69b",
+	{"id": "sprinteri", "name": "Jeshile", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#26b69b",
 		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36,
 		"desc": "I njëjti Vortex GT. Zgjidh ngjyrën tënde."},
 ]

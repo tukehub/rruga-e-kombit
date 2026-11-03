@@ -69,6 +69,7 @@ var scrape := 0.0
 var wrecks := 0
 var hits := 0
 var vmax_mul := 1.0
+var brake_force := 0.0
 var braking := false
 var gas_on := false
 var est := 0.0

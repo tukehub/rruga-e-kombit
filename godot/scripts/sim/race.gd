@@ -273,7 +273,7 @@ func physics(c: CarState, dt: float) -> void:
 			c.health = c.max_hp
 			c.yaw = 0.0
 			c.lat_v = 0.0
-			c.v = 20.0
+			c.v = 10.0
 			c.invuln_t = 2.5
 			c.spin_t = 0.0
 			c.stun_t = 0.0
@@ -301,6 +301,8 @@ func physics(c: CarState, dt: float) -> void:
 	if c.health < c.max_hp * 0.25:
 		vmax *= 0.95
 	var acc: float = def.acc * (2.1 if c.nitro_t > 0.0 else 1.0)
+	# Ramp pressure so braking takes effect progressively rather than as a jolt.
+	c.brake_force = move_toward(c.brake_force, 1.0 if brake else 0.0, dt * 5.0)
 	var drifting := brake and absf(c.steer) > 0.35 and c.v > 18.0
 	c.drift = minf(1.0, c.drift + dt * 4.0) if drifting else maxf(0.0, c.drift - dt * 3.0)
 	c.braking = brake and not drifting and c.v > 1.0
@@ -320,7 +322,7 @@ func physics(c: CarState, dt: float) -> void:
 		if drifting:
 			c.v -= 4.5 * dt
 		elif c.v > 0.5:
-			c.v = maxf(0.0, c.v - 28.0 * dt)
+			c.v = maxf(0.0, c.v - 9.0 * c.brake_force * dt)
 		elif started:
 			c.v = maxf(-9.0, c.v - 10.0 * dt)
 	if c.v > vmax * 1.02 and c.nitro_t <= 0.0:
@@ -401,10 +403,12 @@ func collisions() -> void:
 				var sg := 1.0 if dd >= 0.0 else -1.0
 				a.d -= sg * pen_d * (mb / tot)
 				b.d += sg * pen_d * (ma / tot)
-				a.lat_v = -sg * 6.0 * (mb / tot)
-				b.lat_v = sg * 6.0 * (ma / tot)
-				a.yaw *= 0.75
-				b.yaw *= 0.75
+				# React to actual closing speed, not a fixed sideways kick when
+				# two cars travel parallel or are already moving apart.
+				var closing := (a.v * sin(a.yaw) + a.lat_v - b.v * sin(b.yaw) - b.lat_v) * sg
+				var impulse := clampf(closing * 0.5, 0.0, 4.0)
+				a.lat_v -= sg * impulse * (mb / tot)
+				b.lat_v += sg * impulse * (ma / tot)
 				emit({"t": "bump", "a": a, "b": b, "side": true})
 			else:
 				var front := b if ds > 0.0 else a
