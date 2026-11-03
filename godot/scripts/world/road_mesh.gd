@@ -6,6 +6,7 @@ extends Node3D
 const ROAD_SHADER := preload("res://shaders/road.gdshader")
 const KERB_H := 0.14
 const KERB_W := 0.5
+const BARRIER_H := 0.5
 const SKIRT := 6.0
 
 var surface_mat: ShaderMaterial
@@ -35,6 +36,7 @@ func build(track: RaceTrack, hw: float, wet: float) -> void:
 
 	_build_surface(track, hw)
 	_build_kerbs(track, hw)
+	_build_edge_barriers(track, hw)
 	_build_skirt(track, hw)
 
 
@@ -128,6 +130,38 @@ func _build_kerbs(track: RaceTrack, hw: float) -> void:
 	mi.material_override = kerb_mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
+
+
+func _build_edge_barriers(track: RaceTrack, hw: float) -> void:
+	# Low solid panels follow the existing road edge. They are visual only: the
+	# simulation retains its existing collision boundary and handling.
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var idx := 0
+	for side: float in [-1.0, 1.0]:
+		for i in track.M:
+			var j := (i + 1) % track.M
+			var color := Color(0.78, 0.10, 0.08) if int(i * track.ds / 8.0) % 2 == 0 else Color(0.93, 0.93, 0.88)
+			var a := Vector3(track.X[i], track.Y[i], track.Z[i]) + Vector3(track.NX[i], 0.0, track.NZ[i]) * side * (hw + KERB_W)
+			var b := Vector3(track.X[j], track.Y[j], track.Z[j]) + Vector3(track.NX[j], 0.0, track.NZ[j]) * side * (hw + KERB_W)
+			var normal := Vector3(track.NX[i], 0.0, track.NZ[i]) * -side
+			for point in [a, b, b + Vector3.UP * BARRIER_H, a + Vector3.UP * BARRIER_H]:
+				st.set_color(color)
+				st.set_normal(normal)
+				st.add_vertex(point)
+			for index in [0, 1, 2, 0, 2, 3]:
+				st.add_index(idx + index)
+			idx += 4
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.8
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var barrier := MeshInstance3D.new()
+	barrier.name = "RoadsideBarriers"
+	barrier.mesh = st.commit()
+	barrier.material_override = mat
+	barrier.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(barrier)
 
 
 func _build_skirt(track: RaceTrack, hw: float) -> void:

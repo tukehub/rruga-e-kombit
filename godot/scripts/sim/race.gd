@@ -193,7 +193,7 @@ func step(dt: float) -> void:
 			ai_drive(c, dt)
 	for c in cars:
 		physics(c, dt)
-	collisions()
+	collisions(dt)
 	for c in cars:
 		if c.ctrl.cycle:
 			c.ctrl.cycle = false
@@ -346,7 +346,11 @@ func physics(c: CarState, dt: float) -> void:
 		asst = BOT_ASSIST
 	c.yaw += (cc * v - k * dsdt - asst * c.yaw * minf(1.0, av / 10.0)) * dt
 	c.yaw = clampf(c.yaw, -1.25, 1.25)
-	c.d += (v * sin(c.yaw) + c.lat_v) * dt
+	# Limit sideways travel relative to road speed: large heading errors or
+	# impact impulses must not move a car sideways faster than it drives.
+	var lateral_limit := minf(8.0, maxf(1.0, absf(v) * 0.35))
+	var lateral_speed := clampf(v * sin(c.yaw) + c.lat_v, -lateral_limit, lateral_limit)
+	c.d += lateral_speed * dt
 	c.lat_v *= exp(-4.0 * dt)
 	c.progress += dsdt * dt
 	c.s = T.mod_s(c.progress)
@@ -378,7 +382,7 @@ func physics(c: CarState, dt: float) -> void:
 			c.fans += 5
 
 
-func collisions() -> void:
+func collisions(dt: float = 1.0 / 60.0) -> void:
 	var T := track
 	for i in cars.size():
 		var a := cars[i]
@@ -399,10 +403,16 @@ func collisions() -> void:
 			var ma: float = a.def.mass
 			var mb: float = b.def.mass
 			var tot := ma + mb
+			# Cap positional correction in metres per second, including when
+			# cars are stationary, and scale it by actual simulation time.
+			var separation_limit := (2.0 + minf(1.0, maxf(absf(a.v), absf(b.v)) * 0.1)) * dt
 			if pen_d < pen_s * 0.75:
 				var sg := 1.0 if dd >= 0.0 else -1.0
-				a.d -= sg * pen_d * (mb / tot)
-				b.d += sg * pen_d * (ma / tot)
+				# Resolve deep overlap over subsequent fixed steps instead of
+				# teleporting both cars sideways by metres in one frame.
+				var separation := minf(pen_d, separation_limit)
+				a.d -= sg * separation * (mb / tot)
+				b.d += sg * separation * (ma / tot)
 				# React to actual closing speed, not a fixed sideways kick when
 				# two cars travel parallel or are already moving apart.
 				var closing := (a.v * sin(a.yaw) + a.lat_v - b.v * sin(b.yaw) - b.lat_v) * sg
@@ -413,8 +423,9 @@ func collisions() -> void:
 			else:
 				var front := b if ds > 0.0 else a
 				var rear := a if ds > 0.0 else b
-				rear.progress -= pen_s * (front.def.mass / tot)
-				front.progress += pen_s * (rear.def.mass / tot)
+				var separation := minf(pen_s, separation_limit)
+				rear.progress -= separation * (front.def.mass / tot)
+				front.progress += separation * (rear.def.mass / tot)
 				rear.s = T.mod_s(rear.progress)
 				front.s = T.mod_s(front.progress)
 				var dv := rear.v - front.v

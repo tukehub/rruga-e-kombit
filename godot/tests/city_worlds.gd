@@ -13,6 +13,7 @@ func _ready() -> void:
 		scene.set_process(false)
 		assert(scene.cars.size() == 6 and scene.track.L > 1000)
 		assert(scene.terrain != null and scene.buildings != null and scene.road != null)
+		assert(scene.road.get_node_or_null("RoadsideBarriers") != null, "road edges should be visible")
 		if city.id == "tirane":
 			# Ensure grouping keeps every tree and creates local batches that the
 			# renderer can cull independently.
