@@ -159,6 +159,15 @@ func _ready() -> void:
 	check(not controls.control_rect("gas").intersects(controls.control_rect("fire")), "gas and fire do not overlap")
 	check(not controls.control_rect("brake").intersects(controls.control_rect("back")), "brake and rear fire do not overlap")
 	check(not controls.control_rect("brake").intersects(controls.control_rect("steer")), "brake and steering do not overlap")
+	for viewport_width in [960.0, 1280.0, 1600.0]:
+		controls.size = Vector2(viewport_width, 720)
+		var steering_rect := controls.control_rect("steer")
+		var brake_rect := controls.control_rect("brake")
+		var gas_rect := controls.control_rect("gas")
+		check(steering_rect.size.x > 204.0, "wider steering pad")
+		check(steering_rect.position.x - brake_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from brake")
+		check(gas_rect.position.x - steering_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from gas")
+	controls.size = Vector2(1280, 720)
 	var touch := InputEventScreenTouch.new()
 	touch.index = 1
 	touch.position = controls.control_rect("gas").get_center()
@@ -175,6 +184,14 @@ func _ready() -> void:
 	touch.position = controls.control_rect("fire").get_center()
 	controls._gui_input(touch)
 	check(controls.gas and controls.brake and controls.fire, "fire while both pedals held")
+	var previous_touch_steer := Settings.touch_steer
+	Settings.touch_steer = true
+	touch = touch.duplicate()
+	touch.index = 5
+	touch.position = controls.control_rect("steer").get_center() + Vector2(80, 0)
+	controls._gui_input(touch)
+	check(controls.gas and controls.brake and controls._pad_steer > 0.5, "steering works with pedals held")
+	Settings.touch_steer = previous_touch_steer
 	touch = touch.duplicate()
 	touch.index = 2
 	touch.pressed = false

@@ -11,7 +11,8 @@ const TILT_SMOOTH := 14.0
 const EDGE := 20.0
 const PEDAL_SIZE := Vector2(112, 128)
 const FIRE_SIZE := Vector2(164, 64)
-const STEER_SIZE := Vector2(204, 96)
+const STEER_SIZE := Vector2(260, 96)
+const STEER_PEDAL_GAP := 48.0
 
 var steer := 0.0
 var gas := false
@@ -64,7 +65,12 @@ func control_rect(zone: String) -> Rect2:
 		"back":
 			return Rect2(Vector2(EDGE, size.y - EDGE - PEDAL_SIZE.y - 16 - FIRE_SIZE.y), FIRE_SIZE)
 		"steer":
-			return Rect2(Vector2(EDGE + PEDAL_SIZE.x + 16, size.y - 28 - STEER_SIZE.y), STEER_SIZE)
+			# Keep a comfortable gap from both pedals and the road center clear.
+			# On wide phones the pad moves inward rather than crowding the brake.
+			var margin := EDGE + PEDAL_SIZE.x + STEER_PEDAL_GAP
+			var width := minf(STEER_SIZE.x, maxf(0.0, size.x - 2.0 * margin))
+			var left := clampf(size.x * 0.2, margin, size.x - margin - width)
+			return Rect2(Vector2(left, size.y - 28 - STEER_SIZE.y), Vector2(width, STEER_SIZE.y))
 	return Rect2()
 
 
