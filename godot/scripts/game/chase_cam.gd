@@ -10,6 +10,8 @@ var shake := 0.0
 var intro_t := 0.0
 var intro := false
 var cabin := false
+var _finish_car_position := Vector3.ZERO
+var _finish_tracking := false
 var _snap := true
 var _rng := RandomNumberGenerator.new()
 
@@ -93,6 +95,12 @@ func follow_finish(c: CarState, dt: float, pose: Dictionary = {}) -> void:
 	var d := float(pose.get("d", c.d))
 	var p := track.pos(s, d)
 	p.y += float(pose.get("hop", c.hop))
+	if _finish_tracking:
+		var movement := p - _finish_car_position
+		global_position += movement
+		look += movement
+	_finish_car_position = p
+	_finish_tracking = true
 	var psi := track.heading(s) + float(pose.get("yaw", c.yaw))
 	var forward := Vector3(-sin(psi), 0.0, cos(psi))
 	var right := Vector3(forward.z, 0.0, -forward.x)

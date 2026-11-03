@@ -13,7 +13,7 @@ CITIES = {
         # coordinates are local metres relative to the Tirana origin.
         'tree_view_exclusions': [(293.2, 460.9, 1.0), (284.1, 442.0, 1.0), (287.1, 448.7, 1.0)],
         'waypoints': [
-            (41.3242813, 19.8236043),  # Bajram Curri, Downtown One (start/finish)
+            (41.3244, 19.8248),        # Downtown One approach (start/finish)
             (41.3232735, 19.8224131),  # Papa Gjon Pali II, by the Pyramid
             (41.3173730, 19.8214600),  # Nënë Tereza Square, facing Polytechnic
             (41.3263000, 19.8170000),  # Dëshmorët e 4 Shkurtit, cathedral

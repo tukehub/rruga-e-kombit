@@ -125,8 +125,8 @@ func _ready() -> void:
 	for i in 120:
 		scene._process(1.0 / 60.0)
 	check(scene.player.v < 35.0 and scene.player.progress > finish_progress, "finished car slows while continuing forward")
-	var forward := scene.track.tangent(scene.player.s)
-	var car_at := scene.track.pos(scene.player.s, scene.player.d)
+	var forward: Vector3 = scene.track.tangent(scene.player.s)
+	var car_at: Vector3 = scene.track.pos(scene.player.s, scene.player.d)
 	check((scene.cam.global_position - car_at).dot(forward) > 0.0, "finish camera moves in front of car")
 	# Rebuild so the flow test starts with an untouched race.
 	Game.goto("race")
