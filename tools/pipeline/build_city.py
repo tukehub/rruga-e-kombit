@@ -254,6 +254,33 @@ def smooth_closed(a, radius, passes):
     return out
 
 
+def smooth_tirana_jog(dense):
+    """Remove a tiny OSM carriageway switch that folds the 20 m race road.
+
+    A Hermite curve joins the long straight to its continuation, keeping the
+    existing entry and exit tangents. Coordinates are local to Tirana's origin.
+    The result is a deliberate racing adaptation within the road corridor.
+    """
+    start = np.array([-194.94, -3.21])
+    end = np.array([-223.98, -168.48])
+    i = int(np.argmin(np.linalg.norm(dense - start, axis=1)))
+    j = int(np.argmin(np.linalg.norm(dense - end, axis=1)))
+    if i < 1 or j <= i + 10 or j >= len(dense) - 1:
+        raise ValueError('Tirana jog endpoints do not match expected route')
+    p0, p1 = dense[i], dense[j]
+    span = np.linalg.norm(p1 - p0)
+    t0, t1 = dense[i + 1] - dense[i - 1], dense[j + 1] - dense[j - 1]
+    t0 = t0 / np.linalg.norm(t0) * span
+    t1 = t1 / np.linalg.norm(t1) * span
+    t = np.linspace(0.0, 1.0, j - i + 1)[:, None]
+    out = dense.copy()
+    out[i:j + 1] = ((2*t**3 - 3*t**2 + 1) * p0 + (t**3 - 2*t**2 + t) * t0
+                    + (-2*t**3 + 3*t**2) * p1 + (t**3 - t**2) * t1)
+    if np.linalg.norm(out[i:j + 1] - dense[i:j + 1], axis=1).max() > 18.0:
+        raise ValueError('Tirana jog correction exceeds 18 metres')
+    return out
+
+
 def smooth_elevation(y, spacing):
     y = smooth_closed(y[:, None], 16, 4)[:, 0]
     for _ in range(12):
@@ -818,6 +845,9 @@ def build(cid, route_only=False):
     dense, length = resample_closed(raw, SAMPLE)
     dense = smooth_closed(dense, 7, 3)
     dense, length = resample_closed(dense, SAMPLE)
+    if cid == 'tirane':
+        dense = smooth_tirana_jog(dense)
+        dense, length = resample_closed(dense, SAMPLE)
     log(f'  track length {length:.0f} m, {len(dense)} samples')
 
     # 2. terrain
