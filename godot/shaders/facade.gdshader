@@ -87,9 +87,19 @@ void fragment() {
 	// window module. Apply it to masonry; glass towers retain their materials.
 	vec3 tile = texture(tex_facade, vec2(fuv.x / 3.0, -fuv.y / 3.0)).rgb;
 	float luminance = dot(tile, vec3(0.2126, 0.7152, 0.0722));
-	vec3 tint = mix(vec3(0.80), vcol.rgb, 0.50);
-	vec3 detailed_facade = vec3(luminance) * tint * 1.35;
+	// Preserve the source's blue glazing instead of converting the whole tile
+	// to gray. The mask comes from the existing sample, so it costs no texture
+	// reads and leaves the architectural frames in the neutral wall material.
+	float pane_mask = smoothstep(0.02, 0.12, tile.b - tile.r);
+	vec3 tint = mix(vec3(0.88, 0.86, 0.82), vcol.rgb, 0.24);
+	vec3 masonry = vec3(luminance) * tint * 1.38;
+	float grazing = 1.0 - clamp(abs(dot(normalize(NORMAL), normalize(VIEW))), 0.0, 1.0);
+	float fresnel = grazing * grazing * grazing;
+	float pane_variation = 0.87 + 0.13 * vcol.r;
+	vec3 window_color = tile * vec3(0.82, 0.96, 1.12) * pane_variation + vec3(0.08, 0.12, 0.15) * fresnel;
+	vec3 detailed_facade = mix(masonry, window_color, pane_mask);
 	col = mix(detailed_facade, col, glass_w);
+	rough = mix(rough, mix(0.82, 0.28, pane_mask), 1.0 - glass_w);
 
 	// lit windows at night (per window random, with slow flicker-free stability)
 	float lit = step(0.62 - 0.1 * glass_w, hash(cell + floor(wpos.xz * 0.013)));

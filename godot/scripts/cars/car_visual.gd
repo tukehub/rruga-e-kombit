@@ -29,6 +29,8 @@ var wreck_roll := 0.0
 var base_pos := Vector3.ZERO
 var contact_shadow: MeshInstance3D
 var visual_wheel_radius := 0.36
+var finish_driver: Node3D
+var finish_glass: StandardMaterial3D
 
 
 func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
@@ -55,6 +57,7 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 	_make_nitro()
 	_make_shield()
 	if is_player:
+		_make_finish_driver()
 		_make_headlights()
 
 
@@ -84,7 +87,13 @@ func _override_materials(mi: MeshInstance3D) -> void:
 		var ov: Material = null
 		match nm:
 			"paint": ov = _paint(m)
-			"glass": ov = _shared("glass", _mk_glass)
+			"glass":
+				if is_player:
+					if finish_glass == null:
+						finish_glass = _mk_glass()
+					ov = finish_glass
+				else:
+					ov = _shared("glass", _mk_glass)
 			"light_front": ov = _front()
 			"light_rear": ov = _rear()
 			"trim": ov = _shared("trim", func(): return _mk_simple(Color(0.05, 0.05, 0.055), 0.0, 0.7))
@@ -96,6 +105,65 @@ func _override_materials(mi: MeshInstance3D) -> void:
 			"plate": ov = _shared("plate", func(): return _mk_simple(Color(0.95, 0.95, 0.9), 0.0, 0.5))
 		if ov:
 			mi.set_surface_override_material(i, ov)
+
+
+func _make_finish_driver() -> void:
+	# Lightweight helmeted driver, revealed through the windscreen at the finish.
+	finish_driver = Node3D.new()
+	finish_driver.name = "FinishDriver"
+	finish_driver.position = Vector3(-0.35, 0.0, -0.05)
+	finish_driver.visible = false
+	add_child(finish_driver)
+	var suit := _shared("driver_suit", func(): return _mk_simple(Color(0.28, 0.31, 0.35), 0.0, 0.72))
+	var helmet := _shared("driver_helmet", func(): return _mk_simple(Color(0.83, 0.85, 0.88), 0.08, 0.38))
+	var visor := _shared("driver_visor", func(): return _mk_simple(Color(0.025, 0.04, 0.065), 0.2, 0.2))
+	var torso_mesh := CapsuleMesh.new()
+	torso_mesh.radius = 0.18
+	torso_mesh.height = 0.48
+	var torso := MeshInstance3D.new()
+	torso.mesh = torso_mesh
+	torso.material_override = suit
+	torso.position = Vector3(0, 0.64, 0.05)
+	torso.rotation.x = -0.18
+	finish_driver.add_child(torso)
+	var head_mesh := SphereMesh.new()
+	head_mesh.radius = 0.145
+	head_mesh.height = 0.30
+	head_mesh.radial_segments = 16
+	head_mesh.rings = 8
+	var head := MeshInstance3D.new()
+	head.mesh = head_mesh
+	head.material_override = helmet
+	head.position = Vector3(0, 0.94, 0.07)
+	finish_driver.add_child(head)
+	var face_mesh := BoxMesh.new()
+	face_mesh.size = Vector3(0.21, 0.09, 0.06)
+	var face := MeshInstance3D.new()
+	face.mesh = face_mesh
+	face.material_override = visor
+	face.position = Vector3(0, 0.95, -0.06)
+	finish_driver.add_child(face)
+	for side in [-1.0, 1.0]:
+		var arm_mesh := CapsuleMesh.new()
+		arm_mesh.radius = 0.055
+		arm_mesh.height = 0.38
+		var arm := MeshInstance3D.new()
+		arm.mesh = arm_mesh
+		arm.material_override = suit
+		arm.position = Vector3(side * 0.15, 0.70, -0.12)
+		arm.rotation.x = -0.85
+		arm.rotation.z = side * 0.25
+		finish_driver.add_child(arm)
+
+
+func show_finish_driver() -> void:
+	if finish_driver:
+		finish_driver.visible = true
+	if finish_glass:
+		finish_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		finish_glass.albedo_color = Color(0.16, 0.22, 0.27, 0.20)
+		finish_glass.metallic = 0.0
+		finish_glass.roughness = 0.22
 
 
 func _shared(key: String, maker: Callable) -> Material:
@@ -130,13 +198,16 @@ func _paint(source: Material = null) -> StandardMaterial3D:
 	if mat_paint == null:
 		# Each car retains its own tint with a softer satin-clearcoat finish.
 		mat_paint = source.duplicate() as StandardMaterial3D if source is StandardMaterial3D else StandardMaterial3D.new()
-		mat_paint.albedo_color = color
-		mat_paint.metallic = 0.20
-		mat_paint.metallic_specular = 0.35
-		mat_paint.roughness = 0.42
+		# Daylight and ACES compress bright paint toward pastel; use a richer
+		# base coat and restrained neutral reflections. Preserve white paint.
+		var white_paint := color.s < 0.15 and color.v > 0.8
+		mat_paint.albedo_color = color.darkened(0.05 if white_paint else 0.30)
+		mat_paint.metallic = 0.16
+		mat_paint.metallic_specular = 0.22
+		mat_paint.roughness = 0.48
 		mat_paint.clearcoat_enabled = true
-		mat_paint.clearcoat = 0.30
-		mat_paint.clearcoat_roughness = 0.30
+		mat_paint.clearcoat = 0.16
+		mat_paint.clearcoat_roughness = 0.38
 	return mat_paint
 
 

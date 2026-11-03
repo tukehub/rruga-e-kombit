@@ -121,6 +121,8 @@ func _ready() -> void:
 	scene.race.emit({"t": "finish", "car": scene.player})
 	scene._events()
 	check(scene.state == "finish" and not scene.cam.cabin and scene.cam.get_cull_mask_value(2), "finish restores exterior view")
+	var finish_visual: CarVisual = scene.cars[scene.race.cars.find(scene.player)]
+	check(finish_visual.finish_driver.visible and finish_visual.finish_glass.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "finish reveals driver through windshield")
 	var finish_progress: float = scene.player.progress
 	for i in 120:
 		scene._process(1.0 / 60.0)

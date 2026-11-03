@@ -434,6 +434,7 @@ func _events() -> void:
 					player.autopilot = true
 					cam.cabin = false
 					cam.set_cull_mask_value(RaceViews.PLAYER_LAYER, true)
+					cars[race.cars.find(player)].show_finish_driver()
 					views.cabin_overlay.visible = false
 					views.view_button.disabled = true
 					Sfx.play("finish", "UI", -2.0)

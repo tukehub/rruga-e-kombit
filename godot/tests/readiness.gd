@@ -17,7 +17,10 @@ func _ready() -> void:
 		var paint := Color.html(def.color)
 		car.setup(def, paint, true)
 		check(car.body != null and car.wheels.size() == 4, "car meshes " + def.id)
-		check(car.mat_paint != null and car.mat_paint.albedo_color.is_equal_approx(paint), "selected car paint " + def.id)
+		check(car.mat_paint != null, "paint material " + def.id)
+		if car.mat_paint != null:
+			var tint: Color = car.mat_paint.albedo_color
+			check(tint.v > 0.25 and (paint.s < 0.15 or absf(tint.h - paint.h) < 0.03), "selected car paint " + def.id)
 		for wheel_name in ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"]:
 			check(car.wheels.has(wheel_name), "named wheel " + def.id + " " + wheel_name)
 			if not car.wheels.has(wheel_name):
