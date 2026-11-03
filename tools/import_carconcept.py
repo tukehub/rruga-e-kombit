@@ -165,6 +165,28 @@ for name, parts in groups.items():
         result.name = 'wheel_' + ('f' if front else 'r') + ('l' if left else 'r')
     print(result.name, 'triangles', sum(len(p.vertices)-2 for p in result.data.polygons), 'slots', len(result.data.materials))
 
+# Low rear lip, batched into the existing body mesh to avoid extra draw calls.
+# Blender +Y is the front of the converted car; the rear is at -Y.
+body = bpy.data.objects['body']
+aero_parts = []
+for location, size in [((0.0, -1.88, 0.96), (1.25, 0.17, 0.045))]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    wing = bpy.context.object
+    wing.dimensions = size
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    wing.data.materials.append(materials['paint'])
+    bevel = wing.modifiers.new('soft edges', 'BEVEL')
+    bevel.width = 0.025
+    bevel.segments = 2
+    bpy.ops.object.modifier_apply(modifier=bevel.name)
+    aero_parts.append(wing)
+bpy.ops.object.select_all(action='DESELECT')
+body.select_set(True)
+for part in aero_parts:
+    part.select_set(True)
+bpy.context.view_layer.objects.active = body
+bpy.ops.object.join()
+
 for obj in list(bpy.data.objects):
     if obj.type != 'MESH':
         bpy.data.objects.remove(obj, do_unlink=True)

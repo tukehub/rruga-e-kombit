@@ -87,6 +87,25 @@ func _follow_cabin(c: CarState, s: float, d: float, yaw: float, hop: float, dt: 
 	_snap = true
 
 
+func follow_finish(c: CarState, dt: float, pose: Dictionary = {}) -> void:
+	# Ease to a front three-quarter view while the finished car keeps moving.
+	var s := float(pose.get("s", c.s))
+	var d := float(pose.get("d", c.d))
+	var p := track.pos(s, d)
+	p.y += float(pose.get("hop", c.hop))
+	var psi := track.heading(s) + float(pose.get("yaw", c.yaw))
+	var forward := Vector3(-sin(psi), 0.0, cos(psi))
+	var right := Vector3(forward.z, 0.0, -forward.x)
+	var target := p + forward * 8.0 + right * 2.0 + Vector3.UP * 2.4
+	var k := 1.0 - exp(-dt * 2.8)
+	global_position = global_position.lerp(target, k)
+	look = look.lerp(p + Vector3.UP * 0.8, 1.0 - exp(-dt * 5.0))
+	if not global_position.is_equal_approx(look):
+		look_at(look, Vector3.UP)
+	fov_target = lerpf(fov_target, 64.0, 1.0 - exp(-dt * 3.0))
+	fov = fov_target
+
+
 func _intro_cam(c: CarState, dt: float) -> void:
 	intro_t += dt
 	var t := clampf(intro_t / 2.8, 0.0, 1.0)

@@ -111,6 +111,23 @@ func _ready() -> void:
 	var before_stall: float = scene.acc
 	scene._process(0.1)
 	check(absf(scene.acc - before_stall) < 0.000001, "stall drops excess whole simulation steps only")
+	# Finishing from cabin view restores the car, slows it while it continues
+	# along the circuit, and moves the camera to look back at its front.
+	scene.race.take_events()
+	scene.player.finished = true
+	scene.player.finish_time = 80.0
+	scene.player.v = 40.0
+	scene.cam.cabin = true
+	scene.race.emit({"t": "finish", "car": scene.player})
+	scene._events()
+	check(scene.state == "finish" and not scene.cam.cabin and scene.cam.get_cull_mask_value(2), "finish restores exterior view")
+	var finish_progress: float = scene.player.progress
+	for i in 120:
+		scene._process(1.0 / 60.0)
+	check(scene.player.v < 35.0 and scene.player.progress > finish_progress, "finished car slows while continuing forward")
+	var forward := scene.track.tangent(scene.player.s)
+	var car_at := scene.track.pos(scene.player.s, scene.player.d)
+	check((scene.cam.global_position - car_at).dot(forward) > 0.0, "finish camera moves in front of car")
 	# Rebuild so the flow test starts with an untouched race.
 	Game.goto("race")
 	await wait_scene("race")

@@ -37,6 +37,7 @@ var _previous_poses: Array[Dictionary] = []
 var cd_t := 0.0
 var cd_n := 4
 var fin_t := 0.0
+var finish_speed_limit := 0.0
 var last500 := false
 var paused := false
 var _snd_t := {}
@@ -261,6 +262,9 @@ func _process(dt: float) -> void:
 				for i in race.cars.size():
 					_previous_poses[i] = RenderPose.capture(race.cars[i])
 				race.step(DT)
+				if state == "finish":
+					finish_speed_limit = maxf(6.0, finish_speed_limit - 8.0 * DT)
+					player.v = minf(player.v, finish_speed_limit)
 				acc -= DT
 				n += 1
 			# Bound catch-up work after a stall, but retain the fractional tick so
@@ -276,7 +280,10 @@ func _process(dt: float) -> void:
 					Sfx.play("lap", "UI", -4.0)
 			var player_index := race.cars.find(player)
 			var player_pose := RenderPose.sample(_previous_poses[player_index], player, acc / DT, track.L)
-			cam.follow(player, dt, player_pose)
+			if state == "finish":
+				cam.follow_finish(player, dt, player_pose)
+			else:
+				cam.follow(player, dt, player_pose)
 			_engine_audio(absf(player.v) / float(player.def.vmax), player.gas_on, player.wreck_t <= 0.0, player.scrape, dt)
 			if state == "finish":
 				fin_t += dt
@@ -382,7 +389,7 @@ func _events() -> void:
 			"wall":
 				if c == player and _limited("wall", 0.45):
 					Sfx.play("wall_impact", "Impacts", _vol_db(clampf(float(e.imp) / 20.0, 0.3, 1.0)))
-					cam.add_shake(minf(0.5, float(e.imp) / 40.0))
+					cam.add_shake(minf(0.15, float(e.imp) / 120.0))
 					Sfx.haptic(15)
 			"bump":
 				if (e.a == player or e.b == player) and _limited("bump", 0.22):
@@ -423,10 +430,15 @@ func _events() -> void:
 				if c == player and state == "race":
 					state = "finish"
 					fin_t = 0.0
+					finish_speed_limit = maxf(6.0, player.v)
 					player.autopilot = true
+					cam.cabin = false
+					cam.set_cull_mask_value(RaceViews.PLAYER_LAYER, true)
+					views.cabin_overlay.visible = false
+					views.view_button.disabled = true
 					Sfx.play("finish", "UI", -2.0)
 					hud.flash(Color(1.0, 0.71, 0.28), 0.7)
-					hud.center(Data.ORD[clampi(player.place - 1, 0, Data.ORD.size() - 1)] + "!", Game.fmt_time(player.finish_time), 3.6)
+					hud.finish_place(Data.ORD[clampi(player.place - 1, 0, Data.ORD.size() - 1)] + "!", Game.fmt_time(player.finish_time))
 
 
 func _engine_audio(ratio: float, gas_on: bool, alive: bool, scrape: float, dt: float) -> void:

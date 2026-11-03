@@ -314,6 +314,15 @@ func center(text: String, sub := "", dur := 1.6) -> void:
 	_center.scale = Vector2.ONE
 
 
+func finish_place(place: String, time: String) -> void:
+	center(place, time, 3.6)
+	_center.pivot_offset = _center.size * 0.5
+	_center.scale = Vector2(0.65, 0.65)
+	var tween := create_tween()
+	tween.tween_property(_center, "scale", Vector2(1.08, 1.08), 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(_center, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_SINE)
+
+
 func pop(text: String) -> void:
 	_pop.text = text
 	_pop.modulate.a = 1.0
