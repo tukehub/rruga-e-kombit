@@ -355,11 +355,15 @@ func physics(c: CarState, dt: float) -> void:
 		c.d = sd * lim
 		var into := (v * sin(c.yaw) + c.lat_v) * sd
 		if into > 0.0:
-			c.v -= signf(c.v) * (into * 0.5 + absf(c.v) * 0.02)
-			if c.yaw * sd > 0.0:
-				c.yaw *= -0.25
-			c.lat_v = -sd * minf(into * 0.25, 4.0)
-			if into > 9.0:
+			# Slide along the barrier instead of reflecting the heading and
+			# lateral velocity in a single fixed tick. Bound drag per second so
+			# sustained contact cannot repeatedly apply a full collision impulse.
+			c.v = move_toward(c.v, 0.0, minf(14.0, into * 1.2) * dt)
+			if v * sin(c.yaw) * sd > 0.0:
+				c.yaw = move_toward(c.yaw, 0.0, 2.0 * dt)
+			if c.lat_v * sd > 0.0:
+				c.lat_v = move_toward(c.lat_v, 0.0, 12.0 * dt)
+			if into > 9.0 and c.scrape <= 0.05:
 				damage(c, (into - 9.0) * 0.9, null, "wall")
 			c.scrape = maxf(c.scrape, minf(1.0, into / 14.0 + 0.25))
 			if into > 5.0:
