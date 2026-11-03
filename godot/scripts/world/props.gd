@@ -15,8 +15,11 @@ var landmarks: Array = []
 
 # A small near-camera 3D pool travels around the circuit; distant trees use
 # low-cost cutouts.  No per-tree nodes or 3D trees are created per frame.
-const NEAR_TREE_LIMIT := 24
-const NEAR_TREE_RADIUS := 90.0
+const NEAR_TREE_LIMIT := 32
+const NEAR_TREE_RADIUS := 170.0
+const TREE_AHEAD_PREFERENCE := 45.0
+const TREE_LOD_HYSTERESIS := 12.0
+const TREE_PROTECTED_RADIUS := 35.0
 var _tree_refs: Array = []
 var _tree_chunks := {}
 var _near_marked: Array = []
@@ -251,7 +254,7 @@ func _make_tree_pool(mesh: Mesh, node_name: String) -> MultiMesh:
 	return mm
 
 
-func _update_tree_lod(player_pos: Vector3, force := false) -> void:
+func _update_tree_lod(player_pos: Vector3, force := false, forward := Vector3.ZERO) -> void:
 	if _near_leaves == null or _near_branches == null:
 		return
 	var now := Time.get_ticks_msec()
@@ -263,14 +266,21 @@ func _update_tree_lod(player_pos: Vector3, force := false) -> void:
 	var x_max := floori((player_pos.x + NEAR_TREE_RADIUS) / TREE_CHUNK_SIZE)
 	var z_min := floori((player_pos.z - NEAR_TREE_RADIUS) / TREE_CHUNK_SIZE)
 	var z_max := floori((player_pos.z + NEAR_TREE_RADIUS) / TREE_CHUNK_SIZE)
+	var heading := Vector2(forward.x, forward.z).normalized()
 	for x in range(x_min, x_max + 1):
 		for z in range(z_min, z_max + 1):
 			for ref in _tree_chunks.get(Vector2i(x, z), []):
 				var world: Transform3D = ref.world
 				var delta := Vector2(world.origin.x - player_pos.x, world.origin.z - player_pos.z)
-				var distance := delta.length_squared()
-				if distance <= NEAR_TREE_RADIUS * NEAR_TREE_RADIUS:
-					candidates.append([distance, ref])
+				var distance := delta.length()
+				if distance <= NEAR_TREE_RADIUS:
+					var score := distance - delta.normalized().dot(heading) * TREE_AHEAD_PREFERENCE
+					# Don't trade a tree beside the car for one farther ahead in a bend.
+					if distance < TREE_PROTECTED_RADIUS:
+						score -= NEAR_TREE_RADIUS * 2.0
+					if _near_marked.has(ref):
+						score -= TREE_LOD_HYSTERESIS
+					candidates.append([score, ref])
 	candidates.sort_custom(func(a, b): return a[0] < b[0])
 	for ref in _near_marked:
 		ref.mm.set_instance_transform(ref.index, ref.local)
@@ -327,7 +337,7 @@ func set_night(n: float) -> void:
 
 ## Move the real lights to the nearest lamps ahead of the player.
 func update_lights(player_pos: Vector3, forward: Vector3) -> void:
-	_update_tree_lod(player_pos)
+	_update_tree_lod(player_pos, false, forward)
 	if lights.is_empty() or track_lamps.is_empty():
 		return
 	var cand := []

@@ -44,21 +44,21 @@ func _test_tree_lod() -> void:
 	var props := Props.new()
 	add_child(props)
 	var trees := []
-	for i in 30:
+	for i in 40:
 		trees.append([float(i), 0.0, 0.0, 1.0])
 		trees.append([1000.0 + float(i), 0.0, 0.0, 1.0])
 	props._build_trees(trees, null, "tirane")
 	assert(props._near_leaves != null and props._near_branches != null)
 	props._update_tree_lod(Vector3.ZERO, true)
-	assert(props._near_marked.size() == 24)
-	assert(props._near_leaves.visible_instance_count == 24 and props._near_branches.visible_instance_count == 24)
+	assert(props._near_marked.size() == Props.NEAR_TREE_LIMIT)
+	assert(props._near_leaves.visible_instance_count == Props.NEAR_TREE_LIMIT and props._near_branches.visible_instance_count == Props.NEAR_TREE_LIMIT)
 	var old_refs := props._near_marked.duplicate()
 	for ref in old_refs:
 		assert((ref.world as Transform3D).origin.x < 100.0)
 		if DisplayServer.get_name() != "headless":
 			assert((ref.mm.get_instance_transform(ref.index) as Transform3D).basis.is_equal_approx(Basis.from_scale(Vector3.ZERO)))
 	props._update_tree_lod(Vector3(1000, 0, 0), true)
-	assert(props._near_marked.size() == 24)
+	assert(props._near_marked.size() == Props.NEAR_TREE_LIMIT)
 	for ref in old_refs:
 		assert(not props._near_marked.has(ref))
 		if DisplayServer.get_name() != "headless":
@@ -68,4 +68,27 @@ func _test_tree_lod() -> void:
 	props._update_tree_lod(Vector3(5000, 0, 0), true)
 	assert(props._near_marked.is_empty() and props._near_leaves.visible_instance_count == 0 and props._near_branches.visible_instance_count == 0)
 	props.queue_free()
+	var ahead_props := Props.new()
+	add_child(ahead_props)
+	var road_trees := []
+	for i in 40:
+		road_trees.append([float(i + 1) * 3.0, 0.0, 0.0, 1.0])
+		road_trees.append([-float(i + 1) * 3.0, 0.0, 0.0, 1.0])
+	ahead_props._build_trees(road_trees, null, "tirane")
+	ahead_props._update_tree_lod(Vector3.ZERO, true, Vector3.RIGHT)
+	var selected := ahead_props._near_marked.duplicate()
+	var ahead_count := 0
+	for ref in selected:
+		if (ref.world as Transform3D).origin.x > 0.0:
+			ahead_count += 1
+	assert(ahead_count > Props.NEAR_TREE_LIMIT / 2)
+	ahead_props._update_tree_lod(Vector3(0.5, 0, 0), true, Vector3.RIGHT)
+	for ref in selected:
+		assert(ahead_props._near_marked.has(ref))
+	# Nearby trees stay detailed when the car turns toward the other side.
+	ahead_props._update_tree_lod(Vector3.ZERO, true, Vector3.LEFT)
+	for ref in ahead_props._tree_refs:
+		if absf((ref.world as Transform3D).origin.x) < Props.TREE_PROTECTED_RADIUS:
+			assert(ahead_props._near_marked.has(ref))
+	ahead_props.queue_free()
 	print("TREE LOD: moving pool passed")
