@@ -42,6 +42,10 @@ func _ready() -> void:
 			check(rl.rotation.x < -0.1 and rr.rotation.x > 0.1, "rear wheels spin " + def.id)
 			check(absf(fr.rotation.y) > 0.001 and absf(rr.rotation.y) < 0.001, "only front wheels steer " + def.id)
 			check(car.mat_rear != null and car.mat_rear.emission_energy_multiplier > 1.0, "brake lights respond " + def.id)
+			check(absf(car.spin - state.v * 0.01 / (rl.mesh.get_aabb().size.y * 0.5)) < 0.001, "wheel rotation matches tire radius " + def.id)
+			state.hop = 1.5
+			car.apply_state(state, visual_track, 0.01)
+			check(car.contact_shadow.transparency > 0.99, "contact shadow fades when airborne " + def.id)
 		var triangles := 0
 		for mi in car.model.get_children():
 			if mi is MeshInstance3D:

@@ -6,6 +6,7 @@ extends Node3D
 ## so Godot yaw (counter-clockwise positive) = atan2(-tx, -tz) - yaw.
 
 static var shared: Dictionary = {}
+const CONTACT_SHADER := preload("res://shaders/car_contact.gdshader")
 
 var def: Dictionary
 var is_player := false
@@ -26,6 +27,8 @@ var nitro_jets: Array[MeshInstance3D] = []
 var blink := 0.0
 var wreck_roll := 0.0
 var base_pos := Vector3.ZERO
+var contact_shadow: MeshInstance3D
+var visual_wheel_radius := 0.36
 
 
 func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
@@ -44,10 +47,31 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 			ch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			ch.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
 			_override_materials(ch)
+	if wheels.has("wheel_rl"):
+		var rear: MeshInstance3D = wheels["wheel_rl"]
+		if rear.mesh != null:
+			visual_wheel_radius = maxf(0.05, rear.mesh.get_aabb().size.y * 0.5)
+	_make_contact_shadow()
 	_make_nitro()
 	_make_shield()
 	if is_player:
 		_make_headlights()
+
+
+func _make_contact_shadow() -> void:
+	# A small unlit road-contact shadow remains visible even on low quality,
+	# where real-time car shadows are disabled. One quad per car, no light.
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(2.3, 4.8)
+	contact_shadow = MeshInstance3D.new()
+	contact_shadow.mesh = plane
+	contact_shadow.material_override = _shared("contact_shadow", func():
+		var material := ShaderMaterial.new()
+		material.shader = CONTACT_SHADER
+		return material)
+	contact_shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	contact_shadow.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	add_child(contact_shadow)
 
 
 func _override_materials(mi: MeshInstance3D) -> void:
@@ -222,8 +246,12 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	base_pos = p
 	var b := Basis.from_euler(Vector3(pitch, yaw_g, roll))
 	global_transform = Transform3D(b, p)
+	var ground := track.pos(s, float(pose.get("d", c.d)))
+	ground.y += 0.025
+	contact_shadow.global_transform = Transform3D(Basis.from_euler(Vector3(asin(clampf(t.y, -0.5, 0.5)), yaw_g, 0.0)), ground)
+	contact_shadow.transparency = clampf(float(pose.get("hop", c.hop)) / 1.5, 0.0, 1.0)
 	# wheels
-	spin += c.v * dt / float(def.wheel_r)
+	spin += c.v * dt / visual_wheel_radius
 	if spin > TAU * 100.0:
 		spin -= TAU * 100.0
 	steer_vis = lerpf(steer_vis, -c.steer * 0.5, minf(1.0, dt * 12.0))
