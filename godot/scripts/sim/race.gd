@@ -334,7 +334,9 @@ func physics(c: CarState, dt: float) -> void:
 	var c_max := minf(0.12, a_lat / (av * av))
 	var cc := c.steer * c_max
 	var k := T.curv(c.s)
-	var dsdt := v * cos(c.yaw) / maxf(0.35, 1.0 - k * c.d)
+	# Tight inside bends must not turn a small steering offset into a
+	# near-threefold burst of track progress and camera speed.
+	var dsdt := v * cos(c.yaw) / maxf(0.8, 1.0 - k * c.d)
 	var asst: float
 	if c.is_player and not c.autopilot:
 		asst = assist * (1.5 if absf(c.steer) < 0.05 else 1.0)
@@ -745,7 +747,7 @@ func ai_drive(c: CarState, dt: float) -> void:
 	var k := T.curv(c.s)
 	var lk := maxf(10.0, v * 0.6)
 	var yaw_des := atan2(ai.d_t - c.d, lk)
-	var dsdt := c.v * cos(c.yaw) / maxf(0.35, 1.0 - k * c.d)
+	var dsdt := c.v * cos(c.yaw) / maxf(0.8, 1.0 - k * c.d)
 	var c_max := minf(0.12, c.def.grip * 22.0 * (0.93 if wet else 1.0) / (v * v))
 	var c_need := ((yaw_des - c.yaw) / 0.3 + k * dsdt + BOT_ASSIST * c.yaw * minf(1.0, v / 10.0)) / v
 	c.ctrl.steer = clampf(c_need / c_max, -1.0, 1.0)

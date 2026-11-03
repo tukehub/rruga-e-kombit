@@ -67,6 +67,20 @@ func _ready() -> void:
 	sample_car.progress = 100.0
 	sample_car.s = 0.0
 	check(is_equal_approx(float(render_pose.sample(previous, sample_car, 0.0, 100.0).s), 0.0), "render interpolation snaps respawn")
+	# A very tight inside bend must not accelerate progress toward 3x speed.
+	var bend_track := RaceTrack.load_city("tirane")
+	bend_track.K.fill(0.1)
+	var bend_race := Race.new(bend_track, {"seed": 42})
+	bend_race.started = true
+	var bend_car := bend_race.player
+	bend_car.progress = 100.0
+	bend_car.s = bend_track.mod_s(100.0)
+	bend_car.d = 8.0
+	bend_car.yaw = 0.0
+	bend_car.v = 30.0
+	bend_car.ctrl.gas = false
+	bend_race.physics(bend_car, 1.0 / 60.0)
+	check(bend_car.progress - 100.0 <= 0.625, "inside bend keeps track progress bounded")
 	var sim_count := 0
 	for city in Data.CITIES:
 		if not FileAccess.file_exists("res://assets/cities/%s/track.json" % city.id):
