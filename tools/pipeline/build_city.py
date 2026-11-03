@@ -281,6 +281,70 @@ def smooth_tirana_jog(dense):
     return out
 
 
+def repair_tirana_bends(dense, half_width):
+    """Smooth tight sections before terrain and scenery clearance are built.
+
+    Sharp changes in the centerline otherwise fold the inside edge of a 20m
+    road back over itself. Only neighborhoods of unsafe edges are smoothed;
+    the remaining OSM-derived route stays in place.
+    """
+    tangent = np.roll(dense, -1, axis=0) - np.roll(dense, 1, axis=0)
+    tangent /= np.maximum(np.linalg.norm(tangent, axis=1, keepdims=True), 1e-9)
+    normals = np.stack((-tangent[:, 1], tangent[:, 0]), axis=1)
+    delta = np.roll(dense, -1, axis=0) - dense
+    normal_delta = np.roll(normals, -1, axis=0) - normals
+    forward = np.sum(delta * tangent, axis=1)
+    inward_loss = half_width * np.abs(np.sum(normal_delta * tangent, axis=1))
+    unsafe = forward - inward_loss < SAMPLE * 0.45
+    if not np.any(unsafe):
+        return dense
+    influence = np.zeros(len(dense))
+    for offset in range(-40, 41):
+        distance = abs(offset)
+        blend = 1.0 if distance <= 20 else 0.5 + 0.5 * np.cos(np.pi * (distance - 20) / 20.0)
+        influence = np.maximum(influence, np.roll(unsafe, offset) * blend)
+    weights = np.exp(-0.5 * (np.arange(-24, 25) / 8.0) ** 2)
+    weights /= weights.sum()
+    smoothed = sum(np.roll(dense, offset, axis=0) * weight
+                   for offset, weight in zip(range(-24, 25), weights))
+    return dense + influence[:, None] * (smoothed - dense)
+
+
+def route_tirana_square(dense):
+    """Add a fictional racing loop through the pedestrian square.
+
+    Skanderbeg Square is pedestrianised; for the game only, join Toptani to
+    the boulevard via a 270-degree loop around its monument. Coordinates are
+    metres in the Tirana projection, and both joins preserve the OSM route's
+    tangent. Rebuilding from this source also clears buildings, props, side
+    roads and conforms terrain along the new race corridor.
+    """
+    from scipy.interpolate import CubicSpline
+
+    start = np.array([185.0, 23.0])
+    end = np.array([33.0, 175.0])
+    i = int(np.argmin(np.linalg.norm(dense - start, axis=1)))
+    j = int(np.argmin(np.linalg.norm(dense - end, axis=1)))
+    if i < 1 or j <= i + 10 or j >= len(dense) - 1:
+        raise ValueError('Tirana square endpoints do not match expected route')
+    if np.linalg.norm(dense[i] - start) > 10 or np.linalg.norm(dense[j] - end) > 10:
+        raise ValueError('Tirana square route no longer connects to OSM route')
+    waypoints = np.asarray([
+        dense[i], [150, 27], [110, 32], [80, 32], [52, 25], [30, 10],
+        [20, -20], [13, -60], [0, -115], [-35, -150], [-75, -155],
+        [-115, -125], [-130, -85], [-125, -45], [-105, -10], [-70, 20],
+        [-38, 40], [-5, 60], [15, 90], [22, 120], [27, 145], dense[j],
+    ], dtype=float)
+    along = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(waypoints, axis=0), axis=1))]
+    t0 = dense[i + 1] - dense[i - 1]
+    t1 = dense[j + 1] - dense[j - 1]
+    t0 /= np.linalg.norm(t0)
+    t1 /= np.linalg.norm(t1)
+    spline = CubicSpline(along, waypoints, axis=0, bc_type=((1, t0), (1, t1)))
+    inserted = spline(np.linspace(0.0, along[-1], int(along[-1] / SAMPLE) + 1))
+    return np.vstack([dense[:i], inserted, dense[j + 1:]])
+
+
 def smooth_elevation(y, spacing):
     y = smooth_closed(y[:, None], 16, 4)[:, 0]
     for _ in range(12):
@@ -847,6 +911,10 @@ def build(cid, route_only=False):
     dense, length = resample_closed(dense, SAMPLE)
     if cid == 'tirane':
         dense = smooth_tirana_jog(dense)
+        dense, length = resample_closed(dense, SAMPLE)
+        dense = route_tirana_square(dense)
+        dense, length = resample_closed(dense, SAMPLE)
+        dense = repair_tirana_bends(dense, hw)
         dense, length = resample_closed(dense, SAMPLE)
     log(f'  track length {length:.0f} m, {len(dense)} samples')
 

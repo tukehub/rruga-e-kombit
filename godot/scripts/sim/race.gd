@@ -367,7 +367,7 @@ func physics(c: CarState, dt: float) -> void:
 	var tangent := Vector2(tangent3.x, tangent3.z).normalized()
 	var normal := Vector2(normal3.x, normal3.z).normalized()
 	var base_delta := Vector2.ZERO
-	for i in 3:
+	for i in 4:
 		var next := T.pos(c.s + s_step, c.d)
 		base_delta = Vector2(next.x - origin.x, next.z - origin.z)
 		var forward := base_delta.dot(tangent)
@@ -375,9 +375,19 @@ func physics(c: CarState, dt: float) -> void:
 			s_step = 0.0
 			base_delta = Vector2.ZERO
 			break
-		if absf(forward) <= absf(longitudinal_step) + 0.00001:
+		if absf(absf(forward) - absf(longitudinal_step)) <= 0.0001:
 			break
-		s_step *= absf(longitudinal_step / forward)
+		# The inside lane is shorter than the centreline. Match actual road
+		# displacement in both directions, so a bend cannot make a car crawl.
+		# A finite bound also protects against malformed or very tight routes.
+		var ratio := clampf(absf(longitudinal_step / forward), 0.25, 3.0)
+		s_step = clampf(s_step * ratio, -absf(longitudinal_step) * 4.0, absf(longitudinal_step) * 4.0)
+	if not is_zero_approx(s_step):
+		var refined := T.pos(c.s + s_step, c.d)
+		base_delta = Vector2(refined.x - origin.x, refined.z - origin.z)
+		if base_delta.dot(tangent) * longitudinal_step <= 0.0:
+			s_step = 0.0
+			base_delta = Vector2.ZERO
 	# Cancel sideways motion caused by normal interpolation itself, subject to
 	# the same lateral bound as steering and impacts.
 	lateral_step = clampf(lateral_step - base_delta.dot(normal), -lateral_limit * dt, lateral_limit * dt)
