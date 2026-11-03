@@ -13,6 +13,18 @@ var lamp_emis: StandardMaterial3D
 var night := 1.0
 var landmarks: Array = []
 
+# A small near-camera 3D pool travels around the circuit; distant trees use
+# low-cost cutouts.  No per-tree nodes or 3D trees are created per frame.
+const NEAR_TREE_LIMIT := 24
+const NEAR_TREE_RADIUS := 90.0
+var _tree_refs: Array = []
+var _tree_chunks := {}
+var _near_marked: Array = []
+var _near_leaves: MultiMesh
+var _near_branches: MultiMesh
+var _tree_lod_last := 0
+
+
 
 func load_city(city_id: String, terrain: Terrain) -> void:
 	var path := "res://assets/cities/%s/props.json" % city_id
@@ -147,58 +159,41 @@ func _tree_meshes() -> Array:
 
 
 func _pilot_leaf_mesh() -> ArrayMesh:
-	return _tree_meshes()[0]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1949
+	for i in 160:
+		var az := rng.randf_range(0.0, TAU)
+		var y := rng.randf_range(-1.0, 1.0)
+		var r := sqrt(maxf(0.0, 1.0 - y * y)) * rng.randf_range(0.28, 1.0)
+		var centre := Vector3(cos(az) * r * 2.15, 4.9 + y * 1.9, sin(az) * r * 2.15)
+		var rot := rng.randf_range(0.0, TAU)
+		var axis := Vector3(cos(rot), 0.0, sin(rot))
+		var up := Vector3(0.0, 1.0, 0.0).rotated(axis, rng.randf_range(-0.65, 0.65))
+		var right := axis * rng.randf_range(0.45, 0.70)
+		up *= rng.randf_range(0.65, 0.95)
+		var normal := right.cross(up).normalized()
+		var corners := [centre - right - up, centre + right - up, centre + right + up, centre - right + up]
+		var uvs := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for index in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(normal)
+			st.set_uv(uvs[index])
+			st.add_vertex(corners[index])
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = load("res://assets/foliage/polyhaven_tree_leaves.png")
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	material.alpha_scissor_threshold = 0.45
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.roughness = 1.0
+	st.set_material(material)
+	return st.commit()
 
 
 func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
 	var meshes := _tree_meshes()
 	var keep := int(trees.size() * float(Quality.p.tree_mul))
-	var selected: Dictionary = {}
-	if city_id == "tirane":
-		var route: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/tirane/track.json"))
-		# Prefer trees along the first ~250 m of road, rather than trees behind
-		# buildings that happen to be close to the start in a straight line.
-		# Keep their mapped positions, with a margin beyond the 10 m road edge.
-		var points: Array = route.pts
-		var start: Array = points[0]
-		var segments := []
-		var along_m := 0.0
-		for j in range(1, points.size()):
-			var a: Array = points[j - 1]
-			var b: Array = points[j]
-			var p0 := Vector2(float(a[0]), float(a[2]))
-			var p1 := Vector2(float(b[0]), float(b[2]))
-			var length := p0.distance_to(p1)
-			segments.append([p0, p1, along_m, length])
-			along_m += length
-			if along_m >= 250.0:
-				break
-		var candidates := []
-		for i in keep:
-			var t: Array = trees[i]
-			var pos := Vector2(float(t[0]), float(t[2]))
-			if pos.distance_squared_to(Vector2(float(start[0]), float(start[2]))) > 300.0 * 300.0:
-				continue
-			var nearest := INF
-			var along := 0.0
-			for segment in segments:
-				var p0: Vector2 = segment[0]
-				var p1: Vector2 = segment[1]
-				var direction := p1 - p0
-				var denom := direction.length_squared()
-				var fraction := clampf((pos - p0).dot(direction) / denom, 0.0, 1.0) if denom > 0.0 else 0.0
-				var d := pos.distance_squared_to(p0 + direction * fraction)
-				if d < nearest:
-					nearest = d
-					along = float(segment[2]) + fraction * float(segment[3])
-			if nearest >= 14.0 * 14.0 and nearest <= 34.0 * 34.0:
-				candidates.append([along, nearest, i])
-		candidates.sort_custom(func(a, b): return a[0] < b[0] if a[0] != b[0] else a[1] < b[1])
-		for i in mini(24, candidates.size()):
-			selected[candidates[i][2]] = true
-	# A single world-sized MultiMesh has one bounding box and cannot cull its
-	# individual trees. Split by location so camera/frustum and distance culling
-	# can omit whole groups, including from the rear-view camera.
+	# Keep spatial batches so the renderer culls distant cutout trees.
 	var chunks := {}
 	for i in keep:
 		var t: Array = trees[i]
@@ -211,23 +206,101 @@ func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
 		var basis := Basis(Vector3.UP, float(i) * 1.37).scaled(Vector3(sc * breadth, sc * height, sc * (2.0 - breadth)))
 		var key := Vector2i(floori(float(t[0]) / TREE_CHUNK_SIZE), floori(float(t[2]) / TREE_CHUNK_SIZE))
 		if not chunks.has(key):
-			chunks[key] = {"normal": [], "pilot": [], "trunk": []}
-		var centre := Vector3((key.x + 0.5) * TREE_CHUNK_SIZE, 0, (key.y + 0.5) * TREE_CHUNK_SIZE)
-		var tr := Transform3D(basis, Vector3(float(t[0]), y, float(t[2])) - centre)
-		chunks[key]["pilot" if selected.has(i) else "normal"].append(tr)
-		chunks[key]["trunk"].append(tr)
-	var pilot_mesh := _pilot_leaf_mesh() if not selected.is_empty() else null
+			chunks[key] = []
+		var origin := Vector3((key.x + 0.5) * TREE_CHUNK_SIZE, 0, (key.y + 0.5) * TREE_CHUNK_SIZE)
+		var world_pos := Vector3(float(t[0]), y, float(t[2]))
+		chunks[key].append({"local": Transform3D(basis, world_pos - origin), "world": Transform3D(basis, world_pos)})
+	_tree_refs.clear()
+	_tree_chunks.clear()
+	_near_marked.clear()
 	for key: Vector2i in chunks:
 		var origin := Vector3((key.x + 0.5) * TREE_CHUNK_SIZE, 0, (key.y + 0.5) * TREE_CHUNK_SIZE)
-		var groups: Dictionary = chunks[key]
-		_tree_chunk(meshes[0], groups.normal, origin, float(Quality.p.props_dist) * 1.3, Quality.preset != "low", "TreeCanopy")
-		if pilot_mesh != null:
-			_tree_chunk(pilot_mesh, groups.pilot, origin, float(Quality.p.props_dist) * 1.3, false, "TreeDetail")
+		var entries: Array = chunks[key]
+		var transforms := []
+		for entry in entries:
+			transforms.append(entry.local)
+		var node := _tree_chunk(meshes[0], transforms, origin, float(Quality.p.props_dist) * 1.3, Quality.preset != "low", "TreeCanopy")
+		if city_id == "tirane":
+			var refs := []
+			for i in entries.size():
+				var ref := {"mm": node.multimesh, "index": i, "local": entries[i].local, "world": entries[i].world}
+				_tree_refs.append(ref)
+				refs.append(ref)
+			_tree_chunks[key] = refs
+	if city_id == "tirane" and not _tree_refs.is_empty():
+		var packed: PackedScene = load("res://assets/foliage/tree_small_02_mobile.glb")
+		var model := packed.instantiate()
+		var branches := _find_tree_mesh(model)
+		model.free()
+		if branches != null:
+			_near_leaves = _make_tree_pool(_pilot_leaf_mesh(), "Tree3DLeaves")
+			_near_branches = _make_tree_pool(branches, "Tree3DBranches")
 
 
-func _tree_chunk(mesh: Mesh, transforms: Array, origin: Vector3, distance: float, shadows: bool, node_name: String) -> void:
-	if transforms.is_empty():
+func _make_tree_pool(mesh: Mesh, node_name: String) -> MultiMesh:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = NEAR_TREE_LIMIT
+	mm.visible_instance_count = 0
+	var node := MultiMeshInstance3D.new()
+	node.name = node_name
+	node.multimesh = mm
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node, true)
+	return mm
+
+
+func _update_tree_lod(player_pos: Vector3, force := false) -> void:
+	if _near_leaves == null or _near_branches == null:
 		return
+	var now := Time.get_ticks_msec()
+	if not force and now - _tree_lod_last < 400:
+		return
+	_tree_lod_last = now
+	var candidates := []
+	var x_min := floori((player_pos.x - NEAR_TREE_RADIUS) / TREE_CHUNK_SIZE)
+	var x_max := floori((player_pos.x + NEAR_TREE_RADIUS) / TREE_CHUNK_SIZE)
+	var z_min := floori((player_pos.z - NEAR_TREE_RADIUS) / TREE_CHUNK_SIZE)
+	var z_max := floori((player_pos.z + NEAR_TREE_RADIUS) / TREE_CHUNK_SIZE)
+	for x in range(x_min, x_max + 1):
+		for z in range(z_min, z_max + 1):
+			for ref in _tree_chunks.get(Vector2i(x, z), []):
+				var world: Transform3D = ref.world
+				var delta := Vector2(world.origin.x - player_pos.x, world.origin.z - player_pos.z)
+				var distance := delta.length_squared()
+				if distance <= NEAR_TREE_RADIUS * NEAR_TREE_RADIUS:
+					candidates.append([distance, ref])
+	candidates.sort_custom(func(a, b): return a[0] < b[0])
+	for ref in _near_marked:
+		ref.mm.set_instance_transform(ref.index, ref.local)
+	_near_marked.clear()
+	var count := mini(NEAR_TREE_LIMIT, candidates.size())
+	for i in count:
+		var ref: Dictionary = candidates[i][1]
+		var hidden: Transform3D = ref.local
+		hidden.basis = Basis.from_scale(Vector3.ZERO)
+		ref.mm.set_instance_transform(ref.index, hidden)
+		_near_leaves.set_instance_transform(i, ref.world)
+		_near_branches.set_instance_transform(i, ref.world)
+		_near_marked.append(ref)
+	_near_leaves.visible_instance_count = count
+	_near_branches.visible_instance_count = count
+
+
+func _find_tree_mesh(node: Node) -> Mesh:
+	if node is MeshInstance3D:
+		return node.mesh
+	for child in node.get_children():
+		var found := _find_tree_mesh(child)
+		if found != null:
+			return found
+	return null
+
+
+func _tree_chunk(mesh: Mesh, transforms: Array, origin: Vector3, distance: float, shadows: bool, node_name: String) -> MultiMeshInstance3D:
+	if transforms.is_empty():
+		return null
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = mesh
@@ -243,6 +316,7 @@ func _tree_chunk(mesh: Mesh, transforms: Array, origin: Vector3, distance: float
 	node.visibility_range_end = distance + TREE_CHUNK_SIZE * 0.71
 	node.visibility_range_end_margin = 80.0
 	add_child(node, true)
+	return node
 
 
 func set_night(n: float) -> void:
@@ -253,6 +327,7 @@ func set_night(n: float) -> void:
 
 ## Move the real lights to the nearest lamps ahead of the player.
 func update_lights(player_pos: Vector3, forward: Vector3) -> void:
+	_update_tree_lod(player_pos)
 	if lights.is_empty() or track_lamps.is_empty():
 		return
 	var cand := []

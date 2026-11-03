@@ -14,7 +14,7 @@ Copernicus DEM GLO-30 — © DLR e.V. 2010–2014 dhe © Airbus Defence and Spac
 [b]Teksturat dhe qiejt (HDRI)[/b]
 Poly Haven — CC0 1.0 (polyhaven.com).
 Fasadat: përshtatur nga Modular Urban Apartments Facade, James Ray Cock, CC0 1.0 (polyhaven.com/a/modular_urban_apartments_facade).
-Gjethet: Tree Small 02 nga Rico Cilliers dhe Rob Tuytel — CC0 1.0 (polyhaven.com/a/tree_small_02).
+Pemët (model i thjeshtuar dhe gjethet): Tree Small 02 nga Rico Cilliers dhe Rob Tuytel — CC0 1.0 (https://polyhaven.com/a/tree_small_02).
 
 [b]Fotografia e pemës[/b]
 “Tree Transparent Background” nga PNG all, CC BY-SA 4.0; përdoret si teksturë për pemët.
