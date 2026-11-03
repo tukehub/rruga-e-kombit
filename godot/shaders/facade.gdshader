@@ -4,6 +4,8 @@ render_mode cull_back, depth_draw_opaque, specular_schlick_ggx;
 // Facades from the OSM pipeline: UV.x = metres along facade, UV.y = height in metres.
 // COLOR.rgb = tint, COLOR.a = 1 glass tower / 0 plaster (any value between blends).
 uniform sampler2D tex_facade : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_facade_small : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_facade_double : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tex_plaster : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tex_plaster_n : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tex_concrete : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -85,7 +87,18 @@ void fragment() {
 
 	// A photographic-style facade tile rendered from Poly Haven's CC0 urban
 	// window module. Apply it to masonry; glass towers retain their materials.
-	vec3 tile = texture(tex_facade, vec2(fuv.x / 3.0, -fuv.y / 3.0)).rgb;
+	// Building tint is constant across its walls, so the selected window style
+	// stays consistent even as the camera moves or a wall crosses a chunk.
+	float variant = hash(vcol.rg * 97.0 + vcol.b);
+	vec2 facade_uv = vec2(fuv.x / 3.0, -fuv.y / 3.0);
+	vec3 tile;
+	if (variant < 0.33) {
+		tile = texture(tex_facade_small, facade_uv).rgb;
+	} else if (variant < 0.66) {
+		tile = texture(tex_facade_double, facade_uv).rgb;
+	} else {
+		tile = texture(tex_facade, facade_uv).rgb;
+	}
 	float luminance = dot(tile, vec3(0.2126, 0.7152, 0.0722));
 	// Preserve the source's blue glazing instead of converting the whole tile
 	// to gray. The mask comes from the existing sample, so it costs no texture

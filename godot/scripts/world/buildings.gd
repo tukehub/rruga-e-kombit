@@ -19,6 +19,8 @@ func load_city(city_id: String) -> void:
 	facade_mat = ShaderMaterial.new()
 	facade_mat.shader = FACADE_SHADER
 	facade_mat.set_shader_parameter("tex_facade", load("res://assets/textures/urban_facade_tile.png"))
+	facade_mat.set_shader_parameter("tex_facade_small", load("res://assets/textures/urban_facade_small.png"))
+	facade_mat.set_shader_parameter("tex_facade_double", load("res://assets/textures/urban_facade_double.png"))
 	facade_mat.set_shader_parameter("tex_plaster", load("res://assets/textures/plaster_diff.jpg"))
 	facade_mat.set_shader_parameter("tex_plaster_n", load("res://assets/textures/plaster_nor.jpg"))
 	facade_mat.set_shader_parameter("tex_concrete", load("res://assets/textures/concrete_wall_diff.jpg"))
