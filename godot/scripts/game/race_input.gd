@@ -13,6 +13,7 @@ const PEDAL_SIZE := Vector2(112, 128)
 const FIRE_SIZE := Vector2(164, 64)
 const STEER_SIZE := Vector2(260, 96)
 const STEER_PEDAL_GAP := 48.0
+const STEER_LEFT_EXPANSION := 48.0
 
 var steer := 0.0
 var gas := false
@@ -65,12 +66,13 @@ func control_rect(zone: String) -> Rect2:
 		"back":
 			return Rect2(Vector2(EDGE, size.y - EDGE - PEDAL_SIZE.y - 16 - FIRE_SIZE.y), FIRE_SIZE)
 		"steer":
-			# Keep a comfortable gap from both pedals and the road center clear.
-			# On wide phones the pad moves inward rather than crowding the brake.
+			# Expand left from the old pad while leaving its right edge in place.
+			# On narrower displays, use only the space available before the brake.
 			var margin := EDGE + PEDAL_SIZE.x + STEER_PEDAL_GAP
 			var width := minf(STEER_SIZE.x, maxf(0.0, size.x - 2.0 * margin))
-			var left := clampf(size.x * 0.2, margin, size.x - margin - width)
-			return Rect2(Vector2(left, size.y - 28 - STEER_SIZE.y), Vector2(width, STEER_SIZE.y))
+			var left := clampf(size.x * 0.2, margin, maxf(margin, size.x - margin - width))
+			var expansion := minf(STEER_LEFT_EXPANSION, maxf(0.0, left - margin))
+			return Rect2(Vector2(left - expansion, size.y - 28 - STEER_SIZE.y), Vector2(width + expansion, STEER_SIZE.y))
 	return Rect2()
 
 
@@ -204,6 +206,9 @@ func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 
 func _set_pad(x: float) -> void:
 	var rect := control_rect("steer")
+	if rect.size.x <= 0.0:
+		_pad_steer = 0.0
+		return
 	_pad_steer = clampf((x - rect.get_center().x) / (rect.size.x * 0.38), -1.0, 1.0)
 	if absf(_pad_steer) < 0.1:
 		_pad_steer = 0.0

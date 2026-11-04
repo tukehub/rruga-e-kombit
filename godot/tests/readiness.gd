@@ -159,12 +159,18 @@ func _ready() -> void:
 	check(not controls.control_rect("gas").intersects(controls.control_rect("fire")), "gas and fire do not overlap")
 	check(not controls.control_rect("brake").intersects(controls.control_rect("back")), "brake and rear fire do not overlap")
 	check(not controls.control_rect("brake").intersects(controls.control_rect("steer")), "brake and steering do not overlap")
-	for viewport_width in [960.0, 1280.0, 1600.0]:
+	for viewport_width in [640.0, 960.0, 1280.0, 1600.0]:
 		controls.size = Vector2(viewport_width, 720)
 		var steering_rect := controls.control_rect("steer")
 		var brake_rect := controls.control_rect("brake")
 		var gas_rect := controls.control_rect("gas")
-		check(steering_rect.size.x > 204.0, "wider steering pad")
+		var margin := RaceInput.EDGE + RaceInput.PEDAL_SIZE.x + RaceInput.STEER_PEDAL_GAP
+		var previous_width := minf(RaceInput.STEER_SIZE.x, maxf(0.0, viewport_width - 2.0 * margin))
+		var previous_left := clampf(viewport_width * 0.2, margin, maxf(margin, viewport_width - margin - previous_width))
+		check(is_equal_approx(steering_rect.end.x, previous_left + previous_width), "steering right edge stays fixed")
+		check(steering_rect.size.x >= previous_width, "steering grows only to the left")
+		if viewport_width >= 1280.0:
+			check(is_equal_approx(steering_rect.position.x, previous_left - RaceInput.STEER_LEFT_EXPANSION), "left steering area expands")
 		check(steering_rect.position.x - brake_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from brake")
 		check(gas_rect.position.x - steering_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from gas")
 	controls.size = Vector2(1280, 720)
@@ -188,9 +194,15 @@ func _ready() -> void:
 	Settings.touch_steer = true
 	touch = touch.duplicate()
 	touch.index = 5
-	touch.position = controls.control_rect("steer").get_center() + Vector2(80, 0)
+	# This is inside the new left-hand section, beyond the old pad bounds.
+	touch.position = Vector2(1280.0 * 0.2 - 24.0, controls.control_rect("steer").get_center().y)
 	controls._gui_input(touch)
-	check(controls.gas and controls.brake and controls._pad_steer > 0.5, "steering works with pedals held")
+	check(controls.gas and controls.brake and controls._pad_steer < -0.5, "new left steering area works with pedals held")
+	var steering_drag := InputEventScreenDrag.new()
+	steering_drag.index = 5
+	steering_drag.position = controls.control_rect("steer").get_center() + Vector2(80, 0)
+	controls._gui_input(steering_drag)
+	check(controls.gas and controls.brake and controls._pad_steer > 0.5, "steering drag works with pedals held")
 	Settings.touch_steer = previous_touch_steer
 	touch = touch.duplicate()
 	touch.index = 2
