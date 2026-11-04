@@ -184,6 +184,11 @@ func load_anchors(anchors: Array) -> void:
 			var plaza := preload("res://scripts/world/plaza_tower.gd").new()
 			plaza.name = "PlazaTower"
 			root.add_child(plaza)
+		elif str(anchor.id) in ["national_museum", "prime_minister"]:
+			var civic := preload("res://scripts/world/civic_landmarks.gd").new()
+			civic.name = "CivicLandmark"
+			root.add_child(civic)
+			civic.build(str(anchor.id))
 		else:
 			build(root, str(anchor.id))
 

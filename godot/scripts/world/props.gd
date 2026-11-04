@@ -39,6 +39,13 @@ func load_city(city_id: String, terrain: Terrain) -> void:
 	var models := Landmarks.new()
 	add_child(models)
 	models.load_anchors(landmarks)
+	if city_id == "tirane":
+		var cafes: Array = p.get("cafes", [])
+		if not cafes.is_empty():
+			var terraces := preload("res://scripts/world/blloku_cafes.gd").new()
+			terraces.name = "BllokuCafes"
+			add_child(terraces)
+			terraces.build(cafes)
 	_build_lamps(p.get("lamps", []), track_lamps)
 	_build_trees(p.get("trees", []), terrain, city_id)
 	light_slots = int(Quality.p.lamp_lights)
