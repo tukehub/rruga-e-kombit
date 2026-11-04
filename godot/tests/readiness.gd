@@ -199,11 +199,13 @@ func _ready() -> void:
 		var steering_rect := controls.control_rect("steer")
 		var brake_rect := controls.control_rect("brake")
 		var gas_rect := controls.control_rect("gas")
-		var margin := RaceInput.EDGE + RaceInput.PEDAL_SIZE.x + RaceInput.STEER_PEDAL_GAP
+		var margin := RaceInput.EDGE + RaceInput.PEDAL_SIZE.x + RaceInput.STEER_BASE_GAP
 		var previous_width := minf(RaceInput.STEER_SIZE.x, maxf(0.0, viewport_width - 2.0 * margin))
 		var previous_left := clampf(viewport_width * 0.2, margin, maxf(margin, viewport_width - margin - previous_width))
+		var old_expansion := minf(48.0, maxf(0.0, previous_left - margin))
 		check(is_equal_approx(steering_rect.end.x, previous_left + previous_width), "steering right edge stays fixed")
-		check(steering_rect.size.x >= previous_width, "steering grows only to the left")
+		check(steering_rect.position.x < previous_left - old_expansion, "steering grows left beyond previous version")
+		check(steering_rect.size.x > previous_width + old_expansion, "steering is wider than previous version")
 		if viewport_width >= 1280.0:
 			check(is_equal_approx(steering_rect.position.x, previous_left - RaceInput.STEER_LEFT_EXPANSION), "left steering area expands")
 		check(steering_rect.position.x - brake_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from brake")
@@ -230,7 +232,7 @@ func _ready() -> void:
 	touch = touch.duplicate()
 	touch.index = 5
 	# This is inside the new left-hand section, beyond the old pad bounds.
-	touch.position = Vector2(1280.0 * 0.2 - 24.0, controls.control_rect("steer").get_center().y)
+	touch.position = Vector2(1280.0 * 0.2 - 75.0, controls.control_rect("steer").get_center().y)
 	controls._gui_input(touch)
 	check(controls.gas and controls.brake and controls._pad_steer < -0.5, "new left steering area works with pedals held")
 	var steering_drag := InputEventScreenDrag.new()

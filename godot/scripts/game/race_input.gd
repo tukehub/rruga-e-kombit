@@ -12,8 +12,11 @@ const EDGE := 20.0
 const PEDAL_SIZE := Vector2(112, 128)
 const FIRE_SIZE := Vector2(164, 64)
 const STEER_SIZE := Vector2(260, 96)
-const STEER_PEDAL_GAP := 48.0
-const STEER_LEFT_EXPANSION := 48.0
+# Preserve the existing right edge while letting the pad grow toward the
+# brake. A 24-pixel clear strip still separates their touch targets.
+const STEER_BASE_GAP := 48.0
+const STEER_PEDAL_GAP := 24.0
+const STEER_LEFT_EXPANSION := 100.0
 
 var steer := 0.0
 var gas := false
@@ -68,10 +71,11 @@ func control_rect(zone: String) -> Rect2:
 		"steer":
 			# Expand left from the old pad while leaving its right edge in place.
 			# On narrower displays, use only the space available before the brake.
-			var margin := EDGE + PEDAL_SIZE.x + STEER_PEDAL_GAP
-			var width := minf(STEER_SIZE.x, maxf(0.0, size.x - 2.0 * margin))
-			var left := clampf(size.x * 0.2, margin, maxf(margin, size.x - margin - width))
-			var expansion := minf(STEER_LEFT_EXPANSION, maxf(0.0, left - margin))
+			var base_margin := EDGE + PEDAL_SIZE.x + STEER_BASE_GAP
+			var minimum_left := EDGE + PEDAL_SIZE.x + STEER_PEDAL_GAP
+			var width := minf(STEER_SIZE.x, maxf(0.0, size.x - 2.0 * base_margin))
+			var left := clampf(size.x * 0.2, base_margin, maxf(base_margin, size.x - base_margin - width))
+			var expansion := minf(STEER_LEFT_EXPANSION, maxf(0.0, left - minimum_left))
 			return Rect2(Vector2(left - expansion, size.y - 28 - STEER_SIZE.y), Vector2(width + expansion, STEER_SIZE.y))
 	return Rect2()
 
