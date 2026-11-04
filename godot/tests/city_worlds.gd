@@ -16,6 +16,16 @@ func _ready() -> void:
 		assert(scene.terrain != null and scene.buildings != null and scene.road != null)
 		assert(scene.road.get_node_or_null("RoadsideBarriers") != null, "road edges should be visible")
 		if city.id == "tirane":
+			var landmark_root: Node = null
+			for child in scene.props.get_children():
+				if child is Landmarks:
+					landmark_root = child
+					break
+			assert(landmark_root != null)
+			assert(landmark_root.get_node_or_null("skanderbeg/SkanderbegBronze") != null, "the square needs its detailed equestrian monument")
+			var stadium := landmark_root.get_node_or_null("air_albania/AirAlbaniaStadium/AirAlbaniaArchitecture") as MeshInstance3D
+			assert(stadium != null and stadium.mesh != null, "the Air Albania stadium must load in Tirana")
+			assert(stadium.mesh.get_aabb().size.y >= 111.0, "the stadium's corner tower should be visible at realistic height")
 			# Ensure grouping keeps every tree and creates local batches that the
 			# renderer can cull independently.
 			var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/tirane/props.json"))

@@ -171,7 +171,12 @@ func load_anchors(anchors: Array) -> void:
 		add_child(root)
 		root.position = Vector3(anchor.x, anchor.y, anchor.z)
 		root.rotation.y = deg_to_rad(float(anchor.get("yaw", 0)))
-		build(root, str(anchor.id))
+		if str(anchor.id) == "air_albania":
+			var stadium := preload("res://scripts/world/air_albania_stadium.gd").new()
+			stadium.name = "AirAlbaniaStadium"
+			root.add_child(stadium)
+		else:
+			build(root, str(anchor.id))
 
 func build(root: Node3D, id: String) -> void:
 	var stone := Color("b7aa91")
@@ -312,19 +317,46 @@ func build(root: Node3D, id: String) -> void:
 					windows.append([Vector3(side * 25.1, y, 0), Vector3(0.18, 1.8, 22)])
 			_boxes(root, windows, Color("728b96"))
 		"skanderbeg":
-			_box(root, Vector3(0, 1.6, 0), Vector3(10, 3.2, 6), stone)
-			# Horse body, four legs, head and raised neck; mounted rider and sword.
-			_box(root, Vector3(0, 5.0, 0), Vector3(2, 2, 4.5), bronze)
-			for x in [-0.65, 0.65]:
-				for z in [-1.5, 1.5]:
-					_column(root, Vector3(x, 3.7, z), 0.25, 2.2, bronze)
-			var neck := _box(root, Vector3(0, 6, -1.9), Vector3(0.8, 2.5, 0.9), bronze)
-			neck.rotation.x = -0.3
-			_box(root, Vector3(0, 7.2, -2.4), Vector3(0.8, 0.8, 1.3), bronze)
-			_column(root, Vector3(0, 7, 0), 0.65, 2.2, bronze)
-			_column(root, Vector3(0, 8.6, 0), 0.45, 0.8, bronze)
-			var sword := _box(root, Vector3(1.0, 9, -0.5), Vector3(0.12, 3, 0.15), Color("b8b6a0"))
-			sword.rotation.z = -0.3
+			# Photogrammetric bronze adapted from two CC BY scans. It is an
+			# approximation, not a scan of Tirana's actual monument.
+			var plinth := _box(root, Vector3(0, 1.6, 0), Vector3(10, 3.2, 6), stone)
+			var plinth_mat := StandardMaterial3D.new()
+			plinth_mat.albedo_texture = load("res://assets/landmarks/plinth_stone.jpg")
+			plinth_mat.uv1_triplanar = true
+			plinth_mat.uv1_scale = Vector3(0.17, 0.17, 0.17)
+			plinth_mat.roughness = 0.95
+			plinth.material_override = plinth_mat
+			var sculpture_scene: PackedScene = load("res://assets/landmarks/skanderbeg_approx.glb")
+			if sculpture_scene != null:
+				var sculpture: Node3D = sculpture_scene.instantiate()
+				sculpture.name = "SkanderbegBronze"
+				sculpture.position.y = 3.2
+				root.add_child(sculpture)
+			# The scans have no sword. Give the figure a bronze sword at the
+			# forward hand. Its horizontal projection runs along the finish-road
+			# tangent (the start/finish stripe itself runs across that tangent).
+			var sword := Node3D.new()
+			sword.name = "SkanderbegSword"
+			sword.position = Vector3(-0.42, 8.5, 0.70)
+			var sword_axis := Vector3(0.541, 2.1, 0.841).normalized()
+			sword.quaternion = Quaternion(Vector3.UP, sword_axis)
+			root.add_child(sword)
+			var blade := BoxMesh.new()
+			blade.size = Vector3(0.13, 2.0, 0.045)
+			_part(sword, blade, Vector3(0, 1.05, 0), Color("6e7e6a"), 0.35)
+			var tip := CylinderMesh.new()
+			tip.bottom_radius = 0.065
+			tip.top_radius = 0.0
+			tip.height = 0.22
+			tip.radial_segments = 4
+			_part(sword, tip, Vector3(0, 2.16, 0), Color("6e7e6a"), 0.35)
+			var hilt := CylinderMesh.new()
+			hilt.top_radius = 0.065
+			hilt.bottom_radius = 0.075
+			hilt.height = 0.35
+			hilt.radial_segments = 8
+			_part(sword, hilt, Vector3(0, -0.12, 0), bronze, 0.25)
+			_box(sword, Vector3(0, 0.05, 0), Vector3(0.42, 0.07, 0.09), bronze)
 		"castle_berat", "castle_gjirokaster", "rozafa":
 			_box(root, Vector3(0, 4, 0), Vector3(85, 8, 38), stone.darkened(0.2))
 			for x in [-42.0, -14.0, 14.0, 42.0]:

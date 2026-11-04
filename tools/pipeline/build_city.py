@@ -345,6 +345,27 @@ def route_tirana_square(dense):
     return np.vstack([dense[:i], inserted, dense[j + 1:]])
 
 
+def place_tirana_finish(points, city, proj):
+    """Put the finish on the approach to Skanderbeg's monument.
+
+    Reordering the closed loop does not alter the road or the scenery; it
+    puts the start/finish and race grid by the square on every rebuild. The
+    line is about 42 m before the closest point: the statue is then ahead of
+    drivers as they approach the line instead of disappearing to one side.
+    """
+    monument = next(item for item in city['landmarks'] if item['id'] == 'skanderbeg')
+    x, z = proj.to_xz(*monument['ll'])
+    x += monument.get('offset_x', 0.0)
+    z += monument.get('offset_z', 0.0)
+    start = min(range(len(points)), key=lambda i: (points[i][0] - x) ** 2 + (points[i][2] - z) ** 2)
+    distance = 0.0
+    while distance < 40.0:
+        prev = (start - 1) % len(points)
+        distance += math.hypot(points[start][0] - points[prev][0], points[start][2] - points[prev][2])
+        start = prev
+    return points[start:] + points[:start]
+
+
 def smooth_elevation(y, spacing):
     y = smooth_closed(y[:, None], 16, 4)[:, 0]
     for _ in range(12):
@@ -953,6 +974,8 @@ def build(cid, route_only=False):
     # 3. track export
     step = int(OUT_SPACING / SAMPLE)
     pts = [[round(float(dense[i, 0]), 2), round(float(y[i]), 2), round(float(dense[i, 1]), 2)] for i in range(0, len(dense), step)]
+    if cid == 'tirane':
+        pts = place_tirana_finish(pts, city, proj)
     save_json(os.path.join(out, 'track.json'), {
         'id': cid, 'name': city['name'], 'hw': hw, 'length': round(length, 1), 'pts': pts,
         'style': city['style'], 'sea_level': sea_level,

@@ -36,6 +36,10 @@ CITIES = {
              'offset_x': -70, 'offset_z': -10, 'clear_half': (28, 16)},
             {'id': 'polytechnic', 'll': (41.3166196, 19.8217354), 'yaw': 0,
              'offset_x': -20.7, 'offset_z': -45.1, 'clear_half': (44, 12)},
+            # Approximate, unbranded rendering of the national stadium at its
+            # OSM position; the dedicated 112 m tower is part of the model.
+            {'id': 'air_albania', 'll': (41.3184, 19.8239), 'yaw': 12.5,
+             'clear_half': (91, 112)},
             {'id': 'cathedral', 'll': (41.326518, 19.81753), 'yaw': 0,
              'offset_x': -25, 'offset_z': -7, 'clear_half': (25, 17)},
             {'id': 'toptani', 'll': (41.327064, 19.822743), 'yaw': 0, 'offset_z': 6},
@@ -45,7 +49,7 @@ CITIES = {
         ],
         # Replace these specific OSM footprints with the original landmarks,
         # instead of drawing a generic extruded building through each model.
-        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121, 410277109, 410277110],
+        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121, 410277109, 410277110, 10311002, 795642504],
         'style': 'tirana',
     },
     'vlore': {
