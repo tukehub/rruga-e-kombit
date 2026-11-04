@@ -26,6 +26,11 @@ func _ready() -> void:
 			var stadium := landmark_root.get_node_or_null("air_albania/AirAlbaniaStadium/AirAlbaniaArchitecture") as MeshInstance3D
 			assert(stadium != null and stadium.mesh != null, "the Air Albania stadium must load in Tirana")
 			assert(stadium.mesh.get_aabb().size.y >= 111.0, "the stadium's corner tower should be visible at realistic height")
+			var plaza := landmark_root.get_node_or_null("plaza_tower/PlazaTower/PlazaTowerArchitecture") as MeshInstance3D
+			assert(plaza != null and plaza.mesh != null, "Plaza hotel must load in Tirana")
+			assert(plaza.mesh.get_aabb().size.y >= 84.0, "Plaza tower should have its approximately 85m height")
+			assert(landmark_root.get_node_or_null("namazgja/ReligiousLandmark") != null, "Namazgja mosque must load in Tirana")
+			assert(landmark_root.get_node_or_null("cathedral/ReligiousLandmark") != null, "Orthodox cathedral must load in Tirana")
 			# Ensure grouping keeps every tree and creates local batches that the
 			# renderer can cull independently.
 			var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/tirane/props.json"))

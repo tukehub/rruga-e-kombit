@@ -175,6 +175,15 @@ func load_anchors(anchors: Array) -> void:
 			var stadium := preload("res://scripts/world/air_albania_stadium.gd").new()
 			stadium.name = "AirAlbaniaStadium"
 			root.add_child(stadium)
+		elif str(anchor.id) in ["cathedral", "namazgja"]:
+			var building := preload("res://scripts/world/religious_landmarks.gd").new()
+			building.name = "ReligiousLandmark"
+			root.add_child(building)
+			building.build(str(anchor.id))
+		elif str(anchor.id) == "plaza_tower":
+			var plaza := preload("res://scripts/world/plaza_tower.gd").new()
+			plaza.name = "PlazaTower"
+			root.add_child(plaza)
 		else:
 			build(root, str(anchor.id))
 

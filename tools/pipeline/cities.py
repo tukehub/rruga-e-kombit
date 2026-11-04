@@ -26,6 +26,12 @@ CITIES = {
             {'id': 'pyramid', 'll': (41.323058, 19.821443), 'yaw': 0,
              'offset_x': 29, 'offset_z': -9, 'clear_half': (29, 29)},
             {'id': 'downtown_one', 'll': (41.324082, 19.823911), 'yaw': 0, 'offset_x': 5, 'offset_z': 12},
+            # 85 m Plaza/TID tower; move the race-game representation ten
+            # metres north to keep its full footprint clear of the circuit.
+            {'id': 'plaza_tower', 'll': (41.327574, 19.821557), 'yaw': 0,
+             'offset_z': -10, 'clear_half': (17, 18)},
+            {'id': 'namazgja', 'll': (41.3258077, 19.8241644), 'yaw': 0,
+             'clear_half': (26, 26)},
             # Roadside offsets are deliberate racing-game adaptations.
             # Keep full footprints outside the road and camera corridor.
             {'id': 'eyes_tirana', 'll': (41.328561, 19.815744), 'yaw': 0,
@@ -49,7 +55,7 @@ CITIES = {
         ],
         # Replace these specific OSM footprints with the original landmarks,
         # instead of drawing a generic extruded building through each model.
-        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121, 410277109, 410277110, 10311002, 795642504],
+        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121, 410277109, 410277110, 10311002, 795642504, 469424840, 461375120],
         'style': 'tirana',
     },
     'vlore': {
