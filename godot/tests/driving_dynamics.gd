@@ -262,6 +262,29 @@ func _test_real_turns() -> void:
 					# steers away; check heading where normal travel is possible.
 					if movement.length() > maxf(0.02, speed * dt * 0.4):
 						assert(movement.normalized().dot(direction) > 0.90, "body and travel direction should agree in a normal turn")
+	# Sample the entire real circuit, not only the specific bends above. Without
+	# a collision, tire grip should keep the actual travel close to body heading.
+	for s in range(0, int(track.L), 40):
+		for d in [-8.0, 0.0, 8.0]:
+			for yaw in [-0.3, 0.0, 0.3]:
+				car.progress = float(s)
+				car.s = float(s)
+				car.d = d
+				car.v = 30.0
+				car.yaw = yaw
+				car.lat_v = 0.0
+				car.steer = 0.0
+				car.ctrl.gas = false
+				car.ctrl.brake = false
+				car.ctrl.steer = 0.0
+				var before := track.pos(car.s, car.d)
+				race.physics(car, dt)
+				var after := track.pos(car.s, car.d)
+				var travel := Vector2(after.x - before.x, after.z - before.z)
+				var tangent := track.tangent(car.s)
+				var normal := track.normal(car.s)
+				var heading := (Vector2(tangent.x, tangent.z) * cos(car.yaw) + Vector2(normal.x, normal.z) * sin(car.yaw)).normalized()
+				assert(travel.length() > 0.05 and travel.normalized().dot(heading) > cos(deg_to_rad(12.0)), "normal tire travel must track the body heading across Tirana")
 	# The new direction limit must not repeatedly drain speed on a sustained turn.
 	car.progress = 3500.0
 	car.s = car.progress

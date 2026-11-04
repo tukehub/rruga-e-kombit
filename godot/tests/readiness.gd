@@ -33,6 +33,34 @@ func _ready() -> void:
 			check(wheel.position.y > 0.1 and wheel.position.y < def.size.y, "wheel height " + wheel_name)
 		if car.wheels.size() == 4:
 			var state := CarState.new(0, def, "test", true, paint)
+			# At the road contact point, a forward-rolling tire's surface moves
+			# backwards relative to the car. Check actual transformed geometry,
+			# including the mirrored wheel instead of assuming Euler-angle signs.
+			state.v = 12.0
+			car.apply_state(state, visual_track, 0.0)
+			var initial_bases := {}
+			var contact_points := {}
+			for name in ["wheel_rl", "wheel_rr"]:
+				var wheel: MeshInstance3D = car.wheels[name]
+				initial_bases[name] = wheel.transform.basis
+				contact_points[name] = wheel.transform.basis.inverse() * Vector3.DOWN
+			car.apply_state(state, visual_track, 0.01)
+			for name in ["wheel_rl", "wheel_rr"]:
+				var wheel: MeshInstance3D = car.wheels[name]
+				var after_contact: Vector3 = wheel.transform.basis * contact_points[name]
+				var before_contact: Vector3 = initial_bases[name] * contact_points[name]
+				check(after_contact.z > before_contact.z, "rear tire rolls opposite forward motion " + name)
+				initial_bases[name] = wheel.transform.basis
+				contact_points[name] = wheel.transform.basis.inverse() * Vector3.DOWN
+			state.v = -12.0
+			car.apply_state(state, visual_track, 0.01)
+			for name in ["wheel_rl", "wheel_rr"]:
+				var wheel: MeshInstance3D = car.wheels[name]
+				var after_contact: Vector3 = wheel.transform.basis * contact_points[name]
+				var before_contact: Vector3 = initial_bases[name] * contact_points[name]
+				check(after_contact.z < before_contact.z, "rear tire rolls opposite reverse motion " + name)
+			# Reset for the existing exact elapsed-time checks.
+			car.spin = 0.0
 			state.v = 12.0
 			state.steer = 0.4
 			state.braking = true
@@ -41,11 +69,18 @@ func _ready() -> void:
 			var fr: MeshInstance3D = car.wheels.wheel_fr
 			var rl: MeshInstance3D = car.wheels.wheel_rl
 			var rr: MeshInstance3D = car.wheels.wheel_rr
-			check(fl.rotation.x < -0.1 and fr.rotation.x > 0.1, "front wheels spin " + def.id)
-			check(rl.rotation.x < -0.1 and rr.rotation.x > 0.1, "rear wheels spin " + def.id)
+			check(fl.rotation.x > 0.1 and fr.rotation.x < -0.1, "front wheels spin " + def.id)
+			check(rl.rotation.x > 0.1 and rr.rotation.x < -0.1, "rear wheels spin " + def.id)
 			check(absf(fr.rotation.y) > 0.001 and absf(rr.rotation.y) < 0.001, "only front wheels steer " + def.id)
 			check(car.mat_rear != null and car.mat_rear.emission_energy_multiplier > 1.0, "brake lights respond " + def.id)
 			check(absf(car.spin - state.v * 0.01 / (rl.mesh.get_aabb().size.y * 0.5)) < 0.001, "wheel rotation matches tire radius " + def.id)
+			state.steer = 1.0
+			state.v = 4.0
+			car.apply_state(state, visual_track, 0.5)
+			var low_speed_angle := absf(fr.rotation.y)
+			state.v = 40.0
+			car.apply_state(state, visual_track, 0.5)
+			check(absf(fr.rotation.y) < low_speed_angle * 0.25, "front wheel angle follows speed-limited turning " + def.id)
 			state.hop = 1.5
 			car.apply_state(state, visual_track, 0.01)
 			check(car.contact_shadow.transparency > 0.99, "contact shadow fades when airborne " + def.id)

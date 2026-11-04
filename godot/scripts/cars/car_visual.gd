@@ -29,6 +29,7 @@ var wreck_roll := 0.0
 var base_pos := Vector3.ZERO
 var contact_shadow: MeshInstance3D
 var visual_wheel_radius := 0.36
+var visual_wheelbase := 2.7
 var finish_driver: Node3D
 var finish_glass: StandardMaterial3D
 
@@ -53,6 +54,9 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 		var rear: MeshInstance3D = wheels["wheel_rl"]
 		if rear.mesh != null:
 			visual_wheel_radius = maxf(0.05, rear.mesh.get_aabb().size.y * 0.5)
+		if wheels.has("wheel_fl"):
+			var front: MeshInstance3D = wheels["wheel_fl"]
+			visual_wheelbase = maxf(0.1, absf(front.position.z - rear.position.z))
 	_make_contact_shadow()
 	_make_nitro()
 	_make_shield()
@@ -325,13 +329,21 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	spin += c.v * dt / visual_wheel_radius
 	if spin > TAU * 100.0:
 		spin -= TAU * 100.0
-	steer_vis = lerpf(steer_vis, -c.steer * 0.5, minf(1.0, dt * 12.0))
+	# Match the simulation's speed-limited turning curvature. A fixed full-lock
+	# wheel angle at highway speed makes tires appear to scrub sideways.
+	var speed := maxf(absf(c.v), 1.0)
+	var lateral_accel: float = c.def.grip * 22.0 * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0)
+	var curvature := minf(0.12, lateral_accel / (speed * speed))
+	var target_steer := -atan(c.steer * curvature * visual_wheelbase)
+	steer_vis = lerpf(steer_vis, target_steer, minf(1.0, dt * 12.0))
 	for nm in wheels:
 		var w: MeshInstance3D = wheels[nm]
 		var left: bool = nm.ends_with("l")
 		var front: bool = nm.begins_with("wheel_f")
 		var side := -1.0 if left else 1.0
-		w.rotation = Vector3(spin * side, (PI if left else 0.0) + (steer_vis if front else 0.0), 0.0)
+		# In model space the car faces -Z, so forward rolling turns the bottom
+		# of each tire toward +Z relative to the car.
+		w.rotation = Vector3(-spin * side, (PI if left else 0.0) + (steer_vis if front else 0.0), 0.0)
 	# lights
 	if mat_rear:
 		var base := 0.9 if night > 0.3 else 0.65
