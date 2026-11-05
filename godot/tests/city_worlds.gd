@@ -34,6 +34,15 @@ func _ready() -> void:
 			assert(landmark_root.get_node_or_null("prime_minister/CivicLandmark") != null, "Prime minister's office must load in Tirana")
 			var mosaic := landmark_root.get_node_or_null("national_museum/CivicLandmark/MuseumMosaic") as MeshInstance3D
 			assert(mosaic != null and mosaic.material_override != null, "Museum and mosaic must load in Tirana")
+			assert((mosaic.mesh as QuadMesh).size.is_equal_approx(Vector2(37, 11)) and mosaic.position.z > 34.0, "Museum mosaic should keep its real proportions on the projecting frontage")
+			var windows := landmark_root.get_node_or_null("national_museum/CivicLandmark/MuseumRecessedWindows") as MultiMeshInstance3D
+			var piers := landmark_root.get_node_or_null("national_museum/CivicLandmark/MuseumPorticoPiers") as MultiMeshInstance3D
+			var marble := landmark_root.get_node_or_null("national_museum/CivicLandmark/MuseumSideMasonry") as MultiMeshInstance3D
+			assert(windows != null and windows.multimesh.instance_count == 22, "Museum's two side elevations should have recessed windows")
+			assert(piers != null and piers.multimesh.instance_count == 7, "Museum should have a recessed columned entrance")
+			assert(marble != null and marble.multimesh.mesh != null, "Museum side masonry must load")
+			var stone := marble.multimesh.mesh.surface_get_material(0) as StandardMaterial3D
+			assert(stone != null and stone.albedo_texture != null and stone.normal_enabled and stone.roughness_texture != null, "Museum marble needs color, normal and roughness maps")
 			assert(scene.props.get_node_or_null("BllokuCafes") != null, "The Blloku route needs its café terraces")
 			# Ensure grouping keeps every tree and creates local batches that the
 			# renderer can cull independently.
