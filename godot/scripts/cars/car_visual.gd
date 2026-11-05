@@ -95,6 +95,9 @@ func _override_materials(mi: MeshInstance3D) -> void:
 				if is_player:
 					if finish_glass == null:
 						finish_glass = _mk_glass()
+						# Prepare the transparent shader while racing, rather than
+						# switching shader variants at the finish line.
+						finish_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 					ov = finish_glass
 				else:
 					ov = _shared("glass", _mk_glass)
@@ -116,7 +119,9 @@ func _make_finish_driver() -> void:
 	finish_driver = Node3D.new()
 	finish_driver.name = "FinishDriver"
 	finish_driver.position = Vector3(-0.35, 0.0, -0.05)
-	finish_driver.visible = false
+	# The opaque windshield hides the driver until its alpha changes at finish.
+	# Keeping these meshes active avoids introducing them during the camera move.
+	finish_driver.visible = true
 	add_child(finish_driver)
 	var suit := _shared("driver_suit", func(): return _mk_simple(Color(0.28, 0.31, 0.35), 0.0, 0.72))
 	var helmet := _shared("driver_helmet", func(): return _mk_simple(Color(0.83, 0.85, 0.88), 0.08, 0.38))

@@ -25,6 +25,22 @@ func _ready() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	await wait_scene("menu")
+	# Each transition draws from a shuffled bag, with no repeated fact until
+	# the bag is exhausted and no repeat at the boundary between bags.
+	Game._fact_bag.clear()
+	Game._last_fact = ""
+	var seen_facts := {}
+	var previous_fact := ""
+	for i in Game.LOADING_FACTS.size() * 2:
+		var fact: String = Game._next_loading_fact()
+		check(fact != previous_fact, "loading facts should not repeat consecutively")
+		if i < Game.LOADING_FACTS.size():
+			check(not seen_facts.has(fact), "loading facts should not repeat before a full cycle")
+			seen_facts[fact] = true
+		previous_fact = fact
+	var preview: CanvasLayer = Game._transition_overlay("race")
+	check(preview.find_child("LoadingFact", true, false) != null, "loading transition displays a fact")
+	preview.free()
 	var menu: Menu = Game._root.get_child(0)
 	Game.race_opts.laps = 0
 	menu.show_page("title")
@@ -137,6 +153,10 @@ func _ready() -> void:
 	var finish_visual: CarVisual = scene.cars[scene.race.cars.find(scene.player)]
 	check(finish_visual.finish_driver.visible and finish_visual.finish_glass.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "finish reveals driver through windshield")
 	var finish_progress: float = scene.player.progress
+	var camera_before: Vector3 = scene.cam.global_position
+	scene._process(1.0 / 60.0)
+	check(scene.player.progress > finish_progress, "car continues moving on the first finish frame")
+	check(scene.cam.global_position.distance_to(camera_before) < 2.0, "finish camera starts without a jump")
 	for i in 120:
 		scene._process(1.0 / 60.0)
 	check(scene.player.v < 35.0 and scene.player.progress > finish_progress, "finished car slows while continuing forward")

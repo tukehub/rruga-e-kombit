@@ -10,6 +10,37 @@ const SCENES := {
 	"results": "res://scenes/results.tscn",
 }
 
+# Independent, short curiosities for transitions; shuffled without repeats until
+# the entire collection has been shown.
+const LOADING_FACTS := [
+	"Oktapodi ka tri zemra.",
+	"Banania është botanikisht një manaferrë.",
+	"Vombatët bëjnë jashtëqitje në formë kubi.",
+	"Një ditë në Venus zgjat më shumë se viti i saj.",
+	"Bletët mund të dallojnë fytyrat e njerëzve.",
+	"Karkalecat e detit i kanë dhëmbët në stomak.",
+	"Kulla Eifel zgjatet pak në vapë.",
+	"Disa breshka marrin oksigjen edhe nga pjesa e pasme.",
+	"Një re mund të peshojë qindra tonë.",
+	"Peshkaqenët janë më të vjetër se pemët.",
+	"Luleshtrydhja nuk është manaferrë në botanikë.",
+	"Venera është planeti më i nxehtë i sistemit diellor.",
+	"Fluturat ndiejnë shijen me këmbë.",
+	"Një grup korbash në anglisht quhet ‘murder’.",
+	"Zemra e karkalecit ndodhet në kokë.",
+	"Ka më shumë pemë në Tokë sesa yje në Rrugën e Qumështit.",
+	"Koalat kanë shenja gishtash të ngjashme me tonat.",
+	"Bambu është bar, jo pemë.",
+	"Një vit në Merkur zgjat rreth 88 ditë tokësore.",
+	"Uji i nxehtë mund të ngrijë para ujit të ftohtë në disa kushte.",
+	"Kallamari gjigant ka sy sa një pjatë e madhe.",
+	"Deti i Vdekur është në të vërtetë një liqen.",
+	"Të porsalindurit kanë më shumë kocka se të rriturit.",
+	"Kërmijtë mund të kenë mijëra dhëmbë të vegjël.",
+]
+var _fact_bag: Array = []
+var _last_fact := ""
+
 var race_opts := {
 	"city": "tirane",
 	"env": "",          # "" = city default
@@ -102,7 +133,34 @@ func _transition_overlay(name: String) -> CanvasLayer:
 	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.add_child(label)
+	var fact := Label.new()
+	fact.name = "LoadingFact"
+	fact.text = "Ndërkohë, një fakt krejt rastësor:\n" + _next_loading_fact()
+	fact.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fact.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	fact.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fact.add_theme_font_size_override("font_size", 23)
+	fact.add_theme_color_override("font_color", Color("b8d9ef"))
+	fact.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	fact.offset_left = -420
+	fact.offset_right = 420
+	fact.offset_top = -210
+	fact.offset_bottom = -90
+	fact.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.add_child(fact)
 	return layer
+
+
+func _next_loading_fact() -> String:
+	if _fact_bag.is_empty():
+		_fact_bag = LOADING_FACTS.duplicate()
+		_fact_bag.shuffle()
+		if _fact_bag.size() > 1 and _fact_bag.back() == _last_fact:
+			var first: String = _fact_bag[0]
+			_fact_bag[0] = _fact_bag.back()
+			_fact_bag[_fact_bag.size() - 1] = first
+	_last_fact = _fact_bag.pop_back()
+	return _last_fact
 
 
 func start_race() -> void:

@@ -12,6 +12,10 @@ var intro := false
 var cabin := false
 var _finish_car_position := Vector3.ZERO
 var _finish_tracking := false
+var _finish_t := 0.0
+var _finish_angle := 0.0
+var _finish_radius := 8.0
+var _finish_height := 2.0
 var _snap := true
 var _rng := RandomNumberGenerator.new()
 
@@ -90,23 +94,28 @@ func _follow_cabin(c: CarState, s: float, d: float, yaw: float, hop: float, dt: 
 
 
 func follow_finish(c: CarState, dt: float, pose: Dictionary = {}) -> void:
-	# Ease to a front three-quarter view while the finished car keeps moving.
+	# Fly continuously from the existing view over the side to the front.
 	var s := float(pose.get("s", c.s))
 	var d := float(pose.get("d", c.d))
 	var p := track.pos(s, d)
 	p.y += float(pose.get("hop", c.hop))
-	if _finish_tracking:
-		var movement := p - _finish_car_position
-		global_position += movement
-		look += movement
-	_finish_car_position = p
-	_finish_tracking = true
 	var psi := track.heading(s) + float(pose.get("yaw", c.yaw))
 	var forward := Vector3(-sin(psi), 0.0, cos(psi))
 	var right := Vector3(forward.z, 0.0, -forward.x)
-	var target := p + forward * 8.0 + right * 2.0 + Vector3.UP * 2.4
-	var k := 1.0 - exp(-dt * 2.8)
-	global_position = global_position.lerp(target, k)
+	if not _finish_tracking:
+		var offset := global_position - p
+		_finish_angle = atan2(offset.dot(right), offset.dot(forward))
+		_finish_radius = maxf(1.0, Vector2(offset.x, offset.z).length())
+		_finish_height = offset.y
+		_finish_tracking = true
+	_finish_car_position = p
+	_finish_t += dt
+	var t := clampf(_finish_t / 3.8, 0.0, 1.0)
+	var ease := t * t * (3.0 - 2.0 * t)
+	var angle := lerp_angle(_finish_angle, 0.25, ease)
+	var radius := lerpf(_finish_radius, 8.5, ease)
+	var height := lerpf(_finish_height, 3.0, ease) + sin(PI * ease) * 4.0
+	global_position = p + (forward * cos(angle) + right * sin(angle)) * radius + Vector3.UP * height
 	look = look.lerp(p + Vector3.UP * 0.8, 1.0 - exp(-dt * 5.0))
 	if not global_position.is_equal_approx(look):
 		look_at(look, Vector3.UP)
