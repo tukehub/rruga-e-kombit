@@ -13,16 +13,27 @@ CITIES = {
         # coordinates are local metres relative to the Tirana origin.
         'tree_view_exclusions': [(293.2, 460.9, 1.0), (284.1, 442.0, 1.0), (287.1, 448.7, 1.0)],
         'waypoints': [
-            (41.3244, 19.8248),        # Downtown One approach (start/finish)
-            (41.3232735, 19.8224131),  # Papa Gjon Pali II, by the Pyramid
-            (41.3173730, 19.8214600),  # Nënë Tereza Square, facing Polytechnic
-            (41.3263000, 19.8170000),  # Dëshmorët e 4 Shkurtit, cathedral
-            (41.3282280, 19.8158110),  # Kavajës, Eyes of Tirana
-            (41.3303501, 19.8180710),  # Urani Pano, International Hotel
-            (41.3274517, 19.8226091),  # Abdi Toptani, mall and square perimeter
+            (41.3282614, 19.8220752),  # Xhorxh W. Bush, east of Skanderbeg Square
+            (41.3261165, 19.8249079),  # Namazgja Mosque approach
+            (41.3245919, 19.8244470),  # Unaza by Downtown One
+            (41.3239702, 19.8222220),  # Unaza along the Pyramid
+            (41.3235618, 19.8196571),  # turn south onto Dëshmorët e Kombit
+            (41.3211905, 19.8204364),  # Prime Minister's Office
+            (41.3198310, 19.8233801),  # Papa Gjon Pali II by Air Albania
+            (41.3173730, 19.8214600),  # Polytechnic / Nënë Tereza Square
+            (41.3208399, 19.8182188),  # Ismail Qemali, Blloku
+            (41.3236665, 19.8174473),  # Ibrahim Rugova, northbound
+            (41.3268261, 19.8165549),  # Orthodox Cathedral
+            (41.3282080, 19.8161849),  # Eyes of Tirana
         ],
         'landmarks': [
             {'id': 'skanderbeg', 'll': (41.32775, 19.81850), 'yaw': 180},
+            # OSM building outlines for the museum and government offices;
+            # dedicated geometry replaces their generic extrusions.
+            {'id': 'national_museum', 'll': (41.329418, 19.817101), 'yaw': 12,
+             'clear_half': (51, 41)},
+            {'id': 'prime_minister', 'll': (41.321756, 19.821067), 'yaw': -78,
+             'clear_half': (42, 43)},
             {'id': 'pyramid', 'll': (41.323058, 19.821443), 'yaw': 0,
              'offset_x': 29, 'offset_z': -9, 'clear_half': (29, 29)},
             {'id': 'downtown_one', 'll': (41.324082, 19.823911), 'yaw': 0, 'offset_x': 5, 'offset_z': 12},
@@ -55,7 +66,7 @@ CITIES = {
         ],
         # Replace these specific OSM footprints with the original landmarks,
         # instead of drawing a generic extruded building through each model.
-        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121, 410277109, 410277110, 10311002, 795642504, 469424840, 461375120],
+        'landmark_buildings': [174510408, 1255594721, 885643060, 236566880, 236566876, 177186612, 7753718, 410277121, 410277109, 410277110, 10311002, 795642504, 469424840, 461375120, 6785985, 21804933],
         'style': 'tirana',
     },
     'vlore': {

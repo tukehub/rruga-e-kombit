@@ -4,17 +4,21 @@ extends Node
 func _ready() -> void:
 	var track := RaceTrack.load_city("tirane")
 	var race := Race.new(track, {"seed": 1})
-	# The grid sits immediately behind the relocated finish by Skanderbeg.
+	# The grid sits immediately behind the museum-front finish in the square.
 	# Check all six starting positions and the first actual racing step.
 	var props: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/tirane/props.json"))
 	var monument := Vector2.ZERO
 	var monument_anchor := {}
+	var museum := Vector2.ZERO
 	for item in props.landmarks:
 		if item.id == "skanderbeg":
 			monument = Vector2(item.x, item.z)
 			monument_anchor = item
+		elif item.id == "national_museum":
+			museum = Vector2(item.x, item.z)
 	var start := track.pos(0.0, 0.0)
-	assert(Vector2(start.x, start.z).distance_to(monument) < 65.0, "finish must be near the monument")
+	assert(Vector2(start.x, start.z).distance_to(museum) < 90.0, "finish must be in front of the national museum")
+	assert(Vector2(start.x, start.z).distance_to(monument) < 250.0, "finish must remain near Skanderbeg Square")
 	var landmark := Landmarks.new()
 	add_child(landmark)
 	landmark.load_anchors([monument_anchor])

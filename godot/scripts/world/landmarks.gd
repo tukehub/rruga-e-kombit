@@ -352,7 +352,9 @@ func build(root: Node3D, id: String) -> void:
 			var sword := Node3D.new()
 			sword.name = "SkanderbegSword"
 			sword.position = Vector3(-0.42, 8.5, 0.70)
-			var sword_axis := Vector3(0.541, 2.1, 0.841).normalized()
+			# Local horizontal projection becomes eastward after the monument's
+			# 180° placement, parallel to the museum-front finish road.
+			var sword_axis := Vector3(-0.996, 2.1, -0.0882).normalized()
 			sword.quaternion = Quaternion(Vector3.UP, sword_axis)
 			root.add_child(sword)
 			var blade := BoxMesh.new()

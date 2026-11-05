@@ -32,6 +32,32 @@ class RoadsideLandmarkTest(unittest.TestCase):
     def test_tirana_moved_landmarks_keep_road_clear(self):
         city = CITIES['tirane']
         zones = landmark_clearance_zones(city, Proj(*city['origin']))
+        # The stadium's conservative axis-aligned scenery keepout is much
+        # larger than its actual, rotated octagonal model. Keep that keepout
+        # for props/buildings, but measure road clearance against the shell.
+        zoned = [x for x in city['landmarks'] if 'clear_half' in x]
+        stadium_index = next(i for i, x in enumerate(zoned) if x['id'] == 'air_albania')
+        stadium = zoned[stadium_index]
+        zones = [zone for i, zone in enumerate(zones) if i != stadium_index]
+        sx, sz = Proj(*city['origin']).to_xz(*stadium['ll'])
+        angle = math.radians(stadium['yaw'])
+        ca, sa = math.cos(angle), math.sin(angle)
+        # Keep in sync with outer[] in godot/scripts/world/air_albania_stadium.gd.
+        outer = [(-53, -99), (53, -99), (80, -70), (80, 70),
+                 (53, 99), (-53, 99), (-80, 70), (-80, -70)]
+        def stadium_distance(px, pz):
+            # Inverse Godot yaw rotation into the stadium's local XZ plane.
+            dx, dz = px - sx, pz - sz
+            x, z = ca * dx - sa * dz, sa * dx + ca * dz
+            nearest = float('inf')
+            signs = []
+            for (ax, az), (bx, bz) in zip(outer, outer[1:] + outer[:1]):
+                vx, vz = bx - ax, bz - az
+                length2 = vx * vx + vz * vz
+                t = max(0.0, min(1.0, ((x - ax) * vx + (z - az) * vz) / length2))
+                nearest = min(nearest, math.hypot(x - ax - t * vx, z - az - t * vz))
+                signs.append(vx * (z - az) - vz * (x - ax))
+            return 0.0 if all(v >= 0 for v in signs) or all(v <= 0 for v in signs) else nearest
         with open(os.path.join(OUT, 'tirane', 'track.json'), encoding='utf8') as f:
             points = json.load(f)['pts']
         # Sample every segment at <= 1 m; 4 m beyond the road edge protects the
@@ -46,6 +72,8 @@ class RoadsideLandmarkTest(unittest.TestCase):
                     dx = max(x0 - px, 0, px - x1)
                     dz = max(z0 - pz, 0, pz - z1)
                     self.assertGreaterEqual(math.hypot(dx, dz), city['half_width'] + 4.0)
+                self.assertGreaterEqual(stadium_distance(px, pz), city['half_width'] + 4.0,
+                                        'road and chase camera must clear the stadium shell')
 
     def test_props_and_lamps_clear_of_landmark_footprints(self):
         city = CITIES['tirane']

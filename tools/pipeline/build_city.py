@@ -345,24 +345,88 @@ def route_tirana_square(dense):
     return np.vstack([dense[:i], inserted, dense[j + 1:]])
 
 
-def place_tirana_finish(points, city, proj):
-    """Put the finish on the approach to Skanderbeg's monument.
+def _spline_section(points, start_tangent, end_tangent):
+    """Smooth a short racing adaptation with joins aligned to the roads."""
+    from scipy.interpolate import CubicSpline
+    points = np.asarray(points, dtype=float)
+    along = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1))]
+    start_tangent = start_tangent / np.linalg.norm(start_tangent)
+    end_tangent = end_tangent / np.linalg.norm(end_tangent)
+    spline = CubicSpline(along, points, axis=0,
+                         bc_type=((1, start_tangent), (1, end_tangent)))
+    return spline(np.linspace(0.0, along[-1], max(3, int(along[-1] / SAMPLE) + 1)))
 
-    Reordering the closed loop does not alter the road or the scenery; it
-    puts the start/finish and race grid by the square on every rebuild. The
-    line is about 42 m before the closest point: the statue is then ahead of
-    drivers as they approach the line instead of disappearing to one side.
+
+def route_tirana_polytechnic_uturn(dense):
+    """A separated return past Polytechnic, towards Blloku.
+
+    The real boulevard's carriageways are closer than the game's 20 m road.
+    Offset the return slightly west as a racing adaptation to avoid overlapping
+    racing surfaces/barriers, then follow Ismail Qemali into Blloku.
     """
-    monument = next(item for item in city['landmarks'] if item['id'] == 'skanderbeg')
-    x, z = proj.to_xz(*monument['ll'])
-    x += monument.get('offset_x', 0.0)
-    z += monument.get('offset_z', 0.0)
+    stadium = np.array([209.69, 1007.23])
+    blloku = np.array([-40.09, 736.43])
+    i = int(np.argmin(np.linalg.norm(dense - stadium, axis=1)))
+    j = int(np.argmin(np.linalg.norm(dense - blloku, axis=1)))
+    if i < 1 or j <= i + 10 or j >= len(dense) - 1:
+        raise ValueError('Polytechnic U-turn endpoints do not match expected OSM route')
+    points = [dense[i], [220, 1050], [228, 1095], [225, 1120],
+              [207, 1133], [185, 1120], [176, 1090], [168, 1050],
+              [157, 1000], [145, 940], [133, 880], [122, 820],
+              [112, 760], [105, 725], [90, 710], [50, 716], [0, 725], dense[j]]
+    inserted = _spline_section(points, dense[i + 1] - dense[i - 1],
+                               dense[j + 1] - dense[j - 1])
+    return np.vstack([dense[:i], inserted, dense[j + 1:]])
+
+
+def smooth_tirana_stadium_approach(dense):
+    """Smooth a short OSM carriageway jog on the stadium approach."""
+    start = np.array([320.0, 849.0])
+    end = np.array([340.0, 915.0])
+    i = int(np.argmin(np.linalg.norm(dense - start, axis=1)))
+    j = int(np.argmin(np.linalg.norm(dense - end, axis=1)))
+    if i < 1 or j <= i + 10 or j >= len(dense) - 1:
+        raise ValueError('Stadium approach endpoints do not match expected route')
+    inserted = _spline_section([dense[i], [337, 849], [352, 855], [361, 867],
+                                [359, 882], [351, 899], dense[j]],
+                               dense[i + 1] - dense[i - 1], dense[j + 1] - dense[j - 1])
+    return np.vstack([dense[:i], inserted, dense[j + 1:]])
+
+
+def clear_tirana_stadium_corner(dense):
+    """Keep the 20 m racing surface outside the stadium's northwest corner.
+
+    The underlying OSM street is narrower than the raceway. A tapered local
+    shift of up to 12 m provides clearance while keeping the mapped stadium in
+    its surveyed location and the route on the approach beside it.
+    """
+    centre = np.array([351.3, 922.9])
+    distance = np.linalg.norm(dense - centre, axis=1)
+    weight = np.exp(-0.5 * (distance / 35.0) ** 2)
+    return dense + weight[:, None] * np.array([-12.0, -12.0]) / np.sqrt(2.0)
+
+
+def route_tirana_museum_front(dense):
+    """Join the Eye to Xhorxh W. Bush by the Museum's square-side facade.
+
+    Part of Skanderbeg Square is pedestrianised in real life; the short link
+    is a fictional race event adaptation, keeping the museum's footprint clear.
+    """
+    eye = np.array([-209.53, -78.29])
+    i = int(np.argmin(np.linalg.norm(dense - eye, axis=1)))
+    if i < 1 or i >= len(dense) - 10:
+        raise ValueError('Museum approach does not match the expected route')
+    points = [dense[i], [-219, -135], [-205, -148], [-170, -145],
+              [-130, -145], [-80, -145], [-15, -145], [50, -130],
+              [110, -100], [170, -75], [230, -65], [270, -90], dense[0]]
+    inserted = _spline_section(points, dense[i + 1] - dense[i - 1], dense[1] - dense[-1])
+    return np.vstack([dense[:i], inserted[:-1]])
+
+
+def place_tirana_finish(points, city, proj):
+    """Start/finish at the National Museum's square-side frontage."""
+    x, z = proj.to_xz(41.3288475, 19.8164193)
     start = min(range(len(points)), key=lambda i: (points[i][0] - x) ** 2 + (points[i][2] - z) ** 2)
-    distance = 0.0
-    while distance < 40.0:
-        prev = (start - 1) % len(points)
-        distance += math.hypot(points[start][0] - points[prev][0], points[start][2] - points[prev][2])
-        start = prev
     return points[start:] + points[:start]
 
 
@@ -857,7 +921,26 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf)
         z += lm.get('offset_z', 0)
         y = float(terrain_sample([x], [z])[0])
         landmarks.append({'id': lm['id'], 'x': round(x, 1), 'y': round(y, 1), 'z': round(z, 1), 'yaw': lm.get('yaw', 0)})
-    save_json(out_json, {'lamps': lamps, 'track_lamps': track_lamps, 'trees': trees, 'landmarks': landmarks})
+    cafes = []
+    if city.get('style') == 'tirana':
+        # Game-scale open-air cafe terraces along the Blloku section of the
+        # new course, set outside the road and the roadside crash barriers.
+        last = None
+        for i, (x, z) in enumerate(ref.xz):
+            lat, lon = proj.to_ll(float(x), float(z))
+            if not (41.3204 <= lat <= 41.3214 and 19.8176 <= lon <= 19.8198):
+                continue
+            if last is not None and np.linalg.norm(ref.xz[i] - last) < 28.0:
+                continue
+            last = ref.xz[i]
+            side = 1.0 if len(cafes) % 2 == 0 else -1.0
+            pos = ref.xz[i] + side * (hw + 7.0) * ref.nrm[i]
+            if ref.nearest(*pos)[0] < hw + 3.0 or overlaps_landmark_bounds([tuple(pos)], zones):
+                continue
+            y_cafe = float(terrain_sample([pos[0]], [pos[1]])[0])
+            yaw = math.atan2(-ref.tan[i][0], -ref.tan[i][1])
+            cafes.append([round(float(pos[0]), 1), round(y_cafe, 1), round(float(pos[1]), 1), round(yaw, 3)])
+    save_json(out_json, {'lamps': lamps, 'track_lamps': track_lamps, 'trees': trees, 'landmarks': landmarks, 'cafes': cafes})
     log(f'  props: {len(lamps)} lamps, {len(track_lamps)} track lamps, {len(trees)} trees, {len(landmarks)} landmarks')
 
 
@@ -931,9 +1014,11 @@ def build(cid, route_only=False):
     dense = smooth_closed(dense, 7, 3)
     dense, length = resample_closed(dense, SAMPLE)
     if cid == 'tirane':
-        dense = smooth_tirana_jog(dense)
+        dense = route_tirana_polytechnic_uturn(dense)
+        dense = smooth_tirana_stadium_approach(dense)
+        dense = clear_tirana_stadium_corner(dense)
         dense, length = resample_closed(dense, SAMPLE)
-        dense = route_tirana_square(dense)
+        dense = route_tirana_museum_front(dense)
         dense, length = resample_closed(dense, SAMPLE)
         dense = repair_tirana_bends(dense, hw)
         dense, length = resample_closed(dense, SAMPLE)
