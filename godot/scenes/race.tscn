@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://b0race00000001"]
+[gd_scene load_steps=3 format=3 uid="uid://b0race00000001"]
 
 [ext_resource type="Script" path="res://scripts/game/race_scene.gd" id="1_race"]
+[ext_resource type="Script" path="res://scripts/pine_forest_multimesh.gd" id="2_pines"]
 
 [node name="Race" type="Node3D"]
 script = ExtResource("1_race")
+
+[node name="PineForest" type="Node3D" parent="."]
+script = ExtResource("2_pines")

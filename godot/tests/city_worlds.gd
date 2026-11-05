@@ -15,7 +15,16 @@ func _ready() -> void:
 		assert(scene.cars.size() == 6 and scene.track.L > 1000)
 		assert(scene.terrain != null and scene.buildings != null and scene.road != null)
 		assert(scene.road.get_node_or_null("RoadsideBarriers") != null, "road edges should be visible")
+		var pines := scene.get_node_or_null("PineForest") as Node3D
+		assert(pines != null and pines.get_script() != null, "race scene should contain the scripted pine forest")
+		var planted: Array = pines.get("planted_transforms")
 		if city.id == "tirane":
+			assert(planted.size() > 0 and planted.size() <= 16, "low quality should plant a bounded number of mapped pines")
+			print("PINE FOREST: ", planted.size(), " mapped trees, low quality")
+			for transform: Transform3D in planted:
+				var p := transform.origin
+				assert(scene.track.dist_to(p.x, p.z) >= scene.track.half_w + 14.5, "pines must remain outside the road and barriers")
+				assert(absf(p.y - scene.terrain.height_at(p.x, p.z)) < 0.1, "pines must stand on terrain")
 			var landmark_root: Node = null
 			for child in scene.props.get_children():
 				if child is Landmarks:
@@ -57,6 +66,8 @@ func _ready() -> void:
 					batches += 1
 					crowns += node.multimesh.instance_count
 			assert(batches > 1 and crowns == count_expected)
+		else:
+			assert(planted.is_empty(), "the Tirana pilot must not change other cities")
 		await get_tree().process_frame
 		print("CITY WORLD: ", city.id, " loaded with six cars")
 		Sfx.stop_all()

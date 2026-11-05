@@ -23,6 +23,7 @@ var input: RaceInput
 var effects: FxVisual
 var buildings: Buildings
 var props: Props
+var pine_forest: Node3D
 var side_roads: Node3D
 var scenery_visible := true
 var _weather_clock := 0.0
@@ -85,8 +86,53 @@ func _build_world() -> void:
 	add_child(props)
 	props.load_city(city_id, terrain)
 	props.set_night(sky.night)
+	pine_forest = get_node_or_null("PineForest") as Node3D
+	_setup_pines()
 	terrain.set_env(sky.wet, 0.0, sky.night)
 	road.set_wet(sky.wet)
+
+
+func _setup_pines() -> void:
+	# Replace a sparse selection of the existing mapped Tirana trees, instead of
+	# scattering trees randomly over the road, buildings, or other cities.
+	if city_id != "tirane" or pine_forest == null or not pine_forest.has_method("build_forest"):
+		return
+	var limit := 16 if Quality.preset == "low" else (24 if Quality.preset == "medium" else 32)
+	var candidates := {}
+	for ref: Dictionary in props._tree_refs:
+		var world: Transform3D = ref.world
+		var p := world.origin
+		var idx := track.nearest(p.x, p.z, 60.0)
+		if idx < 0:
+			continue
+		var distance := Vector2(track.X[idx] - p.x, track.Z[idx] - p.z).length()
+		if distance < track.half_w + 15.0 or distance > 55.0:
+			continue
+		var near_landmark := false
+		for anchor in props.landmarks:
+			if Vector2(float(anchor.x) - p.x, float(anchor.z) - p.z).length_squared() < 65.0 * 65.0:
+				near_landmark = true
+				break
+		if near_landmark:
+			continue
+		var bucket := mini(limit - 1, int(float(idx) / float(track.M) * limit))
+		var score := absf(distance - 38.0)
+		if not candidates.has(bucket) or score < float(candidates[bucket].score):
+			candidates[bucket] = {"ref": ref, "score": score}
+	var transforms: Array[Transform3D] = []
+	var buckets := candidates.keys()
+	buckets.sort()
+	for bucket in buckets:
+		var ref: Dictionary = candidates[bucket].ref
+		var hidden: Transform3D = ref.local
+		hidden.basis = Basis.from_scale(Vector3.ZERO)
+		ref.mm.set_instance_transform(ref.index, hidden)
+		var position: Vector3 = (ref.world as Transform3D).origin
+		var chunk := Vector2i(floori(position.x / Props.TREE_CHUNK_SIZE), floori(position.z / Props.TREE_CHUNK_SIZE))
+		props._tree_chunks[chunk].erase(ref)
+		props._tree_refs.erase(ref)
+		transforms.append(ref.world)
+	pine_forest.call("build_forest", transforms)
 
 
 func _build_race() -> void:
@@ -190,6 +236,8 @@ func set_scenery_visible(enabled: bool) -> void:
 	scenery_visible = enabled
 	buildings.visible = enabled
 	props.visible = enabled
+	if pine_forest:
+		pine_forest.visible = enabled
 	terrain.visible = enabled
 	if side_roads:
 		side_roads.visible = enabled
