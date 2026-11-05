@@ -20,6 +20,7 @@ func _group(mesh: Mesh, transforms: Array[Transform3D], color: Color) -> void:
 	add_child(node)
 
 func build(cafes: Array) -> void:
+	var decks: Array[Transform3D] = []
 	var awnings: Array[Transform3D] = []
 	var posts: Array[Transform3D] = []
 	var tables: Array[Transform3D] = []
@@ -29,6 +30,11 @@ func build(cafes: Array) -> void:
 			continue
 		var origin := Vector3(float(cafe[0]), float(cafe[1]), float(cafe[2]))
 		var base := Transform3D(Basis(Vector3.UP, float(cafe[3])), origin)
+		# Blloku's natural ground sits below the conformed race surface. Put
+		# each terrace on a solid raised deck so its tables and canopy remain
+		# visible over the road edge, while the deck reaches the ground.
+		decks.append(base * Transform3D(Basis.from_scale(Vector3(5.5, 1.5, 3.0)), Vector3(0, 0.75, 0)))
+		base.origin.y += 1.5
 		awnings.append(base * Transform3D(Basis.from_scale(Vector3(5.0, 0.18, 2.5)), Vector3(0, 2.5, 0)))
 		for x in [-2.3, 2.3]:
 			posts.append(base * Transform3D(Basis.from_scale(Vector3(0.12, 2.5, 0.12)), Vector3(x, 1.25, 0)))
@@ -39,6 +45,9 @@ func build(cafes: Array) -> void:
 				seats.append(base * Transform3D(Basis.from_scale(Vector3(0.48, 0.1, 0.48)), Vector3(x, 0.48, z)))
 	var cube := BoxMesh.new()
 	cube.size = Vector3.ONE
+	var platforms := BoxMesh.new()
+	platforms.size = Vector3.ONE
+	_group(platforms, decks, Color("988b7a"))
 	_group(cube, awnings, Color("a84e3f"))
 	var supports := BoxMesh.new()
 	supports.size = Vector3.ONE
