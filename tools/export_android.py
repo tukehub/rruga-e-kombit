@@ -9,6 +9,17 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def validate_private_car(private_dir: Path) -> None:
+    """Fail closed before export if the optional private payload is absent."""
+    payload = private_dir / 'vortex_sport.bin'
+    key_script = private_dir / 'car_key.gd'
+    if not payload.is_file() or not key_script.is_file():
+        raise SystemExit('Licensed car is not staged: run tools/stage_private_car.py first.')
+    with payload.open('rb') as stream:
+        if stream.read(4) != b'GDEC':
+            raise SystemExit('Licensed car payload is not Godot-encrypted; stage it again.')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--godot', default=os.environ.get('GODOT', 'godot'))
@@ -16,9 +27,13 @@ def main():
     ap.add_argument('--profile-seconds', type=int, default=0, help='Export a benchmark build; collect PROFILE JSON with adb logcat.')
     ap.add_argument('--quality', choices=['low', 'medium', 'high'], default='medium')
     ap.add_argument('--output', default=str(ROOT / 'rruga-e-kombit.apk'))
+    ap.add_argument('--require-private-car', action='store_true',
+                    help='Fail unless the locally staged licensed car is present for export.')
     args = ap.parse_args()
     if args.version_code < 1:
         ap.error('version code must be positive')
+    if args.require_private_car:
+        validate_private_car(ROOT / 'godot/assets/private_car')
     env = os.environ.copy()
     # Preserve the established signing identity. CI may override the same values
     # via secrets; the original project already distributes this fixed key.

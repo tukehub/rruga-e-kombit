@@ -18,6 +18,7 @@ Teksturat e monumenteve: përshtatur nga Concrete Wall 008, Charlotte Baglioni d
 Mermere për Muzeun Historik Kombëtar: përshtatur nga Marble 01, Rob Tuytel, CC0 1.0 (polyhaven.com/a/marble_01).
 Guri i bazamentit të statujës: Stone Wall, Charlotte Baglioni dhe Dario Barresi, CC0 1.0 (polyhaven.com/a/stone_wall).
 Pemët (model i thjeshtuar dhe gjethet): Tree Small 02 nga Rico Cilliers dhe Rob Tuytel — CC0 1.0 (https://polyhaven.com/a/tree_small_02).
+Pisha (trungu dhe gjethja e përshtatur): Pine Tree 01 nga Rob Tuytel dhe Rico Cilliers — CC0 1.0 (https://polyhaven.com/a/pine_tree_01).
 
 [b]Fotografia e pemës[/b]
 “Tree Transparent Background” nga PNG all, CC BY-SA 4.0; përdoret si teksturë për pemët.
@@ -43,6 +44,9 @@ freesound.org/people/PauliusI/sounds/346299/
 github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept
 creativecommons.org/licenses/by/4.0/
 Përshtatur për Vortex: gjeometri e thjeshtuar, rrota të animuara, materiale dhe ngjyra të reja; teksturat dhe markat origjinale janë hequr.
+
+Model alternativ i makinës (vetëm në ndërtime që e përfshijnë): “Sports Racing Car Low Poly Game Ready” nga smileypixelstudio, licencë Royalty Free (no AI), CGTrader. Përshtatur për Vortex.
+https://www.cgtrader.com/free-3d-models/car/sport-car/sports-racing-car-low-poly-game-ready
 
 [b]Kodi burimor[/b]
 github.com/tukehub/rruga-e-kombit

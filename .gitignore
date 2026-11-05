@@ -7,6 +7,9 @@ test/shots/
 # Godot
 godot/.godot/
 godot/android/
+# Licensed, user-supplied vehicle and its local encrypted packaging key.
+godot/assets/private_car/
+/work/private_sport*
 *.apk
 *.aab
 # pipeline caches and local tooling

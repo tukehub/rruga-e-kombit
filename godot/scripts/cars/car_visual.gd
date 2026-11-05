@@ -6,7 +6,10 @@ extends Node3D
 ## so Godot yaw (counter-clockwise positive) = atan2(-tx, -tz) - yaw.
 
 static var shared: Dictionary = {}
+static var _sport_checked := false
+static var _sport_scene: PackedScene
 const CONTACT_SHADER := preload("res://shaders/car_contact.gdshader")
+const SPORT_SHADER := preload("res://shaders/sport_car.gdshader")
 
 var def: Dictionary
 var is_player := false
@@ -15,6 +18,7 @@ var model: Node3D
 var body: MeshInstance3D
 var wheels: Dictionary = {}  # name -> MeshInstance3D
 var mat_paint: StandardMaterial3D
+var sport_paint: ShaderMaterial
 var mat_rear: StandardMaterial3D
 var mat_front: StandardMaterial3D
 var shield: MeshInstance3D
@@ -38,7 +42,7 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 	def = p_def
 	color = p_color
 	is_player = p_is_player
-	var scene: PackedScene = load(def.model)
+	var scene := _load_car_scene(str(def.model))
 	model = scene.instantiate()
 	add_child(model)
 	for ch in model.get_children():
@@ -63,6 +67,31 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 	if is_player:
 		_make_finish_driver()
 		_make_headlights()
+
+
+static func _load_car_scene(fallback: String) -> PackedScene:
+	# Licensed car resources can be staged privately at build time. Load once
+	# for all six vehicles; public builds retain the existing open asset.
+	if not _sport_checked:
+		_sport_checked = true
+		var path := "res://assets/private_car/vortex_sport.bin"
+		var key_path := "res://assets/private_car/car_key.gd"
+		if FileAccess.file_exists(path) and ResourceLoader.exists(key_path):
+			var key_script = load(key_path)
+			var file := FileAccess.open_encrypted(path, FileAccess.READ, key_script.key())
+			if file != null:
+				var document := GLTFDocument.new()
+				var state := GLTFState.new()
+				if document.append_from_buffer(file.get_buffer(file.get_length()), "", state) == OK:
+					var node := document.generate_scene(state)
+					if node != null:
+						var packed := PackedScene.new()
+						if packed.pack(node) == OK:
+							_sport_scene = packed
+						node.free()
+	if _sport_scene != null:
+		return _sport_scene
+	return load(fallback) as PackedScene
 
 
 func _make_contact_shadow() -> void:
@@ -91,6 +120,13 @@ func _override_materials(mi: MeshInstance3D) -> void:
 		var ov: Material = null
 		match nm:
 			"paint": ov = _paint(m)
+			"sport_body":
+				if m is BaseMaterial3D and m.albedo_texture != null:
+					sport_paint = ShaderMaterial.new()
+					sport_paint.shader = SPORT_SHADER
+					sport_paint.set_shader_parameter("atlas", m.albedo_texture)
+					sport_paint.set_shader_parameter("paint_color", color)
+					ov = sport_paint
 			"glass":
 				if is_player:
 					if finish_glass == null:
@@ -353,6 +389,8 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	if mat_rear:
 		var base := 0.9 if night > 0.3 else 0.65
 		mat_rear.emission_energy_multiplier = 3.5 if (c.braking or c.v < -0.1) else base
+	if sport_paint:
+		sport_paint.set_shader_parameter("brake_light", 1.0 if (c.braking or c.v < -0.1) else (0.2 if night > 0.3 else 0.0))
 	# shield
 	for jet in nitro_jets:
 		jet.visible = c.nitro_t > 0.0

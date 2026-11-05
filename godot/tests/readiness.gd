@@ -17,10 +17,13 @@ func _ready() -> void:
 		var paint := Color.html(def.color)
 		car.setup(def, paint, true)
 		check(car.body != null and car.wheels.size() == 4, "car meshes " + def.id)
-		check(car.mat_paint != null, "paint material " + def.id)
+		check(car.mat_paint != null or car.sport_paint != null, "paint material " + def.id)
 		if car.mat_paint != null:
 			var tint: Color = car.mat_paint.albedo_color
 			check(tint.v > 0.25 and (paint.s < 0.15 or absf(tint.h - paint.h) < 0.03), "selected car paint " + def.id)
+		elif car.sport_paint != null:
+			var tint: Color = car.sport_paint.get_shader_parameter("paint_color")
+			check(tint.is_equal_approx(paint), "selected sport car paint " + def.id)
 		for wheel_name in ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"]:
 			check(car.wheels.has(wheel_name), "named wheel " + def.id + " " + wheel_name)
 			if not car.wheels.has(wheel_name):
@@ -72,7 +75,7 @@ func _ready() -> void:
 			check(fl.rotation.x > 0.1 and fr.rotation.x < -0.1, "front wheels spin " + def.id)
 			check(rl.rotation.x > 0.1 and rr.rotation.x < -0.1, "rear wheels spin " + def.id)
 			check(absf(fr.rotation.y) > 0.001 and absf(rr.rotation.y) < 0.001, "only front wheels steer " + def.id)
-			check(car.mat_rear != null and car.mat_rear.emission_energy_multiplier > 1.0, "brake lights respond " + def.id)
+			check((car.mat_rear != null and car.mat_rear.emission_energy_multiplier > 1.0) or (car.sport_paint != null and float(car.sport_paint.get_shader_parameter("brake_light")) > 0.9), "brake lights respond " + def.id)
 			check(absf(car.spin - state.v * 0.01 / (rl.mesh.get_aabb().size.y * 0.5)) < 0.001, "wheel rotation matches tire radius " + def.id)
 			state.steer = 1.0
 			state.v = 4.0
