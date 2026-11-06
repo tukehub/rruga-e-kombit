@@ -19,6 +19,7 @@ Mermere për Muzeun Historik Kombëtar: përshtatur nga Marble 01, Rob Tuytel, C
 Guri i bazamentit të statujës: Stone Wall, Charlotte Baglioni dhe Dario Barresi, CC0 1.0 (polyhaven.com/a/stone_wall).
 Pemët (model i thjeshtuar dhe gjethet): Tree Small 02 nga Rico Cilliers dhe Rob Tuytel — CC0 1.0 (https://polyhaven.com/a/tree_small_02).
 Pisha (trungu dhe gjethja e përshtatur): Pine Tree 01 nga Rob Tuytel dhe Rico Cilliers — CC0 1.0 (https://polyhaven.com/a/pine_tree_01).
+Mobiliet e kafeneve: Outdoor Table Chair Set 01 nga James Ray Cock — CC0 1.0 (https://polyhaven.com/a/outdoor_table_chair_set_01); gjeometri e thjeshtuar për pajisje celulare.
 
 [b]Fotografia e pemës[/b]
 “Tree Transparent Background” nga PNG all, CC BY-SA 4.0; përdoret si teksturë për pemët.

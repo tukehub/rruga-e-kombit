@@ -68,6 +68,8 @@ func _build_world() -> void:
 	var tj: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/%s/track.json" % city_id))
 	sky = SkyEnv.new()
 	add_child(sky)
+	if city_id == "tirane":
+		sky.daytime_ambient_floor = 0.70
 	sky.apply(env_id)
 	road = RoadMesh.new()
 	add_child(road)

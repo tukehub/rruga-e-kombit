@@ -1,6 +1,50 @@
 extends Node3D
 ## Unbranded café terraces alongside the Blloku portion of the race course.
 ## Instances share meshes so several cafés add only a few draw calls.
+const FURNITURE: PackedScene = preload("res://assets/props/blloku_cafe_furniture.glb")
+
+func _collect_furniture(node: Node, parent_transform: Transform3D, parts: Array) -> void:
+	var combined := parent_transform
+	if node is Node3D:
+		combined = parent_transform * node.transform
+	if node is MeshInstance3D and node.mesh != null:
+		parts.append([node.mesh, combined])
+	for child in node.get_children():
+		_collect_furniture(child, combined, parts)
+
+func _add_furniture(placements: Array[Transform3D]) -> void:
+	if placements.is_empty():
+		return
+	var root := FURNITURE.instantiate()
+	var parts: Array = []
+	_collect_furniture(root, Transform3D.IDENTITY, parts)
+	# Keep bounds local to small groups: one MultiMesh for the whole Blloku
+	# stretch could disappear at either end when its center is out of range.
+	var chunks := {}
+	for placement in placements:
+		var key := Vector2i(floori(placement.origin.x / 80.0), floori(placement.origin.z / 80.0))
+		if not chunks.has(key):
+			chunks[key] = []
+		chunks[key].append(placement)
+	for key: Vector2i in chunks:
+		var chunk_origin := Vector3((key.x + 0.5) * 80.0, 0, (key.y + 0.5) * 80.0)
+		for part in parts:
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = part[0]
+			mm.instance_count = chunks[key].size()
+			for i in mm.instance_count:
+				var t: Transform3D = chunks[key][i] * part[1]
+				t.origin -= chunk_origin
+				mm.set_instance_transform(i, t)
+			var instance := MultiMeshInstance3D.new()
+			instance.name = "CafeFurniture_%d_%d" % [key.x, key.y]
+			instance.position = chunk_origin
+			instance.multimesh = mm
+			instance.visibility_range_end = 160.0
+			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(instance)
+	root.free()
 
 func _group(mesh: Mesh, transforms: Array, color: Color) -> void:
 	if transforms.is_empty():
@@ -27,8 +71,7 @@ func build(cafes: Array) -> void:
 	var walls := [[], [], []]
 	var windows: Array[Transform3D] = []
 	var posts: Array[Transform3D] = []
-	var tables: Array[Transform3D] = []
-	var seats: Array[Transform3D] = []
+	var furniture: Array[Transform3D] = []
 	for i in cafes.size():
 		var cafe = cafes[i]
 		if cafe.size() < 4:
@@ -49,10 +92,7 @@ func build(cafes: Array) -> void:
 		for x in [-2.3, 2.3]:
 			posts.append(base * Transform3D(Basis.from_scale(Vector3(0.12, 2.5, 0.12)), Vector3(x, 1.25, 0)))
 		for x in [-1.25, 1.25]:
-			tables.append(base * Transform3D(Basis.from_scale(Vector3(0.8, 0.10, 0.8)), Vector3(x, 0.8, 0)))
-			posts.append(base * Transform3D(Basis.from_scale(Vector3(0.10, 0.8, 0.10)), Vector3(x, 0.4, 0)))
-			for z in [-0.85, 0.85]:
-				seats.append(base * Transform3D(Basis.from_scale(Vector3(0.48, 0.1, 0.48)), Vector3(x, 0.48, z)))
+			furniture.append(base * Transform3D(Basis.IDENTITY, Vector3(x, 0, 0)))
 	var cube := BoxMesh.new()
 	cube.size = Vector3.ONE
 	var platforms := BoxMesh.new()
@@ -73,9 +113,4 @@ func build(cafes: Array) -> void:
 	var supports := BoxMesh.new()
 	supports.size = Vector3.ONE
 	_group(supports, posts, Color("474a48"))
-	var tabletops := BoxMesh.new()
-	tabletops.size = Vector3.ONE
-	_group(tabletops, tables, Color("d8c6a4"))
-	var chairs := BoxMesh.new()
-	chairs.size = Vector3.ONE
-	_group(chairs, seats, Color("67605a"))
+	_add_furniture(furniture)

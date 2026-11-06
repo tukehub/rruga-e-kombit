@@ -17,6 +17,7 @@ var mat: ShaderMaterial
 var chunks: Array[MeshInstance3D] = []
 var chunk_pos: PackedVector2Array = []
 var far_mesh: MeshInstance3D
+var lana_enabled := false
 
 
 func load_city(city_id: String, splat: Texture2D) -> void:
@@ -25,6 +26,7 @@ func load_city(city_id: String, splat: Texture2D) -> void:
 	near = meta.near
 	far = meta.far
 	sea_level = float(meta.get("sea_level", -50.0))
+	lana_enabled = city_id == "tirane"
 	near_h = FileAccess.get_file_as_bytes(dir + "terrain_near.bin").to_float32_array()
 	far_h = FileAccess.get_file_as_bytes(dir + "terrain_far.bin").to_float32_array()
 	mat = ShaderMaterial.new()
@@ -46,6 +48,10 @@ func load_city(city_id: String, splat: Texture2D) -> void:
 	mat.set_shader_parameter("sea_level", sea_level)
 	_build_near()
 	_build_far()
+	if lana_enabled:
+		var river := LanaRiver.new()
+		add_child(river)
+		river.build(self)
 
 
 func set_env(wet: float, snow: float, night: float) -> void:
@@ -99,6 +105,8 @@ func _grid_mesh(g: Dictionary, h: PackedFloat32Array, cx0: int, cz0: int, cells:
 			var y := h[gz * n + gx]
 			var px := x0 + gx * cell
 			var pz := z0 + gz * cell
+			if lana_enabled and px >= 270.0 and px <= 680.0 and pz >= 105.0 and pz <= 390.0 and g == near:
+				y -= LanaRiver.channel_depth(px, pz)
 			verts[j * m + i] = Vector3(px, y, pz) - origin
 			# central differences for the normal
 			var xl := h[gz * n + maxi(gx - step, 0)]

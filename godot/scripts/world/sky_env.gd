@@ -22,6 +22,7 @@ var env_id := "day"
 var preset: Dictionary
 var wet := 0.0
 var night := 0.0
+var daytime_ambient_floor := 0.78
 
 
 func _ready() -> void:
@@ -69,7 +70,10 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.64, 0.70, 0.80) if is_night else Color(0.86, 0.90, 0.97)
 	env.ambient_light_sky_contribution = 0.25
-	env.ambient_light_energy = maxf(float(preset.ambient), 0.48 if is_night else 0.78)
+	# Keep the night visibility floor, while giving clear midday sunlight a
+	# little more contrast than the bright, uniform ambient fill.
+	var ambient_floor := 0.48 if is_night else (daytime_ambient_floor if id == "day" else 0.78)
+	env.ambient_light_energy = maxf(float(preset.ambient), ambient_floor)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
 	# tonemap + exposure
