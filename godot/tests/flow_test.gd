@@ -39,7 +39,13 @@ func _ready() -> void:
 			seen_facts[fact] = true
 		previous_fact = fact
 	var preview: CanvasLayer = Game._transition_overlay("race")
-	check(preview.find_child("LoadingFact", true, false) != null, "loading transition displays a fact")
+	var title := preview.find_child("LoadingTitle", true, false) as Label
+	var heading := preview.find_child("LoadingFactHeading", true, false) as Label
+	var fact := preview.find_child("LoadingFact", true, false) as Label
+	check(title != null and title.text == "Gara po fillon", "loading transition displays the requested title")
+	check(heading != null and heading.text == "Fakt rastesor:", "loading transition displays the fact heading")
+	check(fact != null and fact.text in Game.LOADING_FACTS, "loading transition displays a random fact")
+	check(fact != null and fact.get_theme_font_size("font_size") > 23, "loading fact uses larger text")
 	preview.free()
 	var menu: Menu = Game._root.get_child(0)
 	Game.race_opts.laps = 0

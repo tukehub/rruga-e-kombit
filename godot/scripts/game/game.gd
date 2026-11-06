@@ -114,7 +114,7 @@ func goto(name: String) -> void:
 	scene_changed.emit(name)
 
 
-func _transition_overlay(name: String) -> CanvasLayer:
+func _transition_overlay(_name: String) -> CanvasLayer:
 	var layer := CanvasLayer.new()
 	layer.name = "TransitionOverlay"
 	layer.layer = 100
@@ -124,30 +124,43 @@ func _transition_overlay(name: String) -> CanvasLayer:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	layer.add_child(bg)
+	# Use a centered, width-constrained stack: long facts can wrap naturally on
+	# narrower phones without covering the title or running off the screen.
+	var content := VBoxContainer.new()
+	content.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.anchor_left = 0.08
+	content.anchor_right = 0.92
+	content.anchor_top = 0.18
+	content.anchor_bottom = 0.82
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	content.add_theme_constant_override("separation", 20)
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.add_child(content)
 	var label := Label.new()
-	label.text = "Duke përgatitur garën…" if name == "race" else ("Duke u kthyer në menu…" if name == "menu" else "Duke përgatitur rezultatet…")
+	label.name = "LoadingTitle"
+	label.text = "Gara po fillon"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 32)
+	label.add_theme_font_size_override("font_size", 48)
 	label.add_theme_color_override("font_color", Color.WHITE)
-	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.add_child(label)
+	content.add_child(label)
+	var fact_label := Label.new()
+	fact_label.name = "LoadingFactHeading"
+	fact_label.text = "Fakt rastesor:"
+	fact_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fact_label.add_theme_font_size_override("font_size", 36)
+	fact_label.add_theme_color_override("font_color", Color("b8d9ef"))
+	fact_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(fact_label)
 	var fact := Label.new()
 	fact.name = "LoadingFact"
-	fact.text = "Ndërkohë, një fakt krejt rastësor:\n" + _next_loading_fact()
+	fact.text = _next_loading_fact()
 	fact.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fact.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	fact.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	fact.add_theme_font_size_override("font_size", 23)
-	fact.add_theme_color_override("font_color", Color("b8d9ef"))
-	fact.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	fact.offset_left = -420
-	fact.offset_right = 420
-	fact.offset_top = -210
-	fact.offset_bottom = -90
+	fact.add_theme_font_size_override("font_size", 36)
+	fact.add_theme_color_override("font_color", Color.WHITE)
 	fact.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.add_child(fact)
+	content.add_child(fact)
 	return layer
 
 
