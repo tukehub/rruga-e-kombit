@@ -923,12 +923,70 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf)
         landmarks.append({'id': lm['id'], 'x': round(x, 1), 'y': round(y, 1), 'z': round(z, 1), 'yaw': lm.get('yaw', 0)})
     cafes = []
     if city.get('style') == 'tirana':
-        cafes = blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones)
+        mask = blloku_building_mask(os.path.join(os.path.dirname(out_json), 'buildings.glb'))
+        cafes = blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones, mask)
     save_json(out_json, {'lamps': lamps, 'track_lamps': track_lamps, 'trees': trees, 'landmarks': landmarks, 'cafes': cafes})
     log(f'  props: {len(lamps)} lamps, {len(track_lamps)} track lamps, {len(trees)} trees, {len(landmarks)} landmarks')
 
 
-def blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones):
+def blloku_building_mask(path):
+    """Read the extruded façade wall segments from this pipeline's GLB."""
+    import json
+    import struct
+    with open(path, 'rb') as f:
+        magic, version, _, json_len, _ = struct.unpack('<4sIIII', f.read(20))
+        if magic != b'glTF' or version != 2:
+            raise ValueError('Unexpected building GLB')
+        gltf = json.loads(f.read(json_len))
+        binary_len, _ = struct.unpack('<II', f.read(8))
+        binary = f.read(binary_len)
+    starts, ends = [], []
+    for node in gltf['nodes']:
+        primitive = gltf['meshes'][node['mesh']]['primitives'][0]
+        accessor = gltf['accessors'][primitive['attributes']['POSITION']]
+        view = gltf['bufferViews'][accessor['bufferView']]
+        if accessor['componentType'] != 5126 or accessor['type'] != 'VEC3':
+            raise ValueError('Unexpected building vertex format')
+        offset = view.get('byteOffset', 0) + accessor.get('byteOffset', 0)
+        vertices = np.frombuffer(binary, dtype='<f4', count=accessor['count'] * 3, offset=offset).reshape(-1, 3).copy()
+        vertices += np.asarray(node.get('translation', (0, 0, 0)))
+        if len(vertices) % 4:
+            raise ValueError('Unexpected building facade layout')
+        walls = vertices.reshape(-1, 4, 3)
+        starts.append(walls[:, 0, :][:, [0, 2]])
+        ends.append(walls[:, 1, :][:, [0, 2]])
+    return np.concatenate(starts), np.concatenate(ends)
+
+
+def blloku_building_overlap(corners, walls):
+    """Check footprint corners, centre and edges against extruded buildings."""
+    if walls is None:
+        return False
+    a, b = walls
+    corners = np.asarray(corners)
+    for point in list(corners) + [corners.mean(axis=0)]:
+        upward = (a[:, 1] <= point[1]) & (b[:, 1] > point[1])
+        downward = (b[:, 1] <= point[1]) & (a[:, 1] > point[1])
+        intersection = (b[:, 0] - a[:, 0]) * (point[1] - a[:, 1]) / (b[:, 1] - a[:, 1] + 1e-20) + a[:, 0]
+        right = point[0] < intersection
+        if int(np.count_nonzero(upward & right)) != int(np.count_nonzero(downward & right)):
+            return True
+    # Corners are ordered around the footprint rather than across diagonals.
+    for i, j in ((0, 1), (1, 3), (3, 2), (2, 0)):
+        c, d = corners[i], corners[j]
+        def cross2(x, y):
+            return x[..., 0] * y[..., 1] - x[..., 1] * y[..., 0]
+        overlaps_bounds = ((np.maximum(a[:, 0], b[:, 0]) >= min(c[0], d[0]))
+                           & (np.minimum(a[:, 0], b[:, 0]) <= max(c[0], d[0]))
+                           & (np.maximum(a[:, 1], b[:, 1]) >= min(c[1], d[1]))
+                           & (np.minimum(a[:, 1], b[:, 1]) <= max(c[1], d[1])))
+        if np.any(overlaps_bounds & (cross2(b - a, c - a) * cross2(b - a, d - a) <= 0)
+                  & (cross2(d - c, a - c) * cross2(d - c, b - c) <= 0)):
+            return True
+    return False
+
+
+def blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones, walls=None):
     """Paired terraces on the Polytechnic-to-cathedral return via Blloku.
 
     Keep the whole terrace, not just its centre, outside all track sections.
@@ -942,21 +1000,25 @@ def blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones):
     last = min(len(ref.xz), middle + int(300 / spacing) + 1)
     anchors = []
     for i in range(first, last, max(1, int(round(48 / spacing)))):
-        tangent = ref.tan[i]
-        normal = ref.nrm[i]
-        yaw = math.atan2(-float(tangent[1]), float(tangent[0]))
         for side in (-1.0, 1.0):
-            pos = ref.xz[i] + side * (hw + 7.0) * normal
-            corners = [pos + dx * tangent + dz * normal
-                       for dx in (-2.8, 2.8) for dz in (-1.55, 1.55)]
-            if any(ref.nearest(*corner)[0] < hw + 2.0 for corner in corners):
-                continue
-            if overlaps_landmark_bounds([tuple(p) for p in corners], zones):
-                continue
-            ground = float(terrain_sample([pos[0]], [pos[1]])[0])
-            anchors.append([round(float(pos[0]), 1), round(ground, 1),
-                            round(float(pos[1]), 1), round(yaw, 3),
-                            int(side), round(float(ref.y[i]), 2)])
+            for shift in (0, 1, -1, 2, -2):
+                j = i + shift * max(1, int(round(6 / spacing)))
+                if j < first or j >= last:
+                    continue
+                tangent, normal = ref.tan[j], ref.nrm[j]
+                yaw = math.atan2(-float(tangent[1]), float(tangent[0]))
+                pos = ref.xz[j] + side * (hw + 4.5) * normal
+                corners = [pos + dx * tangent + dz * normal
+                           for dx in (-2.8, 2.8) for dz in (-1.55, 1.55)]
+                if any(ref.nearest(*corner)[0] < hw + 1.0 for corner in corners):
+                    continue
+                if overlaps_landmark_bounds([tuple(p) for p in corners], zones) or blloku_building_overlap(corners, walls):
+                    continue
+                ground = float(terrain_sample([pos[0]], [pos[1]])[0])
+                anchors.append([round(float(pos[0]), 1), round(ground, 1),
+                                round(float(pos[1]), 1), round(yaw, 3),
+                                int(side), round(float(ref.y[j]), 2)])
+                break
     return anchors
 
 

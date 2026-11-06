@@ -5,7 +5,7 @@ import unittest
 
 import numpy as np
 from scipy.spatial import cKDTree
-from build_city import place_tirana_finish
+from build_city import place_tirana_finish, blloku_building_mask, blloku_building_overlap
 from cities import CITIES
 from common import Proj
 
@@ -65,6 +65,7 @@ class SquareRouteTest(unittest.TestCase):
         self.assertGreaterEqual(sum(c[4] < 0 for c in cafes), 6)
         self.assertGreaterEqual(sum(c[4] > 0 for c in cafes), 6)
         nearest = cKDTree(self.points)
+        buildings = blloku_building_mask(Path(__file__).resolve().parents[2] / 'godot/assets/cities/tirane/buildings.glb')
         polytechnic = next(l for l in self.props['landmarks'] if l['id'] == 'polytechnic')
         cathedral = next(l for l in self.props['landmarks'] if l['id'] == 'cathedral')
         poly_index = nearest.query([polytechnic['x'], polytechnic['z']])[1]
@@ -75,8 +76,19 @@ class SquareRouteTest(unittest.TestCase):
             corners = [[x, z] + dx * tangent + dz * normal
                        for dx in (-2.8, 2.8) for dz in (-1.55, 1.55)]
             self.assertGreater(float(nearest.query(corners)[0].min()), self.track['hw'] + 1.8)
+            self.assertFalse(blloku_building_overlap(corners, buildings), 'café must not overlap existing building walls')
             index = nearest.query([x, z])[1]
             self.assertTrue(poly_index < index < cathedral_index, 'café must be on the return leg')
+
+    def test_cafe_building_mask_handles_overlaps_and_touching_edges(self):
+        building = np.array([[0., 0.], [4., 0.], [4., 4.], [0., 4.]])
+        walls = (np.tile(building, (2, 1)), np.tile(np.roll(building, -1, axis=0), (2, 1)))
+        inside = np.array([[1., 1.], [1., 2.], [2., 1.], [2., 2.]])
+        touching = np.array([[4., 1.], [4., 2.], [5., 1.], [5., 2.]])
+        outside = np.array([[6., 1.], [6., 2.], [7., 1.], [7., 2.]])
+        self.assertTrue(blloku_building_overlap(inside, walls))
+        self.assertTrue(blloku_building_overlap(touching, walls))
+        self.assertFalse(blloku_building_overlap(outside, walls))
 
 
 if __name__ == '__main__':
