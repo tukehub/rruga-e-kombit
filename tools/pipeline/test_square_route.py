@@ -58,6 +58,26 @@ class SquareRouteTest(unittest.TestCase):
             separation = np.minimum(step_difference, len(self.points) - step_difference)
             self.assertFalse(np.any(separation > 12), 'distant course sections need room for both barriers')
 
+    def test_blloku_cafes_are_on_both_sides_and_clear_the_road(self):
+        cafes = self.props.get('cafes', [])
+        self.assertGreaterEqual(len(cafes), 12)
+        self.assertLessEqual(len(cafes), 24, 'keep detailed furniture bounded for mobile')
+        self.assertGreaterEqual(sum(c[4] < 0 for c in cafes), 6)
+        self.assertGreaterEqual(sum(c[4] > 0 for c in cafes), 6)
+        nearest = cKDTree(self.points)
+        polytechnic = next(l for l in self.props['landmarks'] if l['id'] == 'polytechnic')
+        cathedral = next(l for l in self.props['landmarks'] if l['id'] == 'cathedral')
+        poly_index = nearest.query([polytechnic['x'], polytechnic['z']])[1]
+        cathedral_index = nearest.query([cathedral['x'], cathedral['z']])[1]
+        for x, _ground, z, yaw, _side, _road in cafes:
+            tangent = np.array([np.cos(yaw), -np.sin(yaw)])
+            normal = np.array([np.sin(yaw), np.cos(yaw)])
+            corners = [[x, z] + dx * tangent + dz * normal
+                       for dx in (-2.8, 2.8) for dz in (-1.55, 1.55)]
+            self.assertGreater(float(nearest.query(corners)[0].min()), self.track['hw'] + 1.8)
+            index = nearest.query([x, z])[1]
+            self.assertTrue(poly_index < index < cathedral_index, 'café must be on the return leg')
+
 
 if __name__ == '__main__':
     unittest.main()

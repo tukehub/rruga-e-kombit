@@ -59,7 +59,10 @@ CITIES = {
              'clear_half': (91, 112)},
             {'id': 'cathedral', 'll': (41.326518, 19.81753), 'yaw': 0,
              'offset_x': -25, 'offset_z': -7, 'clear_half': (25, 17)},
-            {'id': 'toptani', 'll': (41.327064, 19.822743), 'yaw': 0, 'offset_z': 6},
+            # The full 85 x 55 m model crossed the circuit. Shift it slightly
+            # toward its block so its entire footprint clears the road/camera.
+            {'id': 'toptani', 'll': (41.327064, 19.822743), 'yaw': 0,
+             'offset_x': -10, 'offset_z': 16, 'clear_half': (42.7, 27.8)},
             {'id': 'clocktower', 'll': (41.32800, 19.82000), 'yaw': 0},
             {'id': 'mosque', 'll': (41.32790, 19.81950), 'yaw': 0},
             {'id': 'blloku_sign', 'll': (41.32070, 19.81600), 'yaw': 90},

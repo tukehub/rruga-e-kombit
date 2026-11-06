@@ -923,25 +923,41 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf)
         landmarks.append({'id': lm['id'], 'x': round(x, 1), 'y': round(y, 1), 'z': round(z, 1), 'yaw': lm.get('yaw', 0)})
     cafes = []
     if city.get('style') == 'tirana':
-        # Game-scale open-air cafe terraces along the Blloku section of the
-        # new course, set outside the road and the roadside crash barriers.
-        last = None
-        for i, (x, z) in enumerate(ref.xz):
-            lat, lon = proj.to_ll(float(x), float(z))
-            if not (41.3204 <= lat <= 41.3214 and 19.8176 <= lon <= 19.8198):
-                continue
-            if last is not None and np.linalg.norm(ref.xz[i] - last) < 28.0:
-                continue
-            last = ref.xz[i]
-            side = 1.0 if len(cafes) % 2 == 0 else -1.0
-            pos = ref.xz[i] + side * (hw + 7.0) * ref.nrm[i]
-            if ref.nearest(*pos)[0] < hw + 3.0 or overlaps_landmark_bounds([tuple(pos)], zones):
-                continue
-            y_cafe = float(terrain_sample([pos[0]], [pos[1]])[0])
-            yaw = math.atan2(-ref.tan[i][0], -ref.tan[i][1])
-            cafes.append([round(float(pos[0]), 1), round(y_cafe, 1), round(float(pos[1]), 1), round(yaw, 3)])
+        cafes = blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones)
     save_json(out_json, {'lamps': lamps, 'track_lamps': track_lamps, 'trees': trees, 'landmarks': landmarks, 'cafes': cafes})
     log(f'  props: {len(lamps)} lamps, {len(track_lamps)} track lamps, {len(trees)} trees, {len(landmarks)} landmarks')
+
+
+def blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones):
+    """Paired terraces on the Polytechnic-to-cathedral return via Blloku.
+
+    Keep the whole terrace, not just its centre, outside all track sections.
+    Store the road and terrain elevations separately so foundations are only
+    as tall as needed on the conformed road embankment.
+    """
+    centre = np.asarray(proj.to_xz(41.3208399, 19.8182188))
+    middle = int(np.argmin(np.linalg.norm(ref.xz - centre, axis=1)))
+    spacing = float(np.median(np.linalg.norm(np.diff(ref.xz, axis=0), axis=1)))
+    first = max(0, middle - int(180 / spacing))
+    last = min(len(ref.xz), middle + int(300 / spacing) + 1)
+    anchors = []
+    for i in range(first, last, max(1, int(round(48 / spacing)))):
+        tangent = ref.tan[i]
+        normal = ref.nrm[i]
+        yaw = math.atan2(-float(tangent[1]), float(tangent[0]))
+        for side in (-1.0, 1.0):
+            pos = ref.xz[i] + side * (hw + 7.0) * normal
+            corners = [pos + dx * tangent + dz * normal
+                       for dx in (-2.8, 2.8) for dz in (-1.55, 1.55)]
+            if any(ref.nearest(*corner)[0] < hw + 2.0 for corner in corners):
+                continue
+            if overlaps_landmark_bounds([tuple(p) for p in corners], zones):
+                continue
+            ground = float(terrain_sample([pos[0]], [pos[1]])[0])
+            anchors.append([round(float(pos[0]), 1), round(ground, 1),
+                            round(float(pos[1]), 1), round(yaw, 3),
+                            int(side), round(float(ref.y[i]), 2)])
+    return anchors
 
 
 # --------------------------------------------------------------------------- debug map

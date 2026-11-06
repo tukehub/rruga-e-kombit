@@ -31,6 +31,11 @@ class RoadsideLandmarkTest(unittest.TestCase):
 
     def test_tirana_moved_landmarks_keep_road_clear(self):
         city = CITIES['tirane']
+        toptani = next(item for item in city['landmarks'] if item['id'] == 'toptani')
+        self.assertGreaterEqual(toptani.get('clear_half', (0, 0))[0], 42.5,
+                                'protect the full 85 m Toptani facade')
+        self.assertGreaterEqual(toptani.get('clear_half', (0, 0))[1], 27.7,
+                                'protect the entire Toptani building depth')
         zones = landmark_clearance_zones(city, Proj(*city['origin']))
         # The stadium's conservative axis-aligned scenery keepout is much
         # larger than its actual, rotated octagonal model. Keep that keepout

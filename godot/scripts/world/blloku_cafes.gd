@@ -41,17 +41,21 @@ func _add_furniture(placements: Array[Transform3D]) -> void:
 			instance.name = "CafeFurniture_%d_%d" % [key.x, key.y]
 			instance.position = chunk_origin
 			instance.multimesh = mm
-			instance.visibility_range_end = 160.0
+			instance.visibility_range_end = 130.0
 			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(instance)
 	root.free()
 
-func _group(mesh: Mesh, transforms: Array, color: Color) -> void:
+func _group(mesh: Mesh, transforms: Array, color: Color, is_foundation := false) -> void:
 	if transforms.is_empty():
 		return
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = 0.9
+	if is_foundation:
+		mat.albedo_texture = load("res://assets/textures/concrete_diff.jpg")
+		mat.uv1_triplanar = true
+		mat.uv1_scale = Vector3(0.4, 0.4, 0.4)
 	mesh.material = mat
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -78,26 +82,27 @@ func build(cafes: Array) -> void:
 			continue
 		var origin := Vector3(float(cafe[0]), float(cafe[1]), float(cafe[2]))
 		var base := Transform3D(Basis(Vector3.UP, float(cafe[3])), origin)
-		# Blloku's natural ground sits below the conformed race surface. Put
-		# each terrace on a solid raised deck so its tables and canopy remain
-		# visible over the road edge, while the deck reaches the ground.
-		decks.append(base * Transform3D(Basis.from_scale(Vector3(5.5, 1.5, 3.0)), Vector3(0, 0.75, 0)))
-		base.origin.y += 1.5
+		# Road and ground have different heights here. The textured foundation
+		# reaches the terrain and puts a thin terrace just above the race road.
+		var road_y := float(cafe[5]) if cafe.size() >= 6 else origin.y + 1.4
+		var deck_height := maxf(0.18, road_y + 0.08 - origin.y)
+		decks.append(base * Transform3D(Basis.from_scale(Vector3(5.5, deck_height, 3.0)), Vector3(0, deck_height * 0.5, 0)))
+		base.origin.y += deck_height
 		var style := i % 3
-		var outside := 1.0 if i % 2 == 0 else -1.0
+		var outside := float(cafe[4]) if cafe.size() >= 5 else (1.0 if i % 2 == 0 else -1.0)
 		awnings[style].append(base * Transform3D(Basis.from_scale(Vector3(5.0, 0.18, 2.5)), Vector3(0, 2.5, 0)))
 		# Each terrace faces a different small shop outside the racing barriers.
-		walls[style].append(base * Transform3D(Basis.from_scale(Vector3(0.35, 3.2, 3.0)), Vector3(outside * 3.05, 1.6, 0)))
-		windows.append(base * Transform3D(Basis.from_scale(Vector3(0.08, 1.8, 1.9)), Vector3(outside * 2.85, 1.65, 0)))
+		walls[style].append(base * Transform3D(Basis.from_scale(Vector3(5.5, 3.2, 0.2)), Vector3(0, 1.6, outside * 1.4)))
+		windows.append(base * Transform3D(Basis.from_scale(Vector3(3.1, 1.8, 0.08)), Vector3(0, 1.65, outside * 1.25)))
 		for x in [-2.3, 2.3]:
-			posts.append(base * Transform3D(Basis.from_scale(Vector3(0.12, 2.5, 0.12)), Vector3(x, 1.25, 0)))
-		for x in [-1.25, 1.25]:
-			furniture.append(base * Transform3D(Basis.IDENTITY, Vector3(x, 0, 0)))
+			posts.append(base * Transform3D(Basis.from_scale(Vector3(0.12, 2.5, 0.12)), Vector3(x, 1.25, -outside * 1.15)))
+		# One detailed set per terrace limits the visible triangle count.
+		furniture.append(base * Transform3D(Basis.IDENTITY, Vector3(0, 0, -outside * 0.25)))
 	var cube := BoxMesh.new()
 	cube.size = Vector3.ONE
 	var platforms := BoxMesh.new()
 	platforms.size = Vector3.ONE
-	_group(platforms, decks, Color("988b7a"))
+	_group(platforms, decks, Color("8b8a83"), true)
 	var canopy_colors := [Color("a84e3f"), Color("47745f"), Color("b89a65")]
 	var facade_colors := [Color("e3d2b8"), Color("c5d1c3"), Color("d9c1ac")]
 	for i in 3:
