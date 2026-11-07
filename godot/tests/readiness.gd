@@ -251,6 +251,29 @@ func _ready() -> void:
 	check(controls.gas and not controls.brake, "one release preserves other held pedal")
 	controls.reset_controls()
 	check(not controls.gas and not controls.brake, "focus/pause clears held touches")
+	# Multiple render frames may pass without a simulation tick. Each one-shot
+	# action must survive those frames and then be consumed exactly once.
+	var test_car := combat.player
+	test_car.wreck_t = 0.0
+	test_car.spin_t = 0.0
+	test_car.slots = [{"type": "bolt", "ammo": 3}, {"type": "nitro", "ammo": 1}]
+	controls.fire = true
+	controls.apply(test_car)
+	controls.apply(test_car)
+	check(test_car.ctrl.fire, "forward fire persists until simulation tick")
+	combat.step(1.0 / 60.0)
+	check(not test_car.ctrl.fire and int(test_car.slots[0].ammo) == 2, "forward fire consumed once")
+	controls.apply(test_car)
+	combat.step(1.0 / 60.0)
+	check(int(test_car.slots[0].ammo) == 2, "forward fire does not repeat")
+	controls.back = true
+	controls._cycle = true
+	controls.apply(test_car)
+	controls.apply(test_car)
+	check(test_car.ctrl.back and test_car.ctrl.cycle, "back fire and cycle persist until simulation tick")
+	combat.step(1.0 / 60.0)
+	check(not test_car.ctrl.back and not test_car.ctrl.cycle, "back fire and cycle consumed")
+	check(test_car.slots.size() == 1 and test_car.slots[0].type == "bolt", "cycle and back fire execute once in simulation order")
 	touch = touch.duplicate()
 	touch.index = 4
 	touch.pressed = true

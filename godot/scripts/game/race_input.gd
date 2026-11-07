@@ -275,9 +275,11 @@ func apply(car: CarState) -> void:
 	car.ctrl.steer = steer
 	car.ctrl.gas = gas
 	car.ctrl.brake = brake
-	car.ctrl.fire = fire
-	car.ctrl.back = back
-	car.ctrl.cycle = _cycle
+	# Keep one-shot actions latched until Race.step consumes them. A render
+	# frame can end before the next fixed simulation tick runs.
+	car.ctrl.fire = car.ctrl.fire or fire
+	car.ctrl.back = car.ctrl.back or back
+	car.ctrl.cycle = car.ctrl.cycle or _cycle
 	fire = false
 	back = false
 	_cycle = false
