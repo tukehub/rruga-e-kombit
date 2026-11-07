@@ -108,6 +108,10 @@ const DRIVERS := [
 	{"name": "Flori", "col": "#19e6c1", "tag": "Vëllai i vogël i shpejtësisë"},
 ]
 
+# Opponents have their own names so changing the AI lineup never changes the
+# player's saved driver selection or the name displayed for that selection.
+const RIVAL_NAMES := ["Arben", "Dritan", "Luan", "Bora", "Era", "Valon"]
+
 const DIFFS := [
 	{"id": 0, "name": "E lehtë", "speed": 0.87, "react": 1.3, "aim": 0.55},
 	{"id": 1, "name": "Normale", "speed": 0.935, "react": 0.9, "aim": 0.8},
@@ -176,7 +180,9 @@ func rivals_of(pi: int, rng: RandomNumberGenerator) -> Array:
 	var b := []
 	for i in DRIVERS.size():
 		if i != pi:
-			b.append(DRIVERS[i])
+			var rival: Dictionary = DRIVERS[i].duplicate()
+			rival.name = RIVAL_NAMES[i]
+			b.append(rival)
 	for i in range(b.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
 		var t = b[i]
