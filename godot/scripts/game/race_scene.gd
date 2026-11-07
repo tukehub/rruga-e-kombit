@@ -67,7 +67,7 @@ func _build_world() -> void:
 	terrain = Terrain.new()
 	add_child(terrain)
 	terrain.load_city(city_id, splat)
-	track = RaceTrack.load_city(city_id)
+	track = RaceTrack.load_city(city_id, bool(Game.race_opts.reverse))
 	var tj: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/%s/track.json" % city_id))
 	sky = SkyEnv.new()
 	add_child(sky)

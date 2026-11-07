@@ -85,6 +85,7 @@ var race_opts := {
 	"city": "tirane",
 	"env": "",          # "" = city default
 	"laps": 0,          # 0 = city default
+	"reverse": false,   # travel the same circuit in the opposite direction
 	"diff": 1,
 	"car": "benxi",
 	"driver": 0,
@@ -109,6 +110,7 @@ func _ready() -> void:
 	race_opts.diff = Settings.difficulty
 	race_opts.env = Settings.env_override
 	race_opts.laps = Settings.laps_override
+	race_opts.reverse = Settings.reverse_lap
 
 
 func _process(dt: float) -> void:
@@ -223,6 +225,7 @@ func start_race() -> void:
 	Settings.difficulty = race_opts.diff
 	Settings.env_override = race_opts.env
 	Settings.laps_override = race_opts.laps
+	Settings.reverse_lap = bool(race_opts.reverse)
 	Settings.save()
 	goto("race")
 

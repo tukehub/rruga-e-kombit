@@ -48,8 +48,12 @@ func _ready() -> void:
 	check(fact != null and fact.get_theme_font_size("font_size") > 23, "loading fact uses larger text")
 	preview.free()
 	var menu: Menu = Game._root.get_child(0)
+	Game.race_opts.reverse = false
 	Game.race_opts.laps = 0
 	menu.show_page("title")
+	check(menu._direction.text == "Drejtimi: Normal", "forward direction is shown")
+	menu._direction.pressed.emit()
+	check(bool(Game.race_opts.reverse) and menu._direction.text == "Drejtimi: Kundërt", "direction selector chooses reverse")
 	var default_laps := Game.city_laps("tirane")
 	menu._lap_plus.pressed.emit()
 	check(int(Game.race_opts.laps) == default_laps + 1 and menu._lap_value.text == str(default_laps + 1), "lap selector updates race options")
@@ -69,6 +73,8 @@ func _ready() -> void:
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
 	check(scene.race.laps == 1 and Settings.laps_override == 1, "selected laps applied and saved")
+	var forward_track := RaceTrack.load_city("tirane")
+	check(Settings.reverse_lap and scene.track.tangent(0.0).dot(forward_track.tangent(0.0)) < -0.99, "reverse selection persists and applies to race")
 	scene.set_scenery_visible(false)
 	check(not scene.buildings.visible and not scene.props.visible and not scene.terrain.visible and scene.road.visible, "scenery comparison hides world while keeping road")
 	check(scene.side_roads == null or not scene.side_roads.visible, "scenery comparison hides side roads")
@@ -163,7 +169,9 @@ func _ready() -> void:
 	scene._process(1.0 / 60.0)
 	check(scene.player.progress > finish_progress, "car continues moving on the first finish frame")
 	check(scene.cam.global_position.distance_to(camera_before) < 2.0, "finish camera starts without a jump")
-	for i in 120:
+	# The spider camera follows a 3.8-second arc; direction and approach side
+	# can put its halfway point near the side of the car on a reversed lap.
+	for i in 180:
 		scene._process(1.0 / 60.0)
 	check(scene.player.v < 35.0 and scene.player.progress > finish_progress, "finished car slows while continuing forward")
 	var forward: Vector3 = scene.track.tangent(scene.player.s)

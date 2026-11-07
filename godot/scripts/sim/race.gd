@@ -252,6 +252,7 @@ func step(dt: float) -> void:
 func physics(c: CarState, dt: float) -> void:
 	var T := track
 	var def := c.def
+	var tirana_driver := c.is_player and not c.autopilot and T.id == "tirane"
 	c.invuln_t = maxf(0.0, c.invuln_t - dt)
 	c.shield_t = maxf(0.0, c.shield_t - dt)
 	c.nitro_t = maxf(0.0, c.nitro_t - dt)
@@ -305,9 +306,10 @@ func physics(c: CarState, dt: float) -> void:
 	c.brake_force = move_toward(c.brake_force, 1.0 if brake else 0.0, dt * 5.0)
 	var drifting := brake and absf(c.steer) > 0.35 and c.v > 18.0
 	c.drift = minf(1.0, c.drift + dt * 4.0) if drifting else maxf(0.0, c.drift - dt * 3.0)
-	c.braking = brake and not drifting and c.v > 1.0
-	c.gas_on = gas
-	if gas and not (brake and not drifting):
+	c.braking = brake and (not drifting or tirana_driver) and c.v > 1.0
+	c.gas_on = gas and not (brake and tirana_driver)
+	# On the Tirana pilot, braking takes priority even with both pedals held.
+	if gas and not (brake and (tirana_driver or not drifting)):
 		if c.v < vmax:
 			var r := c.v / vmax
 			c.v = minf(vmax, c.v + acc * (1.0 - 0.8 * r * r) * dt)
@@ -320,7 +322,12 @@ func physics(c: CarState, dt: float) -> void:
 			c.v = minf(0.0, c.v + 3.0 * dt)
 	if brake:
 		if drifting:
-			c.v -= 4.5 * dt
+			# Steering while braking should still slow the car decisively; retain
+			# the pressure ramp so there is no one-frame braking jolt.
+			if tirana_driver:
+				c.v = maxf(0.0, c.v - 7.5 * c.brake_force * dt)
+			else:
+				c.v -= 4.5 * dt
 		elif c.v > 0.5:
 			c.v = maxf(0.0, c.v - 9.0 * c.brake_force * dt)
 		elif started:
@@ -332,7 +339,11 @@ func physics(c: CarState, dt: float) -> void:
 	c.steer += clampf(steer_in - c.steer, -rate * dt, rate * dt)
 	var v := c.v
 	var av := maxf(absf(v), 1.0)
-	var a_lat: float = def.grip * 22.0 * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0) * (0.93 if wet else 1.0)
+	# The dense Tirana street circuit has several very tight junctions. Give
+	# the human driver a little more arcade cornering authority there while
+	# keeping the existing speed and lateral-displacement bounds intact.
+	var grip_accel := 29.0 if tirana_driver else 22.0
+	var a_lat: float = def.grip * grip_accel * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0) * (0.93 if wet else 1.0)
 	var c_max := minf(0.12, a_lat / (av * av))
 	var cc := c.steer * c_max
 	var k := T.curv(c.s)

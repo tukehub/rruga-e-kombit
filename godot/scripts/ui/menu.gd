@@ -15,6 +15,7 @@ var _drv_btns := {}
 var _diff_btns: Array[Button] = []
 var _lap_value: Label
 var _lap_minus: Button
+var _direction: Button
 var _lap_plus: Button
 var _drv_tag: Label
 var _car_desc: Label
@@ -237,6 +238,14 @@ func _page_title() -> Control:
 	_lap_plus.pressed.connect(func(): _change_laps(1))
 	lap_row.add_child(_lap_plus)
 	v.add_child(lap_row)
+	_direction = UiTheme.button("")
+	_direction.name = "RaceDirection"
+	_direction.custom_minimum_size.y = 48
+	_direction.pressed.connect(func():
+		Sfx.ui_click()
+		Game.race_opts.reverse = not bool(Game.race_opts.reverse)
+		_refresh_city())
+	v.add_child(_direction)
 	var names := ["E lehtë", "Normale", "E fortë"]
 	var difficulty := _seg(names, func(i: int): Game.race_opts.diff = i; _refresh_city())
 	_diff_btns.clear()
@@ -268,6 +277,7 @@ func _page_title() -> Control:
 
 
 func _refresh_city() -> void:
+	_direction.text = "Drejtimi: Kundërt" if bool(Game.race_opts.reverse) else "Drejtimi: Normal"
 	var laps := Game.city_laps("tirane")
 	_lap_value.text = str(laps)
 	_lap_minus.disabled = laps <= 1

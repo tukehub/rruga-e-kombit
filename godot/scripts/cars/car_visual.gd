@@ -51,7 +51,6 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 				body = ch
 			elif String(ch.name).begins_with("wheel"):
 				wheels[String(ch.name)] = ch
-			ch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			ch.gi_mode = GeometryInstance3D.GI_MODE_DYNAMIC
 			_override_materials(ch)
 	if wheels.has("wheel_rl"):
@@ -67,6 +66,19 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 	if is_player:
 		_make_finish_driver()
 		_make_headlights()
+	_apply_car_shadows()
+	if not Quality.preset_changed.is_connected(_apply_car_shadows):
+		Quality.preset_changed.connect(_apply_car_shadows)
+
+
+func _apply_car_shadows(_preset: String = "") -> void:
+	var shadow_mode := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if bool(Quality.p.car_shadows) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for root in [model, finish_driver]:
+		if root == null:
+			continue
+		for child in root.get_children():
+			if child is GeometryInstance3D:
+				child.cast_shadow = shadow_mode
 
 
 static func _load_car_scene(fallback: String) -> PackedScene:
@@ -373,7 +385,7 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	# Match the simulation's speed-limited turning curvature. A fixed full-lock
 	# wheel angle at highway speed makes tires appear to scrub sideways.
 	var speed := maxf(absf(c.v), 1.0)
-	var lateral_accel: float = c.def.grip * 22.0 * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0)
+	var lateral_accel: float = c.def.grip * (29.0 if c.is_player and not c.autopilot and track.id == "tirane" else 22.0) * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0)
 	var curvature := minf(0.12, lateral_accel / (speed * speed))
 	var target_steer := -atan(c.steer * curvature * visual_wheelbase)
 	steer_vis = lerpf(steer_vis, target_steer, minf(1.0, dt * 12.0))
@@ -406,6 +418,8 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	else:
 		blink = 0.0
 		model.visible = true
+	if finish_driver:
+		finish_driver.visible = model.visible
 	visible = not (c.wreck_t > 0.0 and c.wreck_t < 0.05)
 
 

@@ -31,6 +31,7 @@ var city_id := "tirane"
 var env_override := "day"       # daylight for the focused Tirana build
 var presentation_version := 0
 var laps_override := 0          # 0 = city default
+var reverse_lap := false
 var first_run := true
 var stats := {"races": 0, "wins": 0, "podiums": 0, "best_laps": {}}
 var seen_pws: Array = []        # power-up ids whose one-time tip was shown
@@ -82,6 +83,7 @@ func load_settings() -> void:
 	city_id = cf.get_value("race", "city", city_id)
 	env_override = cf.get_value("race", "env", env_override)
 	laps_override = cf.get_value("race", "laps", laps_override)
+	reverse_lap = bool(cf.get_value("race", "reverse", reverse_lap))
 	first_run = cf.get_value("meta", "first_run", first_run)
 	stats = cf.get_value("meta", "stats", stats)
 	seen_pws = cf.get_value("meta", "seen_pws", seen_pws)
@@ -110,6 +112,7 @@ func save() -> void:
 	cf.set_value("race", "city", city_id)
 	cf.set_value("race", "env", env_override)
 	cf.set_value("race", "laps", laps_override)
+	cf.set_value("race", "reverse", reverse_lap)
 	cf.set_value("meta", "first_run", first_run)
 	cf.set_value("meta", "stats", stats)
 	cf.set_value("meta", "seen_pws", seen_pws)

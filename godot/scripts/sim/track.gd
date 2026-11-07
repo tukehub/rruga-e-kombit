@@ -35,7 +35,7 @@ const CELL := 30.0
 var _grid := {}
 
 
-static func load_city(city_id: String) -> RaceTrack:
+static func load_city(city_id: String, reverse := false) -> RaceTrack:
 	var path := "res://assets/cities/%s/track.json" % city_id
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
@@ -46,11 +46,11 @@ static func load_city(city_id: String) -> RaceTrack:
 		push_error("track.json invalid for %s" % city_id)
 		return null
 	var t := RaceTrack.new()
-	t.build(data)
+	t.build(data, reverse)
 	return t
 
 
-func build(data: Dictionary) -> void:
+func build(data: Dictionary, reverse := false) -> void:
 	id = str(data.get("id", ""))
 	name = str(data.get("name", id))
 	half_w = float(data.get("hw", 10.0))
@@ -60,6 +60,12 @@ func build(data: Dictionary) -> void:
 	var pts: Array[Vector3] = []
 	for p in raw:
 		pts.append(Vector3(float(p[0]), float(p[1]), float(p[2])))
+	if reverse and pts.size() > 2:
+		# Keep the start/finish anchored while travelling around the loop in
+		# the opposite order; recomputing frames also reverses steering normals.
+		var start: Vector3 = pts.pop_front()
+		pts.reverse()
+		pts.push_front(start)
 	_resample(pts)
 	_frames()
 	_grid_build()
