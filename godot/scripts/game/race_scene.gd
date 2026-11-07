@@ -5,6 +5,8 @@ extends Node3D
 ## States: intro -> countdown -> race -> finish -> results.
 
 const DT := 1.0 / 60.0
+const MAX_CATCHUP_STEPS := 12
+const MAX_SIM_DEBT := 1.0
 const RenderPose = preload("res://scripts/game/render_pose.gd")
 
 var city_id := "tirane"
@@ -34,6 +36,7 @@ var pause_ui: Control
 
 var state := "intro"
 var acc := 0.0
+var dropped_sim_time := 0.0
 var _previous_poses: Array[Dictionary] = []
 var cd_t := 0.0
 var cd_n := 4
@@ -254,9 +257,18 @@ func toggle_pause() -> void:
 	get_tree().paused = paused
 	pause_ui.visible = paused
 	input.reset_controls()
+	_clear_pending_actions()
 	input.visible = not paused
 	if paused:
 		Sfx.stop_loops()
+
+
+func _clear_pending_actions() -> void:
+	if player != null:
+		player.ctrl.fire = false
+		player.ctrl.back = false
+		player.ctrl.cycle = false
+		player.ctrl.select = 0
 
 
 func _notification(what: int) -> void:
@@ -271,9 +283,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+static func _timing_plan(accumulator: float, elapsed: float) -> Dictionary:
+	# Preserve ordinary stalls without an unbounded catch-up spiral. A 200 ms
+	# frame can run all twelve 60 Hz ticks; excess debt over one second is
+	# deliberately shed and tracked when the device cannot keep up.
+	var total := maxf(0.0, accumulator) + maxf(0.0, elapsed)
+	var dropped := maxf(0.0, total - MAX_SIM_DEBT)
+	var retained := minf(total, MAX_SIM_DEBT)
+	var steps := mini(MAX_CATCHUP_STEPS, int(floor((retained + 0.000000001) / DT)))
+	return {"steps": steps, "debt": maxf(0.0, retained - steps * DT), "dropped": dropped}
+
+
 func _process(dt: float) -> void:
 	if paused:
 		return
+	var elapsed := maxf(dt, 0.0)
 	dt = minf(dt, 0.1)
 	_update_weather(dt)
 	match state:
@@ -306,21 +330,16 @@ func _process(dt: float) -> void:
 		"race", "finish":
 			if state == "race":
 				input.apply(player)
-			acc += dt
-			var n := 0
-			while acc >= DT and n < 5:
+			var plan := _timing_plan(acc, elapsed)
+			acc = float(plan.debt)
+			dropped_sim_time += float(plan.dropped)
+			for n in int(plan.steps):
 				for i in race.cars.size():
 					_previous_poses[i] = RenderPose.capture(race.cars[i])
 				race.step(DT)
 				if state == "finish":
 					finish_speed_limit = maxf(6.0, finish_speed_limit - 8.0 * DT)
 					player.v = minf(player.v, finish_speed_limit)
-				acc -= DT
-				n += 1
-			# Bound catch-up work after a stall, but retain the fractional tick so
-			# interpolation and simulation timing do not lose it on every slow frame.
-			if n >= 5 and acc >= DT:
-				acc = fmod(acc, DT)
 			_events()
 			if state == "race" and not last500:
 				var left := race.laps * race.L - player.progress
