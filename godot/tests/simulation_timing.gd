@@ -50,8 +50,8 @@ func _ready() -> void:
 	# A long stall is bounded the same way and leaves no backlog to fast-forward.
 	var overloaded := RaceScene._timing_plan(0.02, 2.0)
 	assert(int(overloaded.steps) == 3, "catch-up steps must stay bounded")
-	assert(absf(float(overloaded.dropped) - 1.97) < 0.00001, "elapsed time beyond the catch-up limit must be discarded")
-	assert(float(overloaded.debt) < dt, "no backlog may remain after a stall")
+	assert(absf(float(overloaded.dropped) - 118.0 * dt) < 0.00001, "whole ticks beyond the catch-up limit must be discarded")
+	assert(float(overloaded.debt) < dt, "only the sub-tick remainder may survive a stall")
 	var after := RaceScene._timing_plan(float(overloaded.debt), dt)
 	assert(int(after.steps) == 1, "the frame after a stall must run at normal speed")
 	print("SIMULATION TIMING: 60 Hz, real time down to 20 FPS, bounded stalls passed")

@@ -3,6 +3,10 @@ extends Camera3D
 ## Third-person chase camera, port of chaseCam() in src/10_main.js plus the
 ## 2.8 s intro sweep. Speed-dependent FOV, nitro FOV kick, impact shake.
 
+# real-scale cars (~4.5 m) need more distance than the original 3.5 m
+const CHASE_BACK := 7.0
+const CHASE_HEIGHT := 2.3
+
 var track: RaceTrack
 var look := Vector3.ZERO
 var fov_target := 64.0
@@ -17,6 +21,10 @@ var _finish_angle := 0.0
 var _finish_radius := 8.0
 var _finish_height := 2.0
 var _snap := true
+var _cam_d := 0.0
+var _cam_hop := 0.0
+var _cam_psi := 0.0
+var _cam_slope := 0.0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -49,22 +57,24 @@ func follow(c: CarState, dt: float, pose: Dictionary = {}) -> void:
 		_follow_cabin(c, s, d, yaw, hop, dt)
 		return
 	var sp := absf(c.v)
-	# real-scale cars (~4.5 m) need more distance than the original 3.5 m
-	var back := 6.4 + sp * 0.022
-	var h := 2.15 + sp * 0.006
-	var target := track.pos(s - back, d * 0.82)
-	target.y += h + hop * 0.5
+	# The camera sits a fixed distance behind the car along the road. Only the
+	# sideways offset, hop, heading and slope are smoothed, so the car keeps a
+	# constant size on screen instead of shrinking and pulsing with speed.
 	var car := track.pos(s, d)
 	car.y += hop
 	var psi := track.heading(s) + yaw * 0.5
 	var tg := track.tangent(s)
-	var look_t := Vector3(car.x - sin(psi) * 12.0, car.y + 1.0 + tg.y * 12.0, car.z + cos(psi) * 12.0)
-	var snap := _snap or global_position.distance_squared_to(target) > 900.0
+	var snap := _snap
 	_snap = false
 	var k := 1.0 if snap else 1.0 - exp(-dt * 8.0)
 	var kl := 1.0 if snap else 1.0 - exp(-dt * 12.0)
-	var p := global_position.lerp(target, k)
-	look = look.lerp(look_t, kl)
+	_cam_d = lerpf(_cam_d, d * 0.82, k)
+	_cam_hop = lerpf(_cam_hop, hop, k)
+	_cam_psi = lerp_angle(_cam_psi, psi, kl)
+	_cam_slope = lerpf(_cam_slope, tg.y, kl)
+	var p := track.pos(s - CHASE_BACK, _cam_d)
+	p.y += CHASE_HEIGHT + _cam_hop * 0.5
+	look = Vector3(car.x - sin(_cam_psi) * 12.0, car.y + 1.0 + _cam_slope * 12.0, car.z + cos(_cam_psi) * 12.0)
 	if shake > 0.0:
 		shake = maxf(0.0, shake - dt * 2.5)
 		var shake_size := shake * 0.5
@@ -131,7 +141,7 @@ func _intro_cam(c: CarState, dt: float) -> void:
 	var e := t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
 	var start := track.pos(c.s + 18.0, c.d * 0.2) + Vector3.UP * 8.0
 	var middle := track.pos(c.s - 8.0, c.d * 0.5) + Vector3.UP * 9.0
-	var end := track.pos(c.s - 6.4, c.d * 0.82) + Vector3.UP * 2.15
+	var end := track.pos(c.s - CHASE_BACK, c.d * 0.82) + Vector3.UP * CHASE_HEIGHT
 	var p := start.lerp(middle, e).lerp(middle.lerp(end, e), e)
 	global_position = p
 	var car := track.pos(c.s, c.d)

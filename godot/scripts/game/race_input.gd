@@ -236,7 +236,8 @@ func _recount() -> void:
 			button.set_pressed_no_signal(_held(pair[1]))
 
 
-func _process(dt: float) -> void:
+## Called by RaceScene at the top of its frame, before the controls are applied.
+func poll(dt: float) -> void:
 	# Merge keyboard and touch state each frame so neither leaves a stuck pedal.
 	var kb_steer := Input.get_axis("ui_left", "ui_right")
 	var kb_gas := Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W)

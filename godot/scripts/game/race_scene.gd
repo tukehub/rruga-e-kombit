@@ -6,7 +6,6 @@ extends Node3D
 
 const DT := 1.0 / 60.0
 const MAX_CATCHUP_STEPS := 3
-const MAX_SIM_DEBT := MAX_CATCHUP_STEPS * DT
 const RenderPose = preload("res://scripts/game/render_pose.gd")
 
 var city_id := "tirane"
@@ -290,13 +289,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 static func _timing_plan(accumulator: float, elapsed: float) -> Dictionary:
 	# At most three 60 Hz ticks run per rendered frame, so 20 FPS and above stay
-	# in real time. A longer stall sheds (and tracks) the excess: the race slows
-	# for that frame instead of the car jumping many ticks forward at once.
+	# in real time. A longer stall sheds (and tracks) the excess whole ticks: the
+	# race slows for that frame instead of the car jumping many ticks at once.
+	# The sub-tick remainder is kept so render interpolation stays continuous.
 	var total := maxf(0.0, accumulator) + maxf(0.0, elapsed)
-	var dropped := maxf(0.0, total - MAX_SIM_DEBT)
-	var retained := minf(total, MAX_SIM_DEBT)
-	var steps := mini(MAX_CATCHUP_STEPS, int(floor((retained + 0.000000001) / DT)))
-	return {"steps": steps, "debt": maxf(0.0, retained - steps * DT), "dropped": dropped}
+	var whole := int(floor((total + 0.000000001) / DT))
+	var steps := mini(MAX_CATCHUP_STEPS, whole)
+	return {"steps": steps, "debt": maxf(0.0, total - whole * DT), "dropped": (whole - steps) * DT}
 
 
 func _process(dt: float) -> void:
@@ -304,6 +303,9 @@ func _process(dt: float) -> void:
 		return
 	var elapsed := maxf(dt, 0.0)
 	dt = minf(dt, 0.1)
+	# Children process after this node: poll here so steering and pedals reach
+	# the simulation in the same frame instead of the next one.
+	input.poll(dt)
 	_update_weather(dt)
 	match state:
 		"intro":

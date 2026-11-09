@@ -335,7 +335,7 @@ func physics(c: CarState, dt: float) -> void:
 	if c.v > vmax * 1.02 and c.nitro_t <= 0.0:
 		c.v -= (c.v - vmax) * 1.5 * dt
 	# steering
-	var rate := 5.5 if (c.is_player and not c.autopilot) else 8.0
+	var rate := 12.0 if (c.is_player and not c.autopilot) else 8.0
 	c.steer += clampf(steer_in - c.steer, -rate * dt, rate * dt)
 	var v := c.v
 	var av := maxf(absf(v), 1.0)
