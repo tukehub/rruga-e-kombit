@@ -106,7 +106,7 @@ func _setup_pines() -> void:
 	# scattering trees randomly over the road, buildings, or other cities.
 	if city_id != "tirane" or pine_forest == null or not pine_forest.has_method("build_forest"):
 		return
-	var limit := 16 if Quality.preset == "low" else (24 if Quality.preset == "medium" else 32)
+	var limit := 8 if Quality.preset == "low" else (24 if Quality.preset == "medium" else 32)
 	var candidates := {}
 	for ref: Dictionary in props._tree_refs:
 		var world: Transform3D = ref.world

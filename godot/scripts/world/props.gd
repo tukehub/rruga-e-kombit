@@ -229,7 +229,7 @@ func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
 		var transforms := []
 		for entry in entries:
 			transforms.append(entry.local)
-		var node := _tree_chunk(meshes[0], transforms, origin, float(Quality.p.props_dist) * 1.3, Quality.preset != "low", "TreeCanopy")
+		var node := _tree_chunk(meshes[0], transforms, origin, float(Quality.p.props_dist) * 1.3, Quality.preset == "high", "TreeCanopy")
 		if city_id == "tirane":
 			var refs := []
 			for i in entries.size():
@@ -247,11 +247,16 @@ func _build_trees(trees: Array, terrain: Terrain, city_id: String) -> void:
 			_near_branches = _make_tree_pool(branches, "Tree3DBranches")
 
 
+## Fewer full 3D trees ride along with the camera on the low preset.
+func _near_tree_limit() -> int:
+	return 12 if Quality.preset == "low" else NEAR_TREE_LIMIT
+
+
 func _make_tree_pool(mesh: Mesh, node_name: String) -> MultiMesh:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = mesh
-	mm.instance_count = NEAR_TREE_LIMIT
+	mm.instance_count = _near_tree_limit()
 	mm.visible_instance_count = 0
 	var node := MultiMeshInstance3D.new()
 	node.name = node_name
@@ -292,7 +297,7 @@ func _update_tree_lod(player_pos: Vector3, force := false, forward := Vector3.ZE
 	for ref in _near_marked:
 		ref.mm.set_instance_transform(ref.index, ref.local)
 	_near_marked.clear()
-	var count := mini(NEAR_TREE_LIMIT, candidates.size())
+	var count := mini(_near_tree_limit(), candidates.size())
 	for i in count:
 		var ref: Dictionary = candidates[i][1]
 		var hidden: Transform3D = ref.local
