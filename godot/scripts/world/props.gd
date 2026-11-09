@@ -266,12 +266,13 @@ func _make_tree_pool(mesh: Mesh, node_name: String) -> MultiMesh:
 	return mm
 
 
-func _update_tree_lod(player_pos: Vector3, force := false, forward := Vector3.ZERO) -> void:
+## Returns true when a rescoring pass actually ran this call.
+func _update_tree_lod(player_pos: Vector3, force := false, forward := Vector3.ZERO) -> bool:
 	if _near_leaves == null or _near_branches == null:
-		return
+		return false
 	var now := Time.get_ticks_msec()
 	if not force and now - _tree_lod_last < 400:
-		return
+		return false
 	_tree_lod_last = now
 	var candidates := []
 	var x_min := floori((player_pos.x - NEAR_TREE_RADIUS) / TREE_CHUNK_SIZE)
@@ -308,6 +309,7 @@ func _update_tree_lod(player_pos: Vector3, force := false, forward := Vector3.ZE
 		_near_marked.append(ref)
 	_near_leaves.visible_instance_count = count
 	_near_branches.visible_instance_count = count
+	return true
 
 
 func _find_tree_mesh(node: Node) -> Mesh:
@@ -349,8 +351,16 @@ func set_night(n: float) -> void:
 
 ## Move the real lights to the nearest lamps ahead of the player.
 func update_lights(player_pos: Vector3, forward: Vector3) -> void:
-	_update_tree_lod(player_pos, false, forward)
+	# Never rescore trees and sort lamps in the same frame.
+	if _update_tree_lod(player_pos, false, forward):
+		return
 	if lights.is_empty() or track_lamps.is_empty():
+		return
+	if night <= 0.05:
+		# Daylight: the lamps are dark, so there is nothing to sort or move.
+		if lights[0].visible:
+			for l in lights:
+				l.visible = false
 		return
 	var cand := []
 	for l in track_lamps:

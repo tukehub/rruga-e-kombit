@@ -30,6 +30,7 @@ var scenery_visible := true
 var _weather_clock := 0.0
 var _weather_step := 0
 var _light_clock := 0.0
+var _env_pushed := Vector2(-1.0, -1.0)
 var pickups: PickupVisual
 var pause_ui: Control
 
@@ -564,10 +565,14 @@ func _update_weather(dt: float) -> void:
 		_light_clock = 0.0
 		props.update_lights(track.pos(player.s, player.d), track.tangent(player.s))
 	sky.advance(dt)
-	road.set_wet(sky.wet)
-	terrain.set_env(sky.wet, 0.0, sky.night)
-	buildings.set_env(sky.night, sky.wet)
-	props.set_night(sky.night)
 	race.wet = sky.wet > 0.5
-	for car in cars:
-		car.set_night(sky.night)
+	# Material uniforms and car lamps only need a push while the weather moves.
+	var env_now := Vector2(sky.wet, sky.night)
+	if env_now != _env_pushed:
+		_env_pushed = env_now
+		road.set_wet(sky.wet)
+		terrain.set_env(sky.wet, 0.0, sky.night)
+		buildings.set_env(sky.night, sky.wet)
+		props.set_night(sky.night)
+		for car in cars:
+			car.set_night(sky.night)

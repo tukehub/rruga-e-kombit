@@ -10,7 +10,10 @@ func _ready() -> void:
 	var state := CarState.new(0, def, "test", true, Color.WHITE)
 	assert(car.finish_driver != null, "player driver exists")
 	_assert_shadows(car, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	# Medium relies on the contact-shadow quad; only high casts real car shadows.
 	Quality.set_preset("medium")
+	_assert_shadows(car, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	Quality.set_preset("high")
 	_assert_shadows(car, GeometryInstance3D.SHADOW_CASTING_SETTING_ON)
 	Quality.set_preset("low")
 	_assert_shadows(car, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)

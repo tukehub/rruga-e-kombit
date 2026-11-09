@@ -36,6 +36,8 @@ var _slot_name: Label
 var _slots: Array[Button] = []
 var _slot_key := ""
 var _minimap: Control
+var _mm_dots: Control
+var _mm_flag: Control
 var _me: Label
 var _fps: Label
 var diagnostic_fps := false
@@ -173,6 +175,10 @@ func _build() -> void:
 		if track != null:
 			_build_minimap())
 	add_child(_minimap)
+	# The track and flag are static and drawn once; only the dots layer between
+	# them is redrawn every frame.
+	_mm_dots = _minimap_layer(_draw_minimap_dots)
+	_mm_flag = _minimap_layer(_draw_minimap_flag)
 	# Compact digital speed and damage bar, rather than an opaque corner dial.
 	_gauge = Control.new()
 	_gauge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -254,10 +260,22 @@ func _build_minimap() -> void:
 	_mm_scale = minf((sz.x - 24.0) / ext.x, (sz.y - 24.0) / ext.y)
 	_mm_min = mn
 	_mm_rect = Rect2((sz - ext * _mm_scale) * 0.5, ext * _mm_scale)
+	_minimap.queue_redraw()
+	if _mm_flag != null:
+		_mm_flag.queue_redraw()
 
 
 func _mm(p: Vector3) -> Vector2:
 	return _mm_rect.position + (Vector2(p.x, p.z) - _mm_min) * _mm_scale
+
+
+func _minimap_layer(draw_fn: Callable) -> Control:
+	var layer := Control.new()
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.draw.connect(draw_fn)
+	_minimap.add_child(layer)
+	return layer
 
 
 func _draw_minimap() -> void:
@@ -273,23 +291,34 @@ func _draw_minimap() -> void:
 	var p0 := _mm(track.pos(0.0, 0.0))
 	_minimap.draw_circle(p0, 5.0, Color(0.02, 0.02, 0.02, 0.9))
 	_minimap.draw_circle(p0, 3.0, Color(1.0, 0.84, 0.18))
+
+
+func _draw_minimap_dots() -> void:
+	if _mm_pts.is_empty() or race == null:
+		return
 	for c in race.cars:
 		if c == player:
 			continue
 		var q := _mm(track.pos(c.s, c.d))
-		_minimap.draw_circle(q, 4.0, Color(0, 0, 0, 0.7))
-		_minimap.draw_circle(q, 3.0, c.color)
+		_mm_dots.draw_circle(q, 4.0, Color(0, 0, 0, 0.7))
+		_mm_dots.draw_circle(q, 3.0, c.color)
 	var pp := _mm(track.pos(player.s, player.d))
-	_minimap.draw_circle(pp, 6.5, Color(0, 0, 0, 0.8))
-	_minimap.draw_circle(pp, 5.0, Color.WHITE)
+	_mm_dots.draw_circle(pp, 6.5, Color(0, 0, 0, 0.8))
+	_mm_dots.draw_circle(pp, 5.0, Color.WHITE)
+
+
+func _draw_minimap_flag() -> void:
+	if _mm_pts.is_empty() or race == null:
+		return
 	# High-contrast checkered flag stays visible even when cars cover the line.
+	var p0 := _mm(track.pos(0.0, 0.0))
 	var flag := Vector2(clampf(p0.x + 7.0, 2.0, _minimap.size.x - 20.0), clampf(p0.y - 20.0, 2.0, _minimap.size.y - 18.0))
-	_minimap.draw_line(p0, flag + Vector2(1, 15), Color(0.02, 0.02, 0.02, 0.9), 3.0, true)
-	_minimap.draw_line(p0, flag + Vector2(1, 15), Color(1.0, 0.84, 0.18), 1.5, true)
-	_minimap.draw_rect(Rect2(flag - Vector2(1, 1), Vector2(18, 14)), Color(0.02, 0.02, 0.02, 0.95))
-	_minimap.draw_rect(Rect2(flag, Vector2(16, 12)), Color.WHITE)
-	_minimap.draw_rect(Rect2(flag, Vector2(8, 6)), Color(0.04, 0.04, 0.04))
-	_minimap.draw_rect(Rect2(flag + Vector2(8, 6), Vector2(8, 6)), Color(0.04, 0.04, 0.04))
+	_mm_flag.draw_line(p0, flag + Vector2(1, 15), Color(0.02, 0.02, 0.02, 0.9), 3.0, true)
+	_mm_flag.draw_line(p0, flag + Vector2(1, 15), Color(1.0, 0.84, 0.18), 1.5, true)
+	_mm_flag.draw_rect(Rect2(flag - Vector2(1, 1), Vector2(18, 14)), Color(0.02, 0.02, 0.02, 0.95))
+	_mm_flag.draw_rect(Rect2(flag, Vector2(16, 12)), Color.WHITE)
+	_mm_flag.draw_rect(Rect2(flag, Vector2(8, 6)), Color(0.04, 0.04, 0.04))
+	_mm_flag.draw_rect(Rect2(flag + Vector2(8, 6), Vector2(8, 6)), Color(0.04, 0.04, 0.04))
 
 
 func _draw_gauge() -> void:
@@ -440,7 +469,7 @@ func _process(dt: float) -> void:
 				b.tooltip_text = ""
 				b.visible = false
 		_slot_name.text = Data.PW[player.slots[0].type].name.to_upper() if not player.slots.is_empty() else ""
-	_minimap.queue_redraw()
+	_mm_dots.queue_redraw()
 	_gauge.queue_redraw()
 	if Settings.show_fps or diagnostic_fps:
 		_fps.text = "%.1f ms  (max %.1f)  %d fps" % [Game.frame_ms_avg, Game.frame_ms_max, Engine.get_frames_per_second()]
