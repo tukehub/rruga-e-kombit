@@ -13,6 +13,8 @@ uniform sampler2D tex_urban_n : hint_normal, filter_linear_mipmap_anisotropic, r
 uniform sampler2D tex_road : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tex_square : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform bool skanderbeg_square = false;
+// Second, coarser texture scale that hides tiling in the distance.
+uniform bool two_scale = true;
 uniform float sea_level = -50.0;
 uniform float wetness : hint_range(0.0, 1.0) = 0.0;
 uniform float snow : hint_range(0.0, 1.0) = 0.0;
@@ -54,9 +56,16 @@ void fragment() {
 	float far_w = clamp((cam_dist - 120.0) / 500.0, 0.0, 1.0);
 	float slope = 1.0 - clamp(wnrm.y, 0.0, 1.0);
 
-	vec3 grass = mix(texture(tex_grass, uv_n).rgb, texture(tex_grass, uv_f).rgb, far_w) * grass_tint;
-	vec3 rock = mix(texture(tex_rock, uv_n).rgb, texture(tex_rock, uv_f).rgb, far_w);
-	vec3 urban = mix(texture(tex_urban, uv_n).rgb, texture(tex_urban, uv_f).rgb, far_w) * urban_tint;
+	vec3 grass = texture(tex_grass, uv_n).rgb;
+	vec3 rock = texture(tex_rock, uv_n).rgb;
+	vec3 urban = texture(tex_urban, uv_n).rgb;
+	if (two_scale) {
+		grass = mix(grass, texture(tex_grass, uv_f).rgb, far_w);
+		rock = mix(rock, texture(tex_rock, uv_f).rgb, far_w);
+		urban = mix(urban, texture(tex_urban, uv_f).rgb, far_w);
+	}
+	grass *= grass_tint;
+	urban *= urban_tint;
 	vec3 road = texture(tex_road, uv_n * 0.5).rgb * 0.85;
 
 	vec3 n_grass = mix(texture(tex_grass_n, uv_n).rgb, vec3(0.5, 0.5, 1.0), far_w);

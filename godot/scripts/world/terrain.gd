@@ -32,6 +32,7 @@ func load_city(city_id: String, splat: Texture2D) -> void:
 	mat = ShaderMaterial.new()
 	mat.shader = SHADER
 	mat.set_shader_parameter("splat", splat)
+	mat.set_shader_parameter("two_scale", Quality.preset != "low")
 	mat.set_shader_parameter("splat_span", float(meta.splat.span))
 	mat.set_shader_parameter("tex_grass", load("res://assets/textures/grass_diff.jpg"))
 	mat.set_shader_parameter("tex_grass_n", load("res://assets/textures/grass_nor.jpg"))

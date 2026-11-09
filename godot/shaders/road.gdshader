@@ -63,12 +63,16 @@ void fragment() {
 		if (abs(float(i) * 2.0 - lane_count) < 0.5) continue; // centre handled separately
 		lane_line = max(lane_line, (1.0 - smoothstep(0.1, 0.18, abs(across - lx))) * dash);
 	}
-	float worn = 0.78 + 0.20 * vnoise(vec2(across, along) * 1.7);
 	vec3 col = asphalt;
-	col = mix(col, line_white * worn, edge * 0.9);
-	col = mix(col, line_white * worn, lane_line * 0.85);
-	col = mix(col, line_yellow * worn, centre * 0.9);
-	rough = mix(rough, 0.55, max(edge, max(lane_line, centre)));
+	float mark = max(edge, max(lane_line, centre));
+	// Paint wear noise is only evaluated on the markings themselves.
+	if (mark > 0.0) {
+		float worn = 0.78 + 0.20 * vnoise(vec2(across, along) * 1.7);
+		col = mix(col, line_white * worn, edge * 0.9);
+		col = mix(col, line_white * worn, lane_line * 0.85);
+		col = mix(col, line_yellow * worn, centre * 0.9);
+		rough = mix(rough, 0.55, mark);
+	}
 
 	// start / finish chequer band 6 m long
 	float ds = along - start_s;
@@ -81,20 +85,26 @@ void fragment() {
 		rough = 0.55;
 	}
 
-	// puddles: low frequency noise, concentrate near edges
-	float pud = vnoise(vec2(across, along) * 0.11) * 0.6 + vnoise(vec2(along, across) * 0.37) * 0.4;
-	float puddle = smoothstep(0.62 - 0.25 * wetness, 0.72 - 0.25 * wetness, pud) * wetness;
-	puddle *= 0.5 + 0.5 * smoothstep(0.2, 0.8, abs(across) / half_w);
-	float wet = wetness * 0.75 + puddle;
-	col *= 1.0 - 0.25 * clamp(wet, 0.0, 1.0);
-	rough = mix(rough, 0.08, clamp(wet, 0.0, 1.0));
-	rough = mix(rough, 0.03, puddle);
-	nrm = mix(nrm, vec3(0.5, 0.5, 1.0), puddle);
+	// puddles: low frequency noise, concentrate near edges. A dry road skips
+	// the noise entirely.
+	float wet = 0.0;
+	if (wetness > 0.001) {
+		float pud = vnoise(vec2(across, along) * 0.11) * 0.6 + vnoise(vec2(along, across) * 0.37) * 0.4;
+		float puddle = smoothstep(0.62 - 0.25 * wetness, 0.72 - 0.25 * wetness, pud) * wetness;
+		puddle *= 0.5 + 0.5 * smoothstep(0.2, 0.8, abs(across) / half_w);
+		wet = wetness * 0.75 + puddle;
+		col *= 1.0 - 0.25 * clamp(wet, 0.0, 1.0);
+		rough = mix(rough, 0.08, clamp(wet, 0.0, 1.0));
+		rough = mix(rough, 0.03, puddle);
+		nrm = mix(nrm, vec3(0.5, 0.5, 1.0), puddle);
+	}
 
 	// snow slush on the sides
-	float slush = snow * smoothstep(0.55, 0.95, abs(across) / half_w);
-	col = mix(col, vec3(0.85, 0.87, 0.9), slush);
-	rough = mix(rough, 0.6, slush);
+	if (snow > 0.001) {
+		float slush = snow * smoothstep(0.55, 0.95, abs(across) / half_w);
+		col = mix(col, vec3(0.85, 0.87, 0.9), slush);
+		rough = mix(rough, 0.6, slush);
+	}
 
 	ALBEDO = col;
 	ROUGHNESS = rough;

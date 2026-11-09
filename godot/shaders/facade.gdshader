@@ -51,9 +51,17 @@ void fragment() {
 	win *= step(0.95, fy);
 
 	vec2 tuv = vec2(fuv.x, fuv.y) / 3.0;
-	vec3 plaster = texture(tex_plaster, tuv).rgb * vcol.rgb * 1.15;
-	vec3 concrete = texture(tex_concrete, tuv * 1.3).rgb * vcol.rgb;
-	vec3 wall = mix(plaster, concrete, step(0.5, hash(floor(wpos.xz * 0.002))));
+	// Plaster and concrete only show through on partly glazed buildings: fully
+	// masonry walls are replaced by the facade tile below and glass towers by
+	// their tint, so neither needs these two fetches.
+	vec2 tuv_dx = dFdx(tuv);
+	vec2 tuv_dy = dFdy(tuv);
+	vec3 wall = vcol.rgb;
+	if (glass_w > 0.001 && glass_w < 0.999) {
+		vec3 plaster = textureGrad(tex_plaster, tuv, tuv_dx, tuv_dy).rgb * vcol.rgb * 1.15;
+		vec3 concrete = textureGrad(tex_concrete, tuv * 1.3, tuv_dx * 1.3, tuv_dy * 1.3).rgb * vcol.rgb;
+		wall = mix(plaster, concrete, step(0.5, hash(floor(wpos.xz * 0.002))));
+	}
 	vec3 glass_wall = vcol.rgb * 0.35;
 	vec3 base = mix(wall, glass_wall, glass_w);
 	vec3 nrm = mix(texture(tex_plaster_n, tuv).rgb, vec3(0.5, 0.5, 1.0), glass_w);
@@ -114,19 +122,24 @@ void fragment() {
 	col = mix(detailed_facade, col, glass_w);
 	rough = mix(rough, mix(0.82, 0.28, pane_mask), 1.0 - glass_w);
 
-	// lit windows at night (per window random, with slow flicker-free stability)
-	float lit = step(0.62 - 0.1 * glass_w, hash(cell + floor(wpos.xz * 0.013)));
-	float warm_sel = hash(cell * 1.7 + 3.0);
-	vec3 wcol = mix(window_cool, window_warm, step(0.35, warm_sel));
-	float emis = win * lit * night * window_glow;
-	// dimmer upper floors so skyline is not uniform
-	emis *= 0.6 + 0.4 * hash(cell.yy);
+	// lit windows at night (per window random, with slow flicker-free stability).
+	// Daylight emits nothing, so the whole block is skipped.
+	float emis = 0.0;
+	vec3 emis_col = vec3(0.0);
+	if (night > 0.001) {
+		float lit = step(0.62 - 0.1 * glass_w, hash(cell + floor(wpos.xz * 0.013)));
+		float warm_sel = hash(cell * 1.7 + 3.0);
+		vec3 wcol = mix(window_cool, window_warm, step(0.35, warm_sel));
+		emis = win * lit * night * window_glow;
+		// dimmer upper floors so skyline is not uniform
+		emis *= 0.6 + 0.4 * hash(cell.yy);
 
-	// ground floor shop signage glow strip
-	float sign = step(0.78, fract(fy)) * step(fy, 1.0) * step(0.2, fr.x) * step(fr.x, 0.8);
-	vec3 sign_col = mix(vec3(1.0, 0.3, 0.6), vec3(0.2, 0.9, 1.0), step(0.5, hash(cell.xx + 11.0)));
-	emis += sign * night * 1.5 * step(0.55, hash(floor(wpos.xz * 0.05) + 5.0));
-	vec3 emis_col = mix(wcol, sign_col, sign);
+		// ground floor shop signage glow strip
+		float sign = step(0.78, fract(fy)) * step(fy, 1.0) * step(0.2, fr.x) * step(fr.x, 0.8);
+		vec3 sign_col = mix(vec3(1.0, 0.3, 0.6), vec3(0.2, 0.9, 1.0), step(0.5, hash(cell.xx + 11.0)));
+		emis += sign * night * 1.5 * step(0.55, hash(floor(wpos.xz * 0.05) + 5.0));
+		emis_col = mix(wcol, sign_col, sign);
+	}
 
 	// wet facades darken slightly at the base
 	float wet = wetness * (1.0 - smoothstep(0.0, 3.0, fuv.y));

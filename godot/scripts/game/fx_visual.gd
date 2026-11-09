@@ -15,6 +15,14 @@ var _skid_next := 0
 var _skid_count := 0
 var _skids: MultiMesh
 const MAX_SKIDS := 320
+const FLASH_POOL := 8
+const RING_POOL := 6
+var _flash_pool: Array[MeshInstance3D] = []
+var _flash_next := 0
+var _ring_pool: Array = []   # [{root, node, mat, tween}]
+var _ring_next := 0
+var _free: Dictionary = {}   # kind -> hidden nodes ready for reuse
+var _node_key: Dictionary = {}  # id -> kind
 
 static var _mats: Dictionary = {}
 
@@ -56,6 +64,66 @@ func setup(p_race: Race, p_track: RaceTrack, p_car: CarVisual = null) -> void:
 	marks.multimesh = _skids
 	marks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(marks)
+	_build_pools()
+
+
+## Everything combat spawns is created once here, hidden, and reused, so no
+## node, mesh or material is allocated when something fires or blows up.
+func _build_pools() -> void:
+	var sph := SphereMesh.new()
+	sph.radius = 1.0
+	sph.height = 2.0
+	for i in FLASH_POOL:
+		var m := StandardMaterial3D.new()
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.emission_enabled = true
+		m.emission_energy_multiplier = 4.0
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		var mi := _mk(sph, m)
+		var l := OmniLight3D.new()
+		l.shadow_enabled = false
+		mi.add_child(l)
+		mi.visible = false
+		add_child(mi)
+		_flash_pool.append(mi)
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.88
+	torus.outer_radius = 1.0
+	torus.rings = 24
+	torus.ring_segments = 8
+	for i in RING_POOL:
+		var material := StandardMaterial3D.new()
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.emission_enabled = true
+		material.emission_energy_multiplier = 1.2
+		var root := Node3D.new()
+		root.visible = false
+		add_child(root)
+		var node := _mk(torus, material)
+		root.add_child(node)
+		_ring_pool.append({"root": root, "node": node, "mat": material, "tween": null})
+	for kind in ["bolt", "bolt", "bolt", "eagle", "eagle"]:
+		_release(kind, _make_proj({"kind": kind}))
+	for i in 3:
+		_release("mine", _make_mine({}))
+
+
+func _acquire(key: String) -> Node3D:
+	var pool: Array = _free.get(key, [])
+	if pool.is_empty():
+		return null
+	var n: Node3D = pool.pop_back()
+	n.visible = true
+	return n
+
+
+func _release(key: String, n: Node3D) -> void:
+	n.visible = false
+	if not _free.has(key):
+		_free[key] = []
+	_free[key].append(n)
 
 
 func _mk(mesh: Mesh, mat: Material) -> MeshInstance3D:
@@ -144,29 +212,25 @@ func _make_dome(dm: Dictionary) -> Node3D:
 func powerup_used(c: CarState, kind: String, back: bool) -> void:
 	# Small, short-lived energy geometry; the established projectile, shield,
 	# nitro and mine visuals continue to show the ability after activation.
-	if not Data.PW.has(kind) or get_tree() == null:
+	if not Data.PW.has(kind) or get_tree() == null or _ring_pool.is_empty():
 		return
 	var color := Color.html(Data.PW[kind].col)
-	var root := Node3D.new()
-	add_child(root)
+	# Reuse the oldest ring when every pooled one is still animating.
+	var slot: Dictionary = _ring_pool[_ring_next]
+	_ring_next = (_ring_next + 1) % _ring_pool.size()
+	if slot.tween != null and slot.tween.is_valid():
+		slot.tween.kill()
+	var root: Node3D = slot.root
+	var node: MeshInstance3D = slot.node
+	var material: StandardMaterial3D = slot.mat
+	root.transform = Transform3D.IDENTITY
+	node.transform = Transform3D.IDENTITY
 	root.position = _wpos(c.s, c.d, 0.35)
 	var tan := track.tangent(c.s)
 	if tan.length_squared() > 0.001:
 		root.look_at(root.position + tan, Vector3.UP)
-	var ring := TorusMesh.new()
-	ring.inner_radius = 0.88
-	ring.outer_radius = 1.0
-	ring.rings = 24
-	ring.ring_segments = 8
-	var material := StandardMaterial3D.new()
 	material.albedo_color = Color(color, 0.7)
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.emission_enabled = true
 	material.emission = color
-	material.emission_energy_multiplier = 1.2
-	var node := _mk(ring, material)
-	root.add_child(node)
 	var stretch := Vector3.ONE
 	var duration := 0.4
 	match kind:
@@ -190,6 +254,7 @@ func powerup_used(c: CarState, kind: String, back: bool) -> void:
 		"repair":
 			root.position.y += 0.8
 			stretch = Vector3(1.6, 1.0, 1.6)
+	root.visible = true
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(node, "scale", stretch, duration).from(Vector3(0.35, 0.35, 0.35)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(material, "albedo_color:a", 0.0, duration)
@@ -197,30 +262,29 @@ func powerup_used(c: CarState, kind: String, back: bool) -> void:
 		tween.tween_property(root, "position:y", root.position.y + 1.5, duration)
 	elif kind in ["eagle", "bolt", "nitro"]:
 		tween.tween_property(root, "position", root.position + tan * (-3.0 if back else 3.0), duration)
-	tween.chain().tween_callback(root.queue_free)
+	tween.chain().tween_callback(root.hide)
+	slot.tween = tween
 
 
 func boom(pos: Vector3, col: Color, r: float = 3.0, ttl: float = 0.45) -> void:
-	var sph := SphereMesh.new()
-	sph.radius = 1.0
-	sph.height = 2.0
-	var m := StandardMaterial3D.new()
+	if _flash_pool.is_empty():
+		return
+	# Reuse the oldest flash when every pooled one is still fading.
+	var mi := _flash_pool[_flash_next]
+	_flash_next = (_flash_next + 1) % _flash_pool.size()
+	for i in range(_flashes.size() - 1, -1, -1):
+		if _flashes[i].node == mi:
+			_flashes.remove_at(i)
+	var m := mi.material_override as StandardMaterial3D
 	m.albedo_color = Color(col, 0.8)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.emission_enabled = true
 	m.emission = col
-	m.emission_energy_multiplier = 4.0
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var mi := _mk(sph, m)
-	mi.position = pos
-	var l := OmniLight3D.new()
+	var l := mi.get_child(0) as OmniLight3D
 	l.light_color = col
 	l.light_energy = 6.0
 	l.omni_range = r * 3.0
-	l.shadow_enabled = false
-	mi.add_child(l)
-	add_child(mi)
+	mi.position = pos
+	mi.scale = Vector3.ONE * 0.3
+	mi.visible = true
 	_flashes.append({"node": mi, "t": 0.0, "ttl": ttl, "r": r})
 
 
@@ -276,8 +340,12 @@ func _process(dt: float) -> void:
 	for p in race.projs:
 		var n: Node3D = _nodes.get(p.id)
 		if n == null:
-			n = _make_proj(p)
+			var key := "eagle" if p.kind == "eagle" else "bolt"
+			n = _acquire(key)
+			if n == null:
+				n = _make_proj(p)
 			_nodes[p.id] = n
+			_node_key[p.id] = key
 		live[p.id] = true
 		var pos := _wpos(float(p.s), float(p.d), 0.9 if p.kind == "eagle" else 0.7)
 		var tan := track.tangent(float(p.s)) * float(p.dir)
@@ -293,8 +361,11 @@ func _process(dt: float) -> void:
 	for m in race.mines:
 		var n: Node3D = _nodes.get(m.id)
 		if n == null:
-			n = _make_mine(m)
+			n = _acquire("mine")
+			if n == null:
+				n = _make_mine(m)
 			_nodes[m.id] = n
+			_node_key[m.id] = "mine"
 		live[m.id] = true
 		var air := 0.0
 		if float(m.fly) > 0.0 and float(m.fly0) > 0.0:
@@ -308,8 +379,13 @@ func _process(dt: float) -> void:
 	for dm in race.domes:
 		var n: Node3D = _nodes.get(dm.id)
 		if n == null:
-			n = _make_dome(dm)
+			# Domes are sized at build time, so they recycle per radius.
+			var key := "dome%s" % str(dm.r)
+			n = _acquire(key)
+			if n == null:
+				n = _make_dome(dm)
 			_nodes[dm.id] = n
+			_node_key[dm.id] = key
 		live[dm.id] = true
 		n.position = _wpos(float(dm.s), float(dm.d), 0.0)
 		var warn := float(dm.warn) > 0.0
@@ -324,8 +400,9 @@ func _process(dt: float) -> void:
 			ring.visible = (not warn) or fmod(_t * 6.0, 1.0) < 0.5
 	for id in _nodes.keys():
 		if not live.has(id):
-			_nodes[id].queue_free()
+			_release(str(_node_key.get(id, "")), _nodes[id])
 			_nodes.erase(id)
+			_node_key.erase(id)
 	for i in range(_flashes.size() - 1, -1, -1):
 		var f: Dictionary = _flashes[i]
 		f.t += dt
@@ -338,5 +415,5 @@ func _process(dt: float) -> void:
 			if ch is OmniLight3D:
 				ch.light_energy = 6.0 * (1.0 - k)
 		if k >= 1.0:
-			mi.queue_free()
+			mi.visible = false
 			_flashes.remove_at(i)
