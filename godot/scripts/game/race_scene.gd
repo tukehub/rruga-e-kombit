@@ -5,8 +5,8 @@ extends Node3D
 ## States: intro -> countdown -> race -> finish -> results.
 
 const DT := 1.0 / 60.0
-const MAX_CATCHUP_STEPS := 12
-const MAX_SIM_DEBT := 1.0
+const MAX_CATCHUP_STEPS := 3
+const MAX_SIM_DEBT := MAX_CATCHUP_STEPS * DT
 const RenderPose = preload("res://scripts/game/render_pose.gd")
 
 var city_id := "tirane"
@@ -79,10 +79,15 @@ func _build_world() -> void:
 	road.build(track, float(tj.get("hw", track.half_w)), sky.wet)
 	buildings = Buildings.new()
 	var side_path := "res://assets/cities/%s/roads.glb" % city_id
-	if ResourceLoader.exists(side_path):
+	if Quality.preset != "low" and ResourceLoader.exists(side_path):
 		var side_scene: PackedScene = load(side_path)
 		side_roads = side_scene.instantiate()
 		add_child(side_roads)
+		for node in side_roads.find_children("*", "MeshInstance3D", true, false):
+			var ribbon := node as MeshInstance3D
+			ribbon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			ribbon.visibility_range_end = 750.0
+			ribbon.visibility_range_end_margin = 75.0
 	var bld := buildings
 	add_child(bld)
 	bld.load_city(city_id)
@@ -284,9 +289,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 static func _timing_plan(accumulator: float, elapsed: float) -> Dictionary:
-	# Preserve ordinary stalls without an unbounded catch-up spiral. A 200 ms
-	# frame can run all twelve 60 Hz ticks; excess debt over one second is
-	# deliberately shed and tracked when the device cannot keep up.
+	# At most three 60 Hz ticks run per rendered frame, so 20 FPS and above stay
+	# in real time. A longer stall sheds (and tracks) the excess: the race slows
+	# for that frame instead of the car jumping many ticks forward at once.
 	var total := maxf(0.0, accumulator) + maxf(0.0, elapsed)
 	var dropped := maxf(0.0, total - MAX_SIM_DEBT)
 	var retained := minf(total, MAX_SIM_DEBT)

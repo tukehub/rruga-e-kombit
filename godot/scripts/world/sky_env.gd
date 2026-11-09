@@ -129,8 +129,9 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	sun.light_energy = float(preset.sun_i) * (0.5 if is_night else 0.75) * (0.5 if bool(preset.moon) else 1.0)
 	sun.light_indirect_energy = 1.0
 	# PCSS penumbra: values >= ~0.3 smear PSSM shadows into nothing at this
-	# shadow distance, so keep the sun disc small (real sun is 0.26 deg)
-	sun.light_angular_distance = 0.15 if not is_night else 0.3
+	# shadow distance, so keep the sun disc small (real sun is 0.26 deg).
+	# Below high quality the penumbra search is skipped entirely.
+	sun.light_angular_distance = 0.0 if Quality.preset != "high" else (0.15 if not is_night else 0.3)
 	sun.shadow_enabled = true
 	sun.shadow_opacity = 0.58 if not is_night else 0.5
 	Quality.apply_sun(sun)

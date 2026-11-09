@@ -63,7 +63,7 @@ common/max_physics_steps_per_frame=4
 [rendering]
 
 renderer/rendering_method="forward_plus"
-renderer/rendering_method.mobile="forward_plus"
+renderer/rendering_method.mobile="mobile"
 textures/vram_compression/import_etc2_astc=true
 textures/vram_compression/import_s3tc_bptc=true
 lights_and_shadows/directional_shadow/size=4096

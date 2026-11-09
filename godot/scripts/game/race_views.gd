@@ -16,7 +16,7 @@ var mirror_panel: Panel
 var view_button: Button
 var mirror_button: Button
 var cabin_overlay: Control
-var enabled := true
+var enabled := false
 var _mirror_frames := MIRROR_FRAME_INTERVAL - 1
 
 
@@ -32,6 +32,7 @@ class CabinOverlay extends Control:
 
 func setup(cam: ChaseCam, player_visual: CarVisual, layer: CanvasLayer) -> void:
 	race_camera = cam
+	enabled = Settings.mirror
 	_set_player_layer(player_visual)
 	viewport = SubViewport.new()
 	viewport.name = "RearViewViewport"
@@ -62,6 +63,7 @@ func setup(cam: ChaseCam, player_visual: CarVisual, layer: CanvasLayer) -> void:
 	mirror_panel.offset_bottom = 88
 	mirror_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mirror_panel.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.015, 0.02, 0.025, 0.94), Color(0.65, 0.73, 0.76, 0.9), 10, 2))
+	mirror_panel.visible = enabled
 	layer.add_child(mirror_panel)
 	mirror = TextureRect.new()
 	mirror.position = Vector2(4, 4)
@@ -74,7 +76,7 @@ func setup(cam: ChaseCam, player_visual: CarVisual, layer: CanvasLayer) -> void:
 	mirror_panel.add_child(mirror)
 	view_button = _button(layer, "KAMERA: JASHTË", 218)
 	view_button.pressed.connect(_toggle_view)
-	mirror_button = _button(layer, "PASQYRA: PO", 268)
+	mirror_button = _button(layer, "PASQYRA: PO" if enabled else "PASQYRA: JO", 268)
 	mirror_button.pressed.connect(_toggle_mirror)
 
 
@@ -108,6 +110,8 @@ func _toggle_view() -> void:
 
 func _toggle_mirror() -> void:
 	enabled = not enabled
+	Settings.mirror = enabled
+	Settings.save()
 	mirror_panel.visible = enabled
 	mirror_button.text = "PASQYRA: PO" if enabled else "PASQYRA: JO"
 	if not enabled:

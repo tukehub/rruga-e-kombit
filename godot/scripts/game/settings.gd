@@ -25,6 +25,7 @@ var vol_impacts := 1.0
 var vol_pickups := 0.9
 var vol_ui := 0.8
 var show_fps := false
+var mirror := false            # rear-view mirror: a second scene render
 var car_id := "benxi"
 var driver := 0
 var city_id := "tirane"
@@ -72,6 +73,7 @@ func load_settings() -> void:
 	dynamic_weather = cf.get_value("game", "dynamic_weather", dynamic_weather)
 	quality = cf.get_value("video", "quality", quality)
 	show_fps = cf.get_value("video", "show_fps", show_fps)
+	mirror = bool(cf.get_value("video", "mirror", mirror))
 	vol_master = cf.get_value("audio", "master", vol_master)
 	vol_engine = cf.get_value("audio", "engine", vol_engine)
 	vol_tyres = cf.get_value("audio", "tyres", vol_tyres)
@@ -101,6 +103,7 @@ func save() -> void:
 	cf.set_value("game", "dynamic_weather", dynamic_weather)
 	cf.set_value("video", "quality", quality)
 	cf.set_value("video", "show_fps", show_fps)
+	cf.set_value("video", "mirror", mirror)
 	cf.set_value("audio", "master", vol_master)
 	cf.set_value("audio", "engine", vol_engine)
 	cf.set_value("audio", "tyres", vol_tyres)

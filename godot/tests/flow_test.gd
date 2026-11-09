@@ -80,7 +80,10 @@ func _ready() -> void:
 	check(scene.side_roads == null or not scene.side_roads.visible, "scenery comparison hides side roads")
 	scene.set_scenery_visible(true)
 	check(scene.buildings.visible and scene.props.visible and scene.terrain.visible and scene.hud.diagnostic_fps, "scenery comparison restores world and keeps FPS display")
-	check(scene.views.mirror_panel.visible, "rear mirror visible by default")
+	check(scene.views.mirror_panel.visible == Settings.mirror, "rear mirror follows the saved setting")
+	if scene.views.enabled:
+		scene.views._toggle_mirror()
+	check(scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "disabled mirror renders nothing")
 	var player_visual: CarVisual = scene.cars[scene.race.cars.find(scene.player)]
 	check(player_visual.body.layers == 2, "player body isolated from rear mirror")
 	for wheel in player_visual.wheels.values():
@@ -90,7 +93,9 @@ func _ready() -> void:
 	scene.views._toggle_view()
 	check(not scene.cam.cabin and scene.cam.get_cull_mask_value(2), "exterior view restores own car")
 	scene.views._toggle_mirror()
-	check(not scene.views.mirror_panel.visible and scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "mirror can be disabled")
+	check(scene.views.mirror_panel.visible and Settings.mirror, "mirror can be enabled and the choice is saved")
+	scene.views._toggle_mirror()
+	check(not scene.views.mirror_panel.visible and not Settings.mirror and scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "mirror can be disabled")
 	scene.views._toggle_mirror()
 	check(scene.views.mirror_panel.visible, "mirror can be reenabled")
 	# Enabling refreshes immediately, then schedules one rear pass every three
@@ -106,7 +111,6 @@ func _ready() -> void:
 	scene.views._toggle_mirror()
 	scene.views.update_pose(scene.player, {}, 1.0 / 60.0)
 	check(scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "disabled mirror schedules no rendering")
-	scene.views._toggle_mirror()
 	# Standings report live distances from the player on the full race progress,
 	# so the same calculation also works across the start line and multiple laps.
 	var opponent: CarState = scene.race.cars[1]

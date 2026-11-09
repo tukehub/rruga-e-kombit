@@ -11,15 +11,15 @@ const PRESETS := {
 		"ssao": false, "ssao_q": RenderingServer.ENV_SSAO_QUALITY_VERY_LOW, "sdfgi": false, "ssr": false, "ssr_steps": 16,
 		"vol_fog": false, "glow": true, "glow_levels": 2,
 		"shadow_size": 1024, "shadow_splits": 1, "shadow_dist": 70.0, "car_shadows": false,
-		"building_dist": 900.0, "tree_mul": 0.35, "lamp_lights": 0, "probe": false, "wet_reflections": false,
+		"building_dist": 600.0, "tree_mul": 0.35, "lamp_lights": 0, "probe": false, "wet_reflections": false,
 		"props_dist": 350.0, "anisotropy": 1, "max_fps": 60,
 	},
 	"medium": {
 		"scale": 0.8, "msaa": Viewport.MSAA_DISABLED, "fxaa": true,
 		"ssao": true, "ssao_q": RenderingServer.ENV_SSAO_QUALITY_VERY_LOW, "sdfgi": false, "ssr": true, "ssr_steps": 24,
 		"vol_fog": false, "glow": true, "glow_levels": 3,
-		"shadow_size": 2048, "shadow_splits": 2, "shadow_dist": 110.0, "car_shadows": true,
-		"building_dist": 1500.0, "tree_mul": 0.6, "lamp_lights": 6, "probe": true, "wet_reflections": true,
+		"shadow_size": 2048, "shadow_splits": 1, "shadow_dist": 80.0, "car_shadows": false,
+		"building_dist": 1000.0, "tree_mul": 0.6, "lamp_lights": 6, "probe": true, "wet_reflections": true,
 		"props_dist": 600.0, "anisotropy": 2, "max_fps": 60,
 	},
 	"high": {

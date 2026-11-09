@@ -13,8 +13,14 @@ func _ready() -> void:
 		dropped += float(plan.dropped)
 	assert(steps == 60 and absf(debt) < 0.00001 and dropped == 0.0, "normal frames must retain one fixed tick per frame")
 
-	# A 5 FPS frame represents twelve fixed steps, not five: verify elapsed
-	# time with the real race simulation as well as the timing arithmetic.
+	# 30 and 20 FPS still run in real time: two and three ticks per frame.
+	for frame: Array in [[1.0 / 30.0, 2], [1.0 / 20.0, 3]]:
+		debt = 0.0
+		for i in 20:
+			var plan := RaceScene._timing_plan(debt, float(frame[0]))
+			debt = float(plan.debt)
+			assert(int(plan.steps) == int(frame[1]) and float(plan.dropped) < 0.00001, "slow steady frames must keep real time")
+
 	var track := RaceTrack.load_city("tirane")
 	var race := Race.new(track, {"seed": 17})
 	race.started = true
@@ -29,25 +35,24 @@ func _ready() -> void:
 	scene._clear_pending_actions()
 	assert(not race.player.ctrl.fire and not race.player.ctrl.back and not race.player.ctrl.cycle and race.player.ctrl.select == 0, "pause must clear pending one-shot controls")
 	scene.free()
+
+	# A 5 FPS frame runs three ticks and sheds the rest: the race slows down
+	# instead of the car jumping twelve ticks in one rendered frame.
 	debt = 0.0
 	for i in 10:
 		var plan := RaceScene._timing_plan(debt, 0.2)
 		debt = float(plan.debt)
-		assert(int(plan.steps) == 12 and float(plan.dropped) == 0.0, "200 ms must produce twelve fixed steps without dropping time")
+		assert(int(plan.steps) == 3 and absf(float(plan.dropped) - 0.15) < 0.00001, "200 ms must produce three fixed steps and shed the remainder")
 		for tick in int(plan.steps):
 			race.step(dt)
-	assert(absf(race.time - 2.0) < 0.0001 and absf(debt) < 0.00001, "race clock must advance two seconds across ten 200 ms frames")
+	assert(absf(race.time - 0.5) < 0.0001 and debt < dt, "race clock must advance half a second across ten 200 ms frames")
 
-	# Longer stalls may need several render frames to catch up. Their remaining
-	# debt must be preserved, with a bound that prevents runaway accumulation.
+	# A long stall is bounded the same way and leaves no backlog to fast-forward.
 	var overloaded := RaceScene._timing_plan(0.02, 2.0)
-	assert(int(overloaded.steps) == 12, "catch-up steps must stay bounded")
-	assert(absf(float(overloaded.dropped) - 1.02) < 0.00001, "only elapsed time beyond the debt limit may be discarded")
-	assert(absf(float(overloaded.debt) - 0.8) < 0.00001, "unprocessed bounded debt must remain for future frames")
-	debt = float(overloaded.debt)
-	for i in 10:
-		var plan := RaceScene._timing_plan(debt, 0.1)
-		debt = float(plan.debt)
-	assert(debt < dt, "capacity remaining after each frame must drain preserved debt")
-	print("SIMULATION TIMING: 60 Hz, 200 ms frames, bounded overload and recovery passed")
+	assert(int(overloaded.steps) == 3, "catch-up steps must stay bounded")
+	assert(absf(float(overloaded.dropped) - 1.97) < 0.00001, "elapsed time beyond the catch-up limit must be discarded")
+	assert(float(overloaded.debt) < dt, "no backlog may remain after a stall")
+	var after := RaceScene._timing_plan(float(overloaded.debt), dt)
+	assert(int(after.steps) == 1, "the frame after a stall must run at normal speed")
+	print("SIMULATION TIMING: 60 Hz, real time down to 20 FPS, bounded stalls passed")
 	get_tree().quit()
