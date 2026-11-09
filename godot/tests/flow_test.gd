@@ -214,6 +214,16 @@ func _ready() -> void:
 	button(results, "Përsërit").pressed.emit()
 	await wait_scene("race")
 	scene = Game._root.get_child(0)
+	# Restarting from the pause menu rebuilds the race but keeps the city loaded.
+	var kept_buildings: Node = scene.buildings
+	var old_race: Race = scene.race
+	scene.toggle_pause()
+	button(scene, "Rifillo").pressed.emit()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(Game._root.get_child(0) == scene and scene.buildings == kept_buildings, "restart keeps the loaded city")
+	check(scene.race != old_race and scene.cars.size() == 6 and scene.state == "intro", "restart begins a fresh race")
+	check(not scene.paused and not get_tree().paused, "restart resumes the game")
 	scene.toggle_pause()
 	button(scene, "Dil").pressed.emit()
 	await wait_scene("menu")

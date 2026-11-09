@@ -33,6 +33,7 @@ var _light_clock := 0.0
 var _env_pushed := Vector2(-1.0, -1.0)
 var pickups: PickupVisual
 var pause_ui: Control
+var _ui_layer: CanvasLayer
 
 var state := "intro"
 var acc := 0.0
@@ -55,11 +56,49 @@ func _ready() -> void:
 	_build_world()
 	_build_race()
 	_build_ui()
+	_begin()
+
+
+func _begin() -> void:
 	get_tree().paused = false
+	paused = false
 	state = "intro"
 	cam.start_intro()
 	var city: Dictionary = Data.city(city_id)
 	hud.center(city.name, "%s · %d xhiro" % [Data.ENV[env_id].label, race.laps], 2.6)
+
+
+## Restart in place: terrain, buildings, props, road and sky stay loaded; only
+## the race, its cars, the camera and the UI are rebuilt.
+func restart() -> void:
+	Sfx.stop_loops()
+	if not scenery_visible:
+		set_scenery_visible(true)
+	for cv in cars:
+		cv.queue_free()
+	cars.clear()
+	_previous_poses.clear()
+	for node: Node in [pickups, effects, cam, views, _ui_layer]:
+		node.queue_free()
+	_snd_t.clear()
+	acc = 0.0
+	dropped_sim_time = 0.0
+	cd_t = 0.0
+	cd_n = 4
+	fin_t = 0.0
+	finish_speed_limit = 0.0
+	last500 = false
+	_weather_clock = 0.0
+	_weather_step = 0
+	_light_clock = 0.0
+	# Dynamic weather may have moved on; return to the race's own sky.
+	if sky.env_id != env_id or sky._transition < 1.0:
+		sky._transition = 1.0
+		sky.apply(env_id)
+	_env_pushed = Vector2(-1.0, -1.0)
+	_build_race()
+	_build_ui()
+	_begin()
 
 
 func _build_world() -> void:
@@ -187,6 +226,7 @@ func _build_race() -> void:
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	_ui_layer = layer
 	views = RaceViews.new()
 	add_child(views)
 	views.setup(cam, cars[race.cars.find(player)], layer)
@@ -235,7 +275,7 @@ func _build_pause(layer: CanvasLayer) -> void:
 		Sfx.ui_click())
 	v.add_child(b_compare)
 	var b_restart := UiTheme.button("Rifillo")
-	b_restart.pressed.connect(func(): Sfx.ui_click(); get_tree().paused = false; Game.goto("race"))
+	b_restart.pressed.connect(func(): Sfx.ui_click(); restart())
 	v.add_child(b_restart)
 	var b_quit := UiTheme.button("Dil")
 	b_quit.pressed.connect(func(): Sfx.ui_back(); get_tree().paused = false; Sfx.stop_loops(); Game.goto("menu"))
