@@ -206,7 +206,12 @@ func _ready() -> void:
 		var previous_width := minf(RaceInput.STEER_SIZE.x, maxf(0.0, viewport_width - 2.0 * margin))
 		var previous_left := clampf(viewport_width * 0.2, margin, maxf(margin, viewport_width - margin - previous_width))
 		var old_expansion := minf(48.0, maxf(0.0, previous_left - margin))
-		check(is_equal_approx(steering_rect.end.x, previous_left + previous_width), "steering right edge stays fixed")
+		var old_right := previous_left + previous_width
+		check(steering_rect.end.x >= old_right and steering_rect.end.x <= old_right + RaceInput.STEER_RIGHT_EXPANSION, "steering grows right by a bounded amount only")
+		check(steering_rect.end.x <= maxf(old_right, viewport_width * 0.5 - 126.0), "steering never grows under the item slots")
+		if viewport_width >= 1600.0:
+			check(steering_rect.end.x > old_right, "wide phones get a wider steering pad")
+		check(steering_rect.size.y > 96.0, "steering pad is taller than the previous version")
 		check(steering_rect.position.x < previous_left - old_expansion, "steering grows left beyond previous version")
 		check(steering_rect.size.x > previous_width + old_expansion, "steering is wider than previous version")
 		if viewport_width >= 1280.0:

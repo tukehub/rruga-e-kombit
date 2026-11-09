@@ -11,12 +11,19 @@ const TILT_SMOOTH := 14.0
 const EDGE := 20.0
 const PEDAL_SIZE := Vector2(112, 128)
 const FIRE_SIZE := Vector2(164, 64)
-const STEER_SIZE := Vector2(260, 96)
+const STEER_SIZE := Vector2(260, 124)
 # Preserve the existing right edge while letting the pad grow toward the
 # brake. A 24-pixel clear strip still separates their touch targets.
 const STEER_BASE_GAP := 48.0
 const STEER_PEDAL_GAP := 24.0
 const STEER_LEFT_EXPANSION := 100.0
+# Wide phones leave free space between the pad and the item slots in the
+# centre of the screen; the pad grows into it but never under the slots.
+const STEER_RIGHT_EXPANSION := 70.0
+const STEER_SLOT_CLEARANCE := 138.0
+# Finger travel from the pad centre to full lock, so a wider pad is more
+# forgiving without becoming slower to steer.
+const STEER_FULL_LOCK := 130.0
 
 var steer := 0.0
 var gas := false
@@ -76,7 +83,9 @@ func control_rect(zone: String) -> Rect2:
 			var width := minf(STEER_SIZE.x, maxf(0.0, size.x - 2.0 * base_margin))
 			var left := clampf(size.x * 0.2, base_margin, maxf(base_margin, size.x - base_margin - width))
 			var expansion := minf(STEER_LEFT_EXPANSION, maxf(0.0, left - minimum_left))
-			return Rect2(Vector2(left - expansion, size.y - 28 - STEER_SIZE.y), Vector2(width + expansion, STEER_SIZE.y))
+			var right := left + width
+			right = maxf(right, minf(right + STEER_RIGHT_EXPANSION, size.x * 0.5 - STEER_SLOT_CLEARANCE))
+			return Rect2(Vector2(left - expansion, size.y - 28 - STEER_SIZE.y), Vector2(right - left + expansion, STEER_SIZE.y))
 	return Rect2()
 
 
@@ -213,7 +222,7 @@ func _set_pad(x: float) -> void:
 	if rect.size.x <= 0.0:
 		_pad_steer = 0.0
 		return
-	_pad_steer = clampf((x - rect.get_center().x) / (rect.size.x * 0.38), -1.0, 1.0)
+	_pad_steer = clampf((x - rect.get_center().x) / minf(rect.size.x * 0.38, STEER_FULL_LOCK), -1.0, 1.0)
 	if absf(_pad_steer) < 0.1:
 		_pad_steer = 0.0
 

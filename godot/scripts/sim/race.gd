@@ -16,6 +16,15 @@ var diff: Dictionary
 var rng := RandomNumberGenerator.new()
 var wet := false
 var assist := 1.6
+# Corner assist for the human driver: the car is slowed before tight bends to
+# a speed its tyres can carry, because the brake pedal is out of reach while
+# both thumbs hold gas and steering.
+var brake_assist := false
+const CORNER_ASSIST_GRIP := 0.8
+const CORNER_ASSIST_PLAN_DECEL := 9.0
+const CORNER_ASSIST_DECEL := 10.0
+const CORNER_ASSIST_MIN_SPEED := 10.0
+var _assist_noted := false
 var time := 0.0
 var events: Array = []
 var next_id := 1
@@ -41,6 +50,7 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	rng.seed = int(opt.get("seed", 1234))
 	wet = bool(opt.get("wet", false))
 	assist = 0.9 if opt.get("assist", true) == false else 1.6
+	brake_assist = bool(opt.get("brake_assist", false))
 	var no_player := bool(opt.get("no_player", false))
 	var pi := -1 if no_player else int(opt.get("driver", 0))
 	var rivals := Data.rivals_of(pi, rng)
@@ -284,6 +294,7 @@ func physics(c: CarState, dt: float) -> void:
 	var steer_in := c.ctrl.steer
 	var gas := c.ctrl.gas
 	var brake := c.ctrl.brake
+	var v_before := c.v
 	if not started:
 		gas = false
 		brake = true
@@ -334,6 +345,18 @@ func physics(c: CarState, dt: float) -> void:
 			c.v = maxf(-9.0, c.v - 10.0 * dt)
 	if c.v > vmax * 1.02 and c.nitro_t <= 0.0:
 		c.v -= (c.v - vmax) * 1.5 * dt
+	if brake_assist and started and c.is_player and not c.autopilot and c.v > 8.0:
+		var corner_grip: float = def.grip * (29.0 if tirana_driver else 22.0) * (0.93 if wet else 1.0) * CORNER_ASSIST_GRIP
+		var v_corner := maxf(CORNER_ASSIST_MIN_SPEED, corner_speed(c.s, corner_grip, CORNER_ASSIST_PLAN_DECEL, c.v * c.v / (2.0 * CORNER_ASSIST_PLAN_DECEL) + 12.0))
+		if c.v > v_corner:
+			if c.v - v_corner > 0.5:
+				# Brake lights and tyre noise show that the assist is working.
+				c.braking = true
+				if not _assist_noted:
+					_assist_noted = true
+					emit({"t": "assist_brake", "car": c})
+			# Never gain speed above the limit, nitro included.
+			c.v = maxf(v_corner, minf(c.v, v_before) - CORNER_ASSIST_DECEL * dt)
 	# steering
 	var rate := 12.0 if (c.is_player and not c.autopilot) else 8.0
 	c.steer += clampf(steer_in - c.steer, -rate * dt, rate * dt)
@@ -446,6 +469,21 @@ func physics(c: CarState, dt: float) -> void:
 const CAR_HALF_LENGTH := 2.18
 const CAR_HALF_WIDTH := 0.98
 const CAR_CORNER := 0.30
+
+
+## Highest speed from which a car at `s` can still slow, at `decel`, to what
+## `a_lat` of lateral grip carries through every bend within `reach` metres.
+func corner_speed(s: float, a_lat: float, decel: float, reach: float) -> float:
+	var v_t := INF
+	var x := 0.0
+	while x <= reach:
+		var k := absf(track.curv(s + x))
+		if k >= 1e-4:
+			var allow := sqrt(a_lat / k + 2.0 * decel * x)
+			if allow < v_t:
+				v_t = allow
+		x += 6.0
+	return v_t
 
 
 func _footprint_radius(axis: Vector2, forward: Vector2, side: Vector2) -> float:

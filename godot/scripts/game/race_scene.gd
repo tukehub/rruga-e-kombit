@@ -191,6 +191,7 @@ func _build_race() -> void:
 		"seed": int(Time.get_unix_time_from_system()) % 100000,
 		"wet": sky.wet,
 		"assist": Settings.assist,
+		"brake_assist": Settings.assist,
 		"driver": int(Game.race_opts.driver),
 		"player_car": str(Game.race_opts.car),
 	}
@@ -500,6 +501,8 @@ func _events() -> void:
 					hud.pop("KO +%d" % int(Race.FANS.wreck))
 				elif _near_vol(c.s) > 0.6:
 					hud.feed("%s u bë copë" % c.name, UiTheme.MUTED, 1.8)
+			"assist_brake":
+				hud.feed("Ndihma frenon vetë para kthesave të forta", UiTheme.CYAN, 3.5)
 			"respawn":
 				if c == player:
 					Sfx.play("respawn", "Pickups", -6.0)

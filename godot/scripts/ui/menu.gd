@@ -393,7 +393,7 @@ func _page_settings() -> Control:
 	_set_row(list, "steer", "Timoni", ["Anim", "Prekje"], func(i): Settings.touch_steer = (i == 1))
 	_set_row(list, "sens", "Ndjeshmëria e animit", Settings.TILT_LABELS, func(i): Settings.tilt_sens = i)
 	_set_row(list, "invert", "Anim i kundërt", ["Jo", "Po"], func(i): Settings.tilt_invert = (i == 1))
-	_set_row(list, "assist", "Ndihmë në timon", ["Jo", "Po"], func(i): Settings.assist = (i == 1))
+	_set_row(list, "assist", "Ndihmë në kthesa", ["Jo", "Po"], func(i): Settings.assist = (i == 1))
 	_set_row(list, "weather", "Mot dhe dritë dinamike", ["Jo", "Po"], func(i): Settings.dynamic_weather = (i == 1))
 	_set_row(list, "haptics", "Dridhje", ["Jo", "Po"], func(i): Settings.haptics = (i == 1))
 	_set_row(list, "quality", "Cilësia grafike", ["Auto", "E ulët", "Mesatare", "E lartë"], func(i):
