@@ -18,7 +18,7 @@ dest_files=["res://.godot/imported/tree_small_02_mobile_tree_small_02_nor_gl_1k.
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/hdr_compression=1

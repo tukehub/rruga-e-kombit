@@ -18,7 +18,7 @@ dest_files=["res://.godot/imported/vortex_gt_Image_1.png-04532aa5256b32460259e5a
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/hdr_compression=1
