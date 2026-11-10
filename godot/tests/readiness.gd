@@ -204,7 +204,7 @@ func _ready() -> void:
 		var gas_rect := controls.control_rect("gas")
 		var margin := RaceInput.EDGE + RaceInput.PEDAL_SIZE.x + RaceInput.STEER_BASE_GAP
 		var previous_width := minf(RaceInput.STEER_SIZE.x, maxf(0.0, viewport_width - 2.0 * margin))
-		var previous_left := clampf(viewport_width * 0.2, margin, maxf(margin, viewport_width - margin - previous_width))
+		var previous_left := clampf(viewport_width * RaceInput.STEER_LEFT_FRACTION, margin, maxf(margin, viewport_width - margin - previous_width))
 		var old_expansion := minf(48.0, maxf(0.0, previous_left - margin))
 		var old_right := previous_left + previous_width
 		check(steering_rect.end.x >= old_right and steering_rect.end.x <= old_right + RaceInput.STEER_RIGHT_EXPANSION, "steering grows right by a bounded amount only")
@@ -214,7 +214,7 @@ func _ready() -> void:
 		check(steering_rect.size.y > 96.0, "steering pad is taller than the previous version")
 		check(steering_rect.position.x < previous_left - old_expansion, "steering grows left beyond previous version")
 		check(steering_rect.size.x > previous_width + old_expansion, "steering is wider than previous version")
-		if viewport_width >= 1280.0:
+		if viewport_width >= 1600.0:
 			check(is_equal_approx(steering_rect.position.x, previous_left - RaceInput.STEER_LEFT_EXPANSION), "left steering area expands")
 		check(steering_rect.position.x - brake_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from brake")
 		check(gas_rect.position.x - steering_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from gas")

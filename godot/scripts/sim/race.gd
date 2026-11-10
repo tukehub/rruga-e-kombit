@@ -20,7 +20,9 @@ var assist := 1.6
 # a speed its tyres can carry, because the brake pedal is out of reach while
 # both thumbs hold gas and steering.
 var brake_assist := false
-const CORNER_ASSIST_GRIP := 0.8
+# 1.0 is what the tyres hold on the centreline; the wide road lets a driver
+# cut the bend, so a little more still clears the walls.
+const CORNER_ASSIST_GRIP := 1.15
 const CORNER_ASSIST_PLAN_DECEL := 9.0
 const CORNER_ASSIST_DECEL := 10.0
 const CORNER_ASSIST_MIN_SPEED := 10.0

@@ -17,6 +17,8 @@ const STEER_SIZE := Vector2(260, 124)
 const STEER_BASE_GAP := 48.0
 const STEER_PEDAL_GAP := 24.0
 const STEER_LEFT_EXPANSION := 100.0
+# Where the pad starts, as a fraction of the screen width.
+const STEER_LEFT_FRACTION := 0.17
 # Wide phones leave free space between the pad and the item slots in the
 # centre of the screen; the pad grows into it but never under the slots.
 const STEER_RIGHT_EXPANSION := 70.0
@@ -81,7 +83,7 @@ func control_rect(zone: String) -> Rect2:
 			var base_margin := EDGE + PEDAL_SIZE.x + STEER_BASE_GAP
 			var minimum_left := EDGE + PEDAL_SIZE.x + STEER_PEDAL_GAP
 			var width := minf(STEER_SIZE.x, maxf(0.0, size.x - 2.0 * base_margin))
-			var left := clampf(size.x * 0.2, base_margin, maxf(base_margin, size.x - base_margin - width))
+			var left := clampf(size.x * STEER_LEFT_FRACTION, base_margin, maxf(base_margin, size.x - base_margin - width))
 			var expansion := minf(STEER_LEFT_EXPANSION, maxf(0.0, left - minimum_left))
 			var right := left + width
 			right = maxf(right, minf(right + STEER_RIGHT_EXPANSION, size.x * 0.5 - STEER_SLOT_CLEARANCE))
