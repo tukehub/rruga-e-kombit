@@ -1,4 +1,5 @@
-"""Procedural sound effects for Vortex (CC0, generated).
+"""Procedural sound effects for Vortex (CC0, generated): tyre screech, wall
+scrape and rain. Everything else comes from tools/build_sfx.py.
 
 Writes 16-bit mono WAVs into godot/assets/sfx. Loops carry a 'smpl' chunk so
 Godot's WAV importer picks up forward looping automatically.
@@ -315,36 +316,13 @@ def hop() -> np.ndarray:
 
 
 def main() -> None:
+    # Only the loops with no recorded replacement are still procedural; every
+    # other sound is assembled from CC0 recordings by tools/build_sfx.py. The
+    # generators above remain as helpers and references.
     items = {
-        "engine_loop": (engine_loop(), True),
-        "engine_idle_loop": (engine_idle_loop(), True),
         "screech_loop": (screech_loop(), True),
         "scrape_loop": (scrape_loop(), True),
-        "wind_loop": (wind_loop(), True),
         "rain_loop": (rain_loop(), True),
-        "impact_soft": (impact(False), False),
-        "impact_hard": (impact(True), False),
-        "boom": (boom(False), False),
-        "boom_big": (boom(True), False),
-        "zap": (zap(), False),
-        "fire_bolt": (bolt_fire(), False),
-        "fire_eagle": (eagle_fire(), False),
-        "barge": (barge(), False),
-        "nitro": (nitro(), False),
-        "shield": (shield(), False),
-        "repair": (repair(), False),
-        "pickup": (pickup(), False),
-        "denied": (denied(), False),
-        "beep": (beep(880, 0.25), False),
-        "go": (beep(1320, 0.6), False),
-        "lap": (lap(), False),
-        "finish": (finish(), False),
-        "wreck": (wreck(), False),
-        "respawn": (respawn(), False),
-        "ui_click": (ui_click(), False),
-        "ui_back": (ui_back(), False),
-        "mine_drop": (mine_drop(), False),
-        "hop": (hop(), False),
     }
     for name, (x, loop) in items.items():
         write_wav(name, x, loop)

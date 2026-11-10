@@ -36,7 +36,10 @@ Big Shoulders Display — Patric King, SIL Open Font License 1.1.
 Chakra Petch — Cadson Demak, SIL Open Font License 1.1.
 
 [b]Tingujt[/b]
-Shumica e efekteve zanore janë sintetizuar proceduralisht për këtë lojë (tools/gen_sfx.py).
+Efektet e fuqive, përplasjeve, shpërthimeve dhe menysë: Sci-Fi Sounds, Impact Sounds dhe Interface Sounds nga Kenney (kenney.nl) — CC0 1.0; të përziera dhe të shkurtuara për lojën (tools/build_sfx.py).
+Motori: Car Sound Effects Pack nga GGBotNet dhe racing car engine sound loops nga domasx2 (opengameart.org) — CC0 1.0.
+Era: wind whoosh loop nga SketchMan3 (opengameart.org) — CC0 1.0.
+Fërkimi i gomave, gërvishtja dhe shiu janë sintetizuar proceduralisht (tools/gen_sfx.py).
 Përplasja anësore: regjistrim nga PauliusI, CC0; shkurtuar, filtruar dhe ulur në volum.
 freesound.org/people/PauliusI/sounds/346299/
 
