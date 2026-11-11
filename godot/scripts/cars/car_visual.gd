@@ -302,7 +302,8 @@ func _make_shield() -> void:
 	shield.mesh = sm
 	var m := StandardMaterial3D.new()
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.albedo_color = Color(0.6, 0.8, 1.0, 0.18)
+	m.albedo_color = Color(0.6, 0.95, 1.5, 0.22)
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.emission_enabled = true
 	m.emission = Color(0.5, 0.75, 1.0)
 	m.emission_energy_multiplier = 1.6
@@ -409,8 +410,11 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 		jet.scale.z = 0.8 + 0.2 * sin(spin * 4.0)
 	shield.visible = c.shield_t > 0.0
 	if shield.visible:
-		var a := 0.12 + 0.08 * sin(Time.get_ticks_msec() * 0.012)
+		# Energy shell: a quick shimmer over a slower breathing pulse.
+		var now := Time.get_ticks_msec() * 0.001
+		var a := 0.2 + 0.07 * sin(now * 12.0) + 0.05 * sin(now * 31.0)
 		(shield.material_override as StandardMaterial3D).albedo_color.a = a
+		shield.scale = Vector3.ONE * (1.0 + 0.03 * sin(now * 6.0))
 	# respawn blink
 	if c.invuln_t > 0.0:
 		blink += dt
@@ -443,5 +447,9 @@ func _make_nitro() -> void:
 		jet.position = Vector3(side * def.size.x * 0.3, 0.3, def.size.z * 0.5 + 0.6)
 		jet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		jet.visible = false
+		# Bright bloom where the flame leaves the car.
+		var flare := FxVisual.glow_quad(FxVisual.glow_material(Color(0.25, 0.7, 1.0), 2.6), 1.1)
+		flare.position.y = -0.7
+		jet.add_child(flare)
 		add_child(jet)
 		nitro_jets.append(jet)

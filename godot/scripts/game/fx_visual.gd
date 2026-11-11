@@ -7,7 +7,7 @@ extends Node3D
 var race: Race
 var track: RaceTrack
 var _nodes: Dictionary = {}  # id -> Node3D
-var _flashes: Array = []     # [{node, t, ttl, r}]
+var _flashes: Array = []     # [{unit, t, ttl, r}]
 var _t := 0.0
 var _skid_car: CarVisual
 var _skid_previous := {}
@@ -17,7 +17,9 @@ var _skids: MultiMesh
 const MAX_SKIDS := 320
 const FLASH_POOL := 8
 const RING_POOL := 6
-var _flash_pool: Array[MeshInstance3D] = []
+# Sparks outlive the flash itself; the unit stays visible until they are gone.
+const FLASH_SPARK_TAIL := 0.35
+var _flash_pool: Array = []   # [{root, core, halo, ring, light, sparks}]
 var _flash_next := 0
 var _ring_pool: Array = []   # [{root, node, mat, tween}]
 var _ring_next := 0
@@ -25,6 +27,72 @@ var _free: Dictionary = {}   # kind -> hidden nodes ready for reuse
 var _node_key: Dictionary = {}  # id -> kind
 
 static var _mats: Dictionary = {}
+static var _glow_tex: GradientTexture2D
+static var _quad: QuadMesh
+
+
+## Soft round falloff shared by every glow.
+static func _glow_texture() -> GradientTexture2D:
+	if _glow_tex == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		g.add_point(0.35, Color(1, 1, 1, 0.4))
+		_glow_tex = GradientTexture2D.new()
+		_glow_tex.gradient = g
+		_glow_tex.width = 64
+		_glow_tex.height = 64
+		_glow_tex.fill = GradientTexture2D.FILL_RADIAL
+		_glow_tex.fill_from = Vector2(0.5, 0.5)
+		_glow_tex.fill_to = Vector2(1.0, 0.5)
+	return _glow_tex
+
+
+## Camera-facing additive glow: the neon halo behind the combat effects.
+## Colours above 1.0 are intentional so the halo feeds the bloom pass.
+static func glow_material(col: Color, energy: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.albedo_texture = _glow_texture()
+	m.albedo_color = Color(col.r * energy, col.g * energy, col.b * energy, 1.0)
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.billboard_keep_scale = true
+	m.disable_fog = true
+	return m
+
+
+static func glow_quad(mat: Material, size: float) -> MeshInstance3D:
+	if _quad == null:
+		_quad = QuadMesh.new()
+	var q := MeshInstance3D.new()
+	q.mesh = _quad
+	q.material_override = mat
+	q.scale = Vector3(size, size, size)
+	q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	q.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	return q
+
+
+## Additive solid colour for shockwave rings, cores and trails.
+static func add_material(col: Color, energy: float, alpha: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.albedo_color = Color(col.r * energy, col.g * energy, col.b * energy, alpha)
+	m.disable_fog = true
+	return m
+
+
+static func _tint(node: MeshInstance3D, col: Color, energy: float, alpha: float) -> void:
+	(node.material_override as StandardMaterial3D).albedo_color = Color(col.r * energy, col.g * energy, col.b * energy, alpha)
+
+
+static func _set_alpha(node: MeshInstance3D, alpha: float) -> void:
+	(node.material_override as StandardMaterial3D).albedo_color.a = alpha
 
 
 static func _mat(key: String, col: Color, energy: float, alpha: float = 1.0) -> StandardMaterial3D:
@@ -73,37 +141,68 @@ func _build_pools() -> void:
 	var sph := SphereMesh.new()
 	sph.radius = 1.0
 	sph.height = 2.0
+	# Each explosion is a hot core, a soft halo, a shockwave ring along the
+	# ground, a light and a burst of sparks.
+	var wave := TorusMesh.new()
+	wave.inner_radius = 0.9
+	wave.outer_radius = 1.0
+	wave.rings = 32
+	wave.ring_segments = 4
+	var spark_mesh := QuadMesh.new()
+	spark_mesh.size = Vector2(0.22, 0.22)
+	var spark_mat := glow_material(Color.WHITE, 2.5)
+	spark_mat.vertex_color_use_as_albedo = true
+	spark_mesh.material = spark_mat
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0.0, 1.0))
+	shrink.add_point(Vector2(1.0, 0.0))
 	for i in FLASH_POOL:
-		var m := StandardMaterial3D.new()
-		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		m.emission_enabled = true
-		m.emission_energy_multiplier = 4.0
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.cull_mode = BaseMaterial3D.CULL_DISABLED
-		var mi := _mk(sph, m)
-		var l := OmniLight3D.new()
-		l.shadow_enabled = false
-		mi.add_child(l)
-		mi.visible = false
-		add_child(mi)
-		_flash_pool.append(mi)
+		var root := Node3D.new()
+		root.visible = false
+		add_child(root)
+		var core := _mk(sph, add_material(Color.WHITE, 1.0, 0.8))
+		root.add_child(core)
+		var halo := glow_quad(glow_material(Color.WHITE, 1.0), 1.0)
+		root.add_child(halo)
+		var ring := _mk(wave, add_material(Color.WHITE, 1.0, 0.9))
+		ring.position.y = -0.55
+		root.add_child(ring)
+		var light := OmniLight3D.new()
+		light.shadow_enabled = false
+		root.add_child(light)
+		var sparks := CPUParticles3D.new()
+		sparks.emitting = false
+		sparks.one_shot = true
+		sparks.explosiveness = 1.0
+		sparks.amount = 18
+		sparks.lifetime = 0.55
+		sparks.mesh = spark_mesh
+		sparks.direction = Vector3.UP
+		sparks.spread = 180.0
+		sparks.initial_velocity_min = 5.0
+		sparks.initial_velocity_max = 15.0
+		sparks.gravity = Vector3(0.0, -16.0, 0.0)
+		sparks.damping_min = 1.5
+		sparks.damping_max = 3.0
+		sparks.scale_amount_curve = shrink
+		sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(sparks)
+		_flash_pool.append({"root": root, "core": core, "halo": halo, "ring": ring, "light": light, "sparks": sparks})
 	var torus := TorusMesh.new()
 	torus.inner_radius = 0.88
 	torus.outer_radius = 1.0
 	torus.rings = 24
 	torus.ring_segments = 8
 	for i in RING_POOL:
-		var material := StandardMaterial3D.new()
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		material.emission_enabled = true
-		material.emission_energy_multiplier = 1.2
+		var material := add_material(Color.WHITE, 1.0, 0.8)
 		var root := Node3D.new()
 		root.visible = false
 		add_child(root)
 		var node := _mk(torus, material)
 		root.add_child(node)
-		_ring_pool.append({"root": root, "node": node, "mat": material, "tween": null})
+		var halo := glow_quad(glow_material(Color.WHITE, 1.0), 1.5)
+		root.add_child(halo)
+		_ring_pool.append({"root": root, "node": node, "mat": material, "halo": halo, "tween": null})
 	for kind in ["bolt", "bolt", "bolt", "eagle", "eagle"]:
 		_release(kind, _make_proj({"kind": kind}))
 	for i in 3:
@@ -154,6 +253,8 @@ func _make_proj(p: Dictionary) -> Node3D:
 		l.omni_range = 7.0
 		l.shadow_enabled = false
 		root.add_child(l)
+		root.add_child(glow_quad(glow_material(Color.html(Data.PW.eagle.col), 1.6), 3.2))
+		root.add_child(_trail(Color.html(Data.PW.eagle.col), 0.24, 9.0))
 	else:
 		var bolt := CylinderMesh.new()
 		bolt.top_radius = 0.08
@@ -169,6 +270,8 @@ func _make_proj(p: Dictionary) -> Node3D:
 		l.omni_range = 6.0
 		l.shadow_enabled = false
 		root.add_child(l)
+		root.add_child(glow_quad(glow_material(Color(0.55, 0.8, 1.0), 1.8), 1.9))
+		root.add_child(_trail(Color(0.6, 0.85, 1.0), 0.13, 6.0))
 	return root
 
 
@@ -186,6 +289,8 @@ func _make_mine(_m: Dictionary) -> Node3D:
 	var d := _mk(dot, _mat("mine_dot", Color.html(Data.PW.mine.col), 3.5))
 	d.position.y = 0.22
 	d.name = "dot"
+	# The warning light blinks with its own halo once the mine is armed.
+	d.add_child(glow_quad(glow_material(Color.html(Data.PW.mine.col), 1.8), 1.3))
 	root.add_child(d)
 	return root
 
@@ -198,6 +303,7 @@ func _make_dome(dm: Dictionary) -> Node3D:
 	sph.height = float(dm.r) * 2.0
 	var mi := _mk(sph, _mat("dome", Color.html(Data.PW.shock.col), 1.2, 0.22))
 	mi.name = "shell"
+	(mi.material_override as StandardMaterial3D).blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	root.add_child(mi)
 	var ring := TorusMesh.new()
 	ring.inner_radius = float(dm.r) - 0.25
@@ -229,8 +335,10 @@ func powerup_used(c: CarState, kind: String, back: bool) -> void:
 	var tan := track.tangent(c.s)
 	if tan.length_squared() > 0.001:
 		root.look_at(root.position + tan, Vector3.UP)
-	material.albedo_color = Color(color, 0.7)
-	material.emission = color
+	material.albedo_color = Color(color.r * 2.0, color.g * 2.0, color.b * 2.0, 0.8)
+	var halo: MeshInstance3D = slot.halo
+	_tint(halo, color, 2.0, 1.0)
+	halo.scale = Vector3.ONE * 1.5
 	var stretch := Vector3.ONE
 	var duration := 0.4
 	match kind:
@@ -258,6 +366,9 @@ func powerup_used(c: CarState, kind: String, back: bool) -> void:
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(node, "scale", stretch, duration).from(Vector3(0.35, 0.35, 0.35)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(material, "albedo_color:a", 0.0, duration)
+	# A burst of light at the car as the ability goes off.
+	tween.tween_property(halo, "scale", Vector3.ONE * 5.5, duration).from(Vector3.ONE * 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(halo.material_override, "albedo_color:a", 0.0, duration)
 	if kind == "repair":
 		tween.tween_property(root, "position:y", root.position.y + 1.5, duration)
 	elif kind in ["eagle", "bolt", "nitro"]:
@@ -270,22 +381,61 @@ func boom(pos: Vector3, col: Color, r: float = 3.0, ttl: float = 0.45) -> void:
 	if _flash_pool.is_empty():
 		return
 	# Reuse the oldest flash when every pooled one is still fading.
-	var mi := _flash_pool[_flash_next]
+	var unit: Dictionary = _flash_pool[_flash_next]
 	_flash_next = (_flash_next + 1) % _flash_pool.size()
 	for i in range(_flashes.size() - 1, -1, -1):
-		if _flashes[i].node == mi:
+		if _flashes[i].unit == unit:
 			_flashes.remove_at(i)
-	var m := mi.material_override as StandardMaterial3D
-	m.albedo_color = Color(col, 0.8)
-	m.emission = col
-	var l := mi.get_child(0) as OmniLight3D
-	l.light_color = col
-	l.light_energy = 6.0
-	l.omni_range = r * 3.0
-	mi.position = pos
-	mi.scale = Vector3.ONE * 0.3
-	mi.visible = true
-	_flashes.append({"node": mi, "t": 0.0, "ttl": ttl, "r": r})
+	_tint(unit.core, col.lerp(Color.WHITE, 0.55), 2.2, 0.8)
+	_tint(unit.halo, col, 2.0, 1.0)
+	_tint(unit.ring, col, 2.5, 0.9)
+	var light: OmniLight3D = unit.light
+	light.light_color = col
+	light.omni_range = r * 3.0
+	var sparks: CPUParticles3D = unit.sparks
+	sparks.color = col.lerp(Color.WHITE, 0.3)
+	var root: Node3D = unit.root
+	root.position = pos
+	root.visible = true
+	sparks.restart()
+	sparks.emitting = true
+	var flash := {"unit": unit, "t": 0.0, "ttl": ttl, "r": r}
+	_flashes.append(flash)
+	_animate_flash(flash)
+
+
+func _animate_flash(f: Dictionary) -> void:
+	var unit: Dictionary = f.unit
+	var k := clampf(float(f.t) / float(f.ttl), 0.0, 1.0)
+	var grow := 1.0 - (1.0 - k) * (1.0 - k)
+	var fade := (1.0 - k) * (1.0 - k)
+	var r := float(f.r)
+	var core: MeshInstance3D = unit.core
+	core.scale = Vector3.ONE * (0.3 + r * 0.8 * grow)
+	_set_alpha(core, 0.8 * fade)
+	var halo: MeshInstance3D = unit.halo
+	halo.scale = Vector3.ONE * r * (1.4 + 2.2 * grow)
+	_set_alpha(halo, fade)
+	var ring: MeshInstance3D = unit.ring
+	var spread := 0.6 + r * 2.4 * grow
+	ring.scale = Vector3(spread, 0.25, spread)
+	_set_alpha(ring, 0.9 * (1.0 - k))
+	(unit.light as OmniLight3D).light_energy = 6.0 * (1.0 - k)
+
+
+## Tapered additive streak behind a projectile, whose root faces -Z.
+func _trail(col: Color, radius: float, length: float) -> MeshInstance3D:
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = radius
+	cone.height = length
+	cone.radial_segments = 6
+	cone.cap_top = false
+	cone.cap_bottom = false
+	var streak := _mk(cone, add_material(col, 1.6, 0.45))
+	streak.rotation.x = PI * 0.5
+	streak.position.z = length * 0.5 + 0.8
+	return streak
 
 
 func _wpos(s: float, d: float, y: float) -> Vector3:
@@ -406,14 +556,7 @@ func _process(dt: float) -> void:
 	for i in range(_flashes.size() - 1, -1, -1):
 		var f: Dictionary = _flashes[i]
 		f.t += dt
-		var k: float = clampf(f.t / f.ttl, 0.0, 1.0)
-		var mi: MeshInstance3D = f.node
-		mi.scale = Vector3.ONE * (0.3 + float(f.r) * k)
-		var mat := mi.material_override as StandardMaterial3D
-		mat.albedo_color.a = 0.8 * (1.0 - k)
-		for ch in mi.get_children():
-			if ch is OmniLight3D:
-				ch.light_energy = 6.0 * (1.0 - k)
-		if k >= 1.0:
-			mi.visible = false
+		_animate_flash(f)
+		if float(f.t) >= float(f.ttl) + FLASH_SPARK_TAIL:
+			(f.unit.root as Node3D).visible = false
 			_flashes.remove_at(i)
