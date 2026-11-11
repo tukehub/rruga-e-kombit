@@ -16,6 +16,7 @@ var _diff_btns: Array[Button] = []
 var _lap_value: Label
 var _lap_minus: Button
 var _direction: Button
+var _weather: Button
 var _lap_plus: Button
 var _drv_tag: Label
 var _car_desc: Label
@@ -245,7 +246,23 @@ func _page_title() -> Control:
 		Sfx.ui_click()
 		Game.race_opts.reverse = not bool(Game.race_opts.reverse)
 		_refresh_city())
-	v.add_child(_direction)
+	# Direction and weather share one row so the page keeps its height.
+	var options_row := HBoxContainer.new()
+	options_row.add_theme_constant_override("separation", 10)
+	_direction.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_direction.add_theme_font_size_override("font_size", 22)
+	options_row.add_child(_direction)
+	_weather = UiTheme.button("")
+	_weather.name = "RaceWeather"
+	_weather.custom_minimum_size.y = 48
+	_weather.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_weather.add_theme_font_size_override("font_size", 22)
+	_weather.pressed.connect(func():
+		Sfx.ui_click()
+		Game.race_opts.env = "day" if str(Game.race_opts.env) == "rainy" else "rainy"
+		_refresh_city())
+	options_row.add_child(_weather)
+	v.add_child(options_row)
 	var names := ["E lehtë", "Normale", "E fortë"]
 	var difficulty := _seg(names, func(i: int): Game.race_opts.diff = i; _refresh_city())
 	_diff_btns.clear()
@@ -278,6 +295,7 @@ func _page_title() -> Control:
 
 func _refresh_city() -> void:
 	_direction.text = "Drejtimi: Kundërt" if bool(Game.race_opts.reverse) else "Drejtimi: Normal"
+	_weather.text = "Moti: Shi" if str(Game.race_opts.env) == "rainy" else "Moti: Diell"
 	var laps := Game.city_laps("tirane")
 	_lap_value.text = str(laps)
 	_lap_minus.disabled = laps <= 1

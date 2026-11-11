@@ -11,12 +11,13 @@ const HDRI := {
 	"golden": "res://assets/hdri/sky_golden.hdr",
 	"rain": "res://assets/hdri/sky_night.hdr",
 	"snow": "res://assets/hdri/sky_overcast.hdr",
+	"rainy": "res://assets/hdri/sky_overcast.hdr",
 }
 
 var world_env: WorldEnvironment
 var env: Environment
 var sun: DirectionalLight3D
-var rain: GPUParticles3D
+var rain: RainFx
 var snow: GPUParticles3D
 var env_id := "day"
 var preset: Dictionary
@@ -39,7 +40,8 @@ func _ready() -> void:
 func apply(id: String, is_wet_override: bool = false) -> void:
 	env_id = id
 	preset = Data.ENV[id]
-	var is_night := bool(preset.stars) or bool(preset.rain) or bool(preset.snow)
+	# Rain and snow are dark by default; a preset may opt out for daytime rain.
+	var is_night := bool(preset.stars) or bool(preset.get("dark", bool(preset.rain) or bool(preset.snow)))
 	night = clampf(float(preset.win), 0.0, 1.0)
 	wet = 1.0 if (bool(preset.wet) or is_wet_override) else 0.0
 
@@ -136,6 +138,7 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	sun.shadow_opacity = 0.58 if not is_night else 0.5
 	Quality.apply_sun(sun)
 
+	rain.set_light(dir, sun.light_color * sun.light_energy, env.fog_light_color)
 	rain.emitting = bool(preset.rain)
 	snow.emitting = bool(preset.snow)
 	rain.visible = rain.emitting
@@ -146,6 +149,7 @@ func _sky_energy(id: String) -> float:
 	match id:
 		"night": return 0.9
 		"rain", "snow": return 0.35
+		"rainy": return 0.85
 		"dusk": return 0.8
 		"sunset": return 0.9
 		_: return 1.0
@@ -161,33 +165,7 @@ func _sky_yaw(id: String) -> float:
 
 
 func _make_weather() -> void:
-	rain = GPUParticles3D.new()
-	var rm := ParticleProcessMaterial.new()
-	rm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	rm.emission_box_extents = Vector3(30, 1, 30)
-	rm.direction = Vector3(0, -1, 0)
-	rm.spread = 3.0
-	rm.initial_velocity_min = 22.0
-	rm.initial_velocity_max = 28.0
-	rm.gravity = Vector3(0, -12, 0)
-	rm.scale_min = 0.6
-	rm.scale_max = 1.0
-	rain.process_material = rm
-	rain.amount = 1400
-	rain.lifetime = 1.4
-	rain.visibility_aabb = AABB(Vector3(-40, -30, -40), Vector3(80, 60, 80))
-	var drop := BoxMesh.new()
-	drop.size = Vector3(0.02, 0.5, 0.02)
-	var dm := StandardMaterial3D.new()
-	dm.albedo_color = Color(0.7, 0.8, 1.0, 0.35)
-	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	dm.emission_enabled = true
-	dm.emission = Color(0.6, 0.7, 0.9)
-	dm.emission_energy_multiplier = 0.4
-	drop.material = dm
-	rain.draw_pass_1 = drop
-	rain.emitting = false
+	rain = RainFx.new()
 	add_child(rain)
 
 	snow = GPUParticles3D.new()
@@ -220,6 +198,11 @@ func _make_weather() -> void:
 	snow.draw_pass_1 = flake
 	snow.emitting = false
 	add_child(snow)
+
+
+## The road under the player, so rain splashes land on it.
+func set_rain_ground(origin: Vector3, tangent: Vector3) -> void:
+	rain.set_ground(origin, tangent)
 
 
 ## Call every frame with the camera position so weather follows the player.

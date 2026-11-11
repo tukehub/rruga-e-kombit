@@ -54,6 +54,12 @@ func _ready() -> void:
 	check(menu._direction.text == "Drejtimi: Normal", "forward direction is shown")
 	menu._direction.pressed.emit()
 	check(bool(Game.race_opts.reverse) and menu._direction.text == "Drejtimi: Kundërt", "direction selector chooses reverse")
+	var env_before := str(Game.race_opts.env)
+	menu._weather.pressed.emit()
+	check(str(Game.race_opts.env) == "rainy" and menu._weather.text == "Moti: Shi", "weather selector chooses rain")
+	menu._weather.pressed.emit()
+	check(str(Game.race_opts.env) == "day" and menu._weather.text == "Moti: Diell", "weather selector returns to sun")
+	Game.race_opts.env = env_before
 	var default_laps := Game.city_laps("tirane")
 	menu._lap_plus.pressed.emit()
 	check(int(Game.race_opts.laps) == default_laps + 1 and menu._lap_value.text == str(default_laps + 1), "lap selector updates race options")

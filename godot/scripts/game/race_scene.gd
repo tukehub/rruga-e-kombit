@@ -417,6 +417,8 @@ func _process(dt: float) -> void:
 		view_pose = RenderPose.sample(_previous_poses[race.cars.find(player)], player, acc / DT, track.L)
 	views.update_pose(player, view_pose, dt)
 	sky.follow(cam.global_position)
+	if sky.wet > 0.01:
+		sky.set_rain_ground(track.pos(player.s, player.d), track.tangent(player.s))
 	Sfx.listener_pos = cam.global_position
 
 

@@ -28,11 +28,14 @@ const ENV := {
 	"rain": {"label": "Shi natën", "icon": "☂", "sun_dir": Vector3(0.3, 0.8, 0.2), "sun_col": "#9fb0c8", "sun_i": 0.3,
 		"sky_top": "#07090f", "sky_hor": "#262e3c", "ground": "#101214", "ambient": 0.55, "fog": "#181d27", "fog_density": 0.0045,
 		"win": 1.0, "lamps": true, "stars": false, "moon": false, "exposure": 1.15, "bloom": 1.05, "wet": true, "rain": true, "snow": false},
+	"rainy": {"label": "Shi", "icon": "☂", "sun_dir": Vector3(0.3, 0.8, 0.2), "sun_col": "#cdd5df", "sun_i": 1.1,
+		"sky_top": "#5a6472", "sky_hor": "#9aa3ad", "ground": "#3c4046", "ambient": 0.7, "fog": "#8e98a4", "fog_density": 0.0110,
+		"win": 0.0, "lamps": false, "stars": false, "moon": false, "exposure": 1.0, "bloom": 0.45, "wet": true, "rain": true, "snow": false, "dark": false},
 	"snow": {"label": "Borë", "icon": "❄", "sun_dir": Vector3(-0.5, 0.3, 0.6), "sun_col": "#ffd8b8", "sun_i": 0.9,
 		"sky_top": "#161d33", "sky_hor": "#5e6584", "ground": "#4a4e5a", "ambient": 0.6, "fog": "#3e445c", "fog_density": 0.0040,
 		"win": 0.95, "lamps": true, "stars": false, "moon": false, "exposure": 1.1, "bloom": 0.95, "wet": true, "rain": false, "snow": true},
 }
-const ENV_ORDER := ["night", "dusk", "sunset", "day", "golden", "rain", "snow"]
+const ENV_ORDER := ["night", "dusk", "sunset", "day", "golden", "rainy", "rain", "snow"]
 
 # ---------------------------------------------------------------- cities
 # Track geometry comes from assets/cities/<id>/ (built by tools/pipeline).
