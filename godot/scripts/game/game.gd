@@ -11,7 +11,8 @@ const SCENES := {
 }
 
 # Independent, short curiosities for transitions; shuffled without repeats until
-# the entire collection has been shown.
+# the entire collection has been shown. Sources and dated updates:
+# docs/loading-facts.md (reviewed 2026-11-12).
 const LOADING_FACTS := [
 	"Oktapodi ka tri zemra.",
 	"Banania është botanikisht një manaferrë.",
@@ -77,6 +78,75 @@ const LOADING_FACTS := [
 	"Disa kandilë deti janë biolumineshentë: prodhojnë dritë.",
 	"Disa peshq mund të ndryshojnë gjininë gjatë jetës.",
 	"Poli i Veriut ndodhet mbi oqean, jo mbi tokë.",
+	# Space and the solar system.
+	"Jupiteri është planeti më i madh i sistemit diellor.",
+	"Merkuri është planeti më i vogël i sistemit diellor.",
+	"Dendësia mesatare e Saturnit është më e ulët se ajo e ujit.",
+	"Urani rrotullohet pothuajse i shtrirë në anë.",
+	"Një vit në Neptun zgjat rreth 165 vjet tokësore.",
+	"Një ditë në Mars zgjat rreth 24 orë e 39 minuta.",
+	"Marsi ka dy hëna: Fobosin dhe Deimosin.",
+	"Merkuri dhe Venera nuk kanë hëna natyrore.",
+	"Hëna na tregon pothuajse gjithmonë të njëjtën faqe.",
+	"Graviteti në sipërfaqen e Hënës është rreth një e gjashta e atij në Tokë.",
+	"Dritës së Diellit i duhen rreth 8 minuta e 20 sekonda të arrijë në Tokë.",
+	"Viti-dritë mat largësinë, jo kohën.",
+	"Dielli është një yll dhe energjinë e prodhon nga shkrirja bërthamore.",
+	"Plutoni u klasifikua si planet xhuxh në vitin 2006.",
+	"Ceresi është planeti xhuxh në brezin e asteroidëve mes Marsit dhe Jupiterit.",
+	"Unazat e Saturnit përbëhen kryesisht nga copa akulli.",
+	# Water, wildlife and Earth.
+	"Uji mbulon rreth 71 për qind të sipërfaqes së Tokës.",
+	"Oqeanet mbajnë rreth 96,5 për qind të gjithë ujit të Tokës.",
+	"Akulli noton sepse është më pak i dendur se uji i lëngshëm.",
+	"Vetëm rreth 2,5 për qind e ujit të Tokës është ujë i ëmbël.",
+	"Koralet janë kafshë.",
+	"Te kuajt e detit, mashkulli i mban vezët në një qeskë dhe lind të vegjlit.",
+	"Balena blu është kafsha më e madhe e njohur që ka jetuar në Tokë.",
+	"Skeleti i peshkaqenëve përbëhet nga kërc, jo nga kocka.",
+	"Thellësia mesatare e oqeanit është rreth 3,7 kilometra.",
+	"Paqësori është oqeani më i madh i Tokës.",
+	"Pika më e thellë e njohur e oqeanit ndodhet në Hendekun e Marianës.",
+	"Baticat dhe zbaticat ndikohen nga graviteti i Hënës dhe i Diellit.",
+	"Bërthama e brendshme e Tokës është e ngurtë; bërthama e jashtme është e lëngshme.",
+	"Shumica e tërmeteve ndodhin pranë kufijve të pllakave tektonike.",
+	"Disa gurë shtufi mund të notojnë në ujë falë poreve të mbushura me ajër.",
+	"Obsidiani është qelq natyror që formohet nga ftohja e shpejtë e lavës.",
+	# Regional nature and cultural heritage.
+	"Berati iu shtua pasurisë botërore të UNESCO-s në vitin 2008.",
+	"Qendra historike e Gjirokastrës hyri në listën e UNESCO-s në vitin 2005.",
+	"Butrinti hyri në listën e pasurive botërore të UNESCO-s në vitin 1992.",
+	"Liqeni i Ohrit ndahet mes Shqipërisë dhe Maqedonisë së Veriut.",
+	"Iso-polifonia popullore shqiptare është në listën përfaqësuese të UNESCO-s që nga viti 2008.",
+	"Mjeshtëria e xhubletës u përfshi në listën e UNESCO-s për ruajtje urgjente në vitin 2022.",
+	"Lahuta tradicionale shqiptare ka një tel.",
+	"Vjosa i ka burimet në malet e Pindit në Greqi.",
+	"Vjosa derdhet në detin Adriatik.",
+	"Alfabeti i shqipes ka 36 shkronja.",
+	# Science, measurements and everyday curiosities.
+	"Drita në vakum udhëton saktësisht 299 792 458 metra në sekondë.",
+	"Sistemi Ndërkombëtar i Njësive ka shtatë njësi bazë.",
+	"Që nga viti 2019, kilogrami përcaktohet përmes konstantës së Plankut.",
+	"Zero kelvin përkon me −273,15 gradë Celsius.",
+	"Hidrogjeni është elementi i parë në tabelën periodike.",
+	"Simboli kimik i arit është Au, nga fjala latine ‘aurum’.",
+	"Emri i heliumit vjen nga fjala greke për Diellin.",
+	"Diamanti dhe grafiti përbëhen nga i njëjti element: karboni.",
+	"Tingulli ka nevojë për një mjedis për t'u përhapur; nuk udhëton në vakum.",
+	"Lazeri e ka marrë emrin nga një shkurtim në anglisht për përforcimin e dritës.",
+	"Sistemi binar i numërimit përdor vetëm shifrat 0 dhe 1.",
+	"Një bajt përbëhet nga tetë bite.",
+	"Në një zar standard, faqet përballë kanë gjithsej shtatë pika.",
+	"Në gjeometrinë e rrafshit, këndet e një trekëndëshi kanë shumën 180 gradë.",
+	# Recent milestones carry dates so they remain accurate as the pool grows.
+	"Në vitin 2025, Lugina e Vjosës u shpall rezervë biosfere e UNESCO-s.",
+	"Në vitin 2025, arti i lahutës shqiptare hyri në listën e UNESCO-s për ruajtje urgjente.",
+	"Më 2 mars 2025, mjeti Blue Ghost u ul me sukses në Hënë.",
+	"Në mars 2025, Euclid publikoi të dhëna që përfshinin rreth 26 milionë galaktika.",
+	"Teleskopi SPHEREx, i nisur në mars 2025, vëzhgon qiellin në 102 ngjyra infra të kuqe.",
+	"Në shtator 2025, arkivi i NASA-s arriti në 6 000 ekzoplanete të konfirmuara.",
+	"Në tetor 2026, zbulimet me të dhënat e teleskopit TESS arritën në 1 000 planete të konfirmuara.",
+	"Në dhjetor 2025, SPHEREx përfundoi hartën e tij të parë infra të kuqe të gjithë qiellit.",
 ]
 var _fact_bag: Array = []
 var _last_fact := ""

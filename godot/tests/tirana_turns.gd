@@ -2,8 +2,8 @@ extends Node
 
 func _ready() -> void:
 	# Corner assist: held on the centreline with the gas down, the assisted car
-	# must reach the tightest bend at a speed its tyres can carry; without the
-	# assist the same run arrives far too fast.
+	# should get a gentle speed trim rather than heavy automatic braking.
+	# The driver remains responsible for stronger braking in a tight bend.
 	for assisted in [true, false]:
 		var bend_track := RaceTrack.load_city("tirane")
 		var bend_race := Race.new(bend_track, {"seed": 13, "brake_assist": assisted})
@@ -19,23 +19,25 @@ func _ready() -> void:
 			probe += 3.0
 		assert(worst_k > 0.03, "Tirana must contain a tight bend for this check")
 		var p := bend_race.player
-		p.progress = bend_track.L + worst_s - 260.0
+		p.progress = bend_track.L + worst_s - 40.0
 		p.s = bend_track.mod_s(p.progress)
 		p.v = 40.0
 		p.ctrl.gas = true
 		p.ctrl.steer = 0.0
 		var peak := 0.0
 		var slowest := INF
-		for i in 600:
+		for i in 60:
 			p.d = 0.0
 			p.yaw = 0.0
 			p.lat_v = 0.0
+			var before_speed := p.v
 			bend_race.physics(p, 1.0 / 60.0)
+			assert(p.v >= before_speed - 2.1 / 60.0, "automatic corner braking must remain gentle per tick")
 			peak = maxf(peak, p.v * p.v * absf(bend_track.curv(p.s)))
 			slowest = minf(slowest, p.v)
 		var grip_accel := float(p.def.grip) * 29.0
 		if assisted:
-			assert(peak <= grip_accel * Race.CORNER_ASSIST_GRIP * 1.15, "corner assist must slow the car to what its tyres can carry")
+			assert(slowest >= 37.9 and slowest < 40.0, "corner assist should trim at most about 7 km/h over one second")
 			assert(slowest >= Race.CORNER_ASSIST_MIN_SPEED - 0.01, "corner assist must never slow the car to a crawl")
 		else:
 			assert(peak > grip_accel * 1.5, "without the assist the same run must arrive too fast")

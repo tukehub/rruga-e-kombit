@@ -16,15 +16,15 @@ var diff: Dictionary
 var rng := RandomNumberGenerator.new()
 var wet := false
 var assist := 1.6
-# Corner assist for the human driver: the car is slowed before tight bends to
-# a speed its tyres can carry, because the brake pedal is out of reach while
-# both thumbs hold gas and steering.
+# Corner assist gives the human driver a light speed trim before tight bends.
+# Leave most of the corner speed choice to the driver while both thumbs hold
+# gas and steering.
 var brake_assist := false
 # 1.0 is what the tyres hold on the centreline; the wide road lets a driver
 # cut the bend, so a little more still clears the walls.
 const CORNER_ASSIST_GRIP := 1.15
 const CORNER_ASSIST_PLAN_DECEL := 9.0
-const CORNER_ASSIST_DECEL := 10.0
+const CORNER_ASSIST_DECEL := 2.0
 const CORNER_ASSIST_MIN_SPEED := 10.0
 var _assist_noted := false
 var time := 0.0
@@ -357,7 +357,8 @@ func physics(c: CarState, dt: float) -> void:
 				if not _assist_noted:
 					_assist_noted = true
 					emit({"t": "assist_brake", "car": c})
-			# Never gain speed above the limit, nitro included.
+			# Trim speed gently even with gas or nitro held; manual braking
+			# remains available when the driver wants a stronger slowdown.
 			c.v = maxf(v_corner, minf(c.v, v_before) - CORNER_ASSIST_DECEL * dt)
 	# steering
 	var rate := 12.0 if (c.is_player and not c.autopilot) else 8.0
