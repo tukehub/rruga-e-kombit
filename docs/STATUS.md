@@ -18,6 +18,11 @@ puddles. During the final 150 metres of the race, automatic corner braking and
 the optional steering correction switch to the unassisted response; manual
 braking remains available. Earlier laps retain the selected assistance.
 
+Pickup stations now adapt unseen choices to inventory, health, nearby rivals,
+recent combat and the road ahead. A bounded pool can add shared, one-shot help
+190–200 metres ahead when useful supply is missing, with distance/time limits
+and protection against visible item changes. [Behavior and diagnostics](adaptive-pickups.md).
+
 Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.

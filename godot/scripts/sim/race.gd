@@ -6,6 +6,7 @@ extends RefCounted
 
 const FANS := {"eagle": 100, "bolt": 35, "barge": 50, "mine": 60, "shock": 70, "wreck": 150, "place": 15}
 const BOT_ASSIST := 1.4
+const PickupDirector = preload("res://scripts/sim/pickup_director.gd")
 
 var track: RaceTrack
 var L := 0.0
@@ -40,10 +41,12 @@ var domes: Array = []
 var order: Array[CarState] = []
 var started := false
 var player: CarState = null
+var pickup_director: PickupDirector
 
 
 ## opt keys: laps, diff (0..2), seed, wet, assist (bool), driver (index),
-## player_car (id), player_slot, no_player, bot_cars (optional Array of ids).
+## player_car (id), player_slot, no_player, bot_cars (optional Array of ids),
+## adaptive_pickups (default true; false retains the original fixed stations).
 func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	track = p_track
 	L = track.L
@@ -102,6 +105,9 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 		for lane in [-6.5, 0.0, 6.5]:
 			pickups.append({"id": _nid(), "s": track.mod_s(st), "d": lane, "type": _pick_type(wsum), "alive": true, "t": 0.0})
 	compute_order()
+	if bool(opt.get("adaptive_pickups", true)):
+		pickup_director = PickupDirector.new(int(opt.get("seed", 1234)))
+		pickup_director.setup(self)
 
 
 ## Bots drive every car except the player's, each at most twice.
@@ -202,6 +208,8 @@ func car_behind(c: CarState, range_m: float) -> CarState:
 
 func step(dt: float) -> void:
 	time += dt
+	if pickup_director != null:
+		pickup_director.advance(self, dt)
 	for c in cars:
 		if not c.is_player or c.finished or c.autopilot:
 			ai_drive(c, dt)
@@ -614,6 +622,8 @@ func hit(o: CarState, by: CarState, kind: String, dmg: float, fx: Dictionary) ->
 		emit({"t": "blocked", "car": o, "by": by, "kind": kind})
 		return false
 	o.health -= dmg
+	if pickup_director != null:
+		pickup_director.note_hit(o, time)
 	if fx.get("spin", false):
 		o.spin_t = 1.15
 		o.spin_dir = -1 if rng.randf() < 0.5 else 1
@@ -703,6 +713,8 @@ func use_item(c: CarState, back: bool) -> void:
 				c.health = c.max_hp
 				emit({"t": "repair", "car": c})
 	if used or type == "bolt":
+		if pickup_director != null:
+			pickup_director.note_use(c, type, time)
 		emit({"t": "fire", "car": c, "type": type, "back": back})
 	if used:
 		c.slots.pop_front()
@@ -711,7 +723,11 @@ func use_item(c: CarState, back: bool) -> void:
 func update_pickups(dt: float) -> void:
 	var T := track
 	for p in pickups:
+		if not bool(p.get("active", true)):
+			continue
 		if not p.alive:
+			if not bool(p.get("respawn", true)):
+				continue
 			p.t -= dt
 			if p.t <= 0.0:
 				p.alive = true
@@ -724,6 +740,8 @@ func update_pickups(dt: float) -> void:
 				p.alive = false
 				p.t = 2.0
 				c.slots.append({"type": p.type, "ammo": int(Data.PW[p.type].ammo)})
+				if pickup_director != null:
+					pickup_director.note_pickup(c, str(p.type), time, bool(p.get("adaptive", false)))
 				emit({"t": "pickup", "car": c, "type": p.type, "p": p})
 				break
 

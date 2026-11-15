@@ -43,6 +43,10 @@ static func run(tree: SceneTree, seconds: float) -> void:
 		"renderer": RenderingServer.get_current_rendering_method(), "quality": Quality.preset,
 		"resolution": str(tree.root.size), "seconds": seconds,
 		"frame": _stats(frame), "process": _stats(process), "physics": _stats(physics), "gpu_time": _stats(gpu)}
+	if Game._root != null:
+		for scene in Game._root.get_children():
+			if scene is RaceScene and scene.race.pickup_director != null:
+				report["pickups"] = scene.race.pickup_director.snapshot()
 	var file := FileAccess.open("user://profile.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(report, "  "))
 	file.close()
