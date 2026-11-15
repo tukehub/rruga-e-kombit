@@ -204,7 +204,7 @@ func _setup_pines() -> void:
 func _build_race() -> void:
 	var seed_value := int(Time.get_unix_time_from_system()) % 100000
 	var laps := Game.city_laps(city_id)
-	for a in OS.get_cmdline_user_args():
+	for a in Game.launch_options():
 		if a.begins_with("--seed="):
 			seed_value = int(a.substr(7))  # debug: replay a logged race
 		elif a.begins_with("--laps="):
@@ -222,7 +222,7 @@ func _build_race() -> void:
 	race = Race.new(track, opts)
 	race.started = false
 	player = race.player
-	if "--auto" in OS.get_cmdline_user_args():
+	if "--auto" in Game.launch_options():
 		player.autopilot = true  # debug: let the AI drive the player car
 	# One line per race in the log (adb logcat -s godot) is enough to replay it.
 	print("RACE seed=%d city=%s reverse=%s env=%s laps=%d diff=%d assist=%s car=%s driver=%d" % [

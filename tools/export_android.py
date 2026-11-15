@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+# Android ships the first; the second is desktop's, selectable for phone A/B profiles.
+RENDERERS = ['mobile', 'forward_plus']
 
 
 def validate_private_car(private_dir: Path) -> None:
@@ -20,12 +22,28 @@ def validate_private_car(private_dir: Path) -> None:
             raise SystemExit('Licensed car payload is not Godot-encrypted; stage it again.')
 
 
+def launch_args(profile_seconds: int = 0, quality: str = 'medium', renderer: str = '') -> str:
+    """Command line baked into the APK (command_line/extra_args).
+
+    No "--" separator: Godot appends its own engine flags after these, and the
+    game reads its options from either argument list (Game.launch_options).
+    """
+    args = []
+    if renderer:
+        args += ['--rendering-method', renderer]
+    if profile_seconds:
+        args += ['--scene=race', '--auto', f'--quality={quality}', f'--benchmark={profile_seconds}']
+    return ' '.join(args)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--godot', default=os.environ.get('GODOT', 'godot'))
     ap.add_argument('--version-code', type=int, required=True)
     ap.add_argument('--profile-seconds', type=int, default=0, help='Export a benchmark build; collect PROFILE JSON with adb logcat.')
     ap.add_argument('--quality', choices=['low', 'medium', 'high'], default='medium')
+    ap.add_argument('--renderer', choices=RENDERERS, default='',
+                    help='Force a rendering method for a comparison build; omit to ship the project setting (Mobile).')
     ap.add_argument('--output', default=str(ROOT / 'rruga-e-kombit.apk'))
     ap.add_argument('--require-private-car', action='store_true',
                     help='Fail unless the locally staged licensed car is present for export.')
@@ -61,8 +79,8 @@ def main():
     original = presets.read_text()
     updated = re.sub(r'^version/code=.*$', f'version/code={args.version_code}', original, flags=re.M)
     updated = re.sub(r'^version/name=.*$', f'version/name="1.0.{args.version_code}"', updated, flags=re.M)
-    if args.profile_seconds:
-        extra = f'--scene=race --auto --quality={args.quality} --benchmark={args.profile_seconds}'
+    extra = launch_args(args.profile_seconds, args.quality, args.renderer)
+    if extra:
         updated = re.sub(r'^command_line/extra_args=.*$', f'command_line/extra_args="{extra}"', updated, flags=re.M)
     destination = Path(args.output).resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)

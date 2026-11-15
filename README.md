@@ -1,6 +1,7 @@
 # Vortex
 
-Native Godot **4.4.1**, GDScript, Forward+ / Vulkan combat racer for Android.
+Native Godot **4.4.1**, GDScript, Vulkan combat racer for Android. Phones run
+Godot's Mobile renderer; desktop development runs Forward+.
 **Vortex** is the only name used for the game. The strings `rruga-e-kombit`,
 `al.tukehub.rruga` and `rruga.jks` survive only as the repository folder,
 Android package, keystore and release-asset filenames, because changing those
@@ -36,6 +37,9 @@ car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.
+The renderer checks and a one-second benchmark launch run once as Mobile and
+once as Forward+: headless Godot keeps the requested renderer's name, so the
+phone's quality budget is tested on any machine.
 
 A rendered smoke test (needs a Vulkan GPU or software Vulkan) is available as
 `godot --path godot res://tests/weather_visual.tscn`.
@@ -117,6 +121,17 @@ combat active. A short software-Vulkan run validates instrumentation only; it
 cannot establish the **under-16 ms A56** requirement. Physical-device results are
 still required.
 
+The APK runs the Mobile renderer. To measure Forward+ on the same phone, export a
+second profile build with a higher version code and `--renderer forward_plus`:
+
+```sh
+python3 tools/export_android.py --version-code 125 --profile-seconds 60 --quality medium --renderer forward_plus
+```
+
+`PROFILE:` names the `renderer` and, under `render_budget`, the effects it was
+asked to draw (`ssao`, `sdfgi`, `ssr`, `vol_fog`, `sun_penumbra`). Compare
+`frame.p95_ms` and `gpu_time` of both builds at the same quality.
+
 The old `src/`, Capacitor wrapper and `build.py` remain as balance/reference
 material and to preserve the keystore path. They are no longer used by APK CI.
 Remove legacy code only after the native release is validated and published.
@@ -139,6 +154,7 @@ Rules for every change:
 - The simulation in `godot/scripts/sim/` stays node-free and deterministic (it
   will carry multiplayer). Visuals consume `Race.take_events()`.
 - New render features read `Quality.p` and react to `Quality.budget_changed`.
+  A feature only Forward+ can draw is listed in `Quality.FORWARD_PLUS_ONLY`.
 - New persisted data carries a version and a migration, like
   `PRESENTATION_VERSION` in `scripts/game/settings.gd`.
 - Every change adds or updates a test under `godot/tests/` run by
@@ -148,11 +164,15 @@ Rules for every change:
 
 ### 1. Foundations (critical)
 
-1.1 **Renderer truth.** `project.godot` sets `rendering_method.mobile="mobile"`
-    while `Quality.supports_advanced_effects()` and the docs assume Forward+.
-    Run on a phone, read the `PROFILE:` JSON, and either remove the mobile
-    override or make the quality code and docs honest. Section 3 depends on
-    this answer.
+1.1 **Renderer truth — decided: Mobile on phones, phone numbers still open.**
+    Android keeps `rendering_method.mobile="mobile"`; desktop stays Forward+.
+    `Quality.p` is filtered by `Quality.renderer`, `tests/renderer_truth` pins
+    the decision, and the docs say the same. Remaining, needs the phones:
+    profile the A56, S25 FE and S25 Ultra with and without
+    `--renderer forward_plus`
+    ([Profiling on the target phones](#profiling-on-the-target-phones)).
+    Switch the override only if Forward+ holds p95 under 16 ms on the A56 at
+    medium; until then Section 3 assumes the Mobile renderer.
 1.2 **String table.** Move all UI literals (`scripts/ui/*.gd`,
     `scripts/game/race_input.gd`, `scripts/data/data.gd`) into
     `scripts/data/strings_sq.gd`, accessed via `Data.t(key)`.
@@ -183,6 +203,13 @@ Rules for every change:
 
 ### 3. Graphics (Tirana, medium/high-end target)
 
+Phones render with Godot's Mobile renderer (1.1). It has no SSAO, SSIL, SSR,
+SDFGI, VoxelGI, volumetric fog, TAA, FSR 1/2, subsurface scattering or soft
+(PCSS) sun shadows, and it lights one mesh with at most 8 omni lights, 8 spot
+lights and 8 reflection probes. Baked lightmaps, reflection probes, decals,
+glow, MSAA/FXAA, depth of field, colour adjustments and screen/depth textures
+work. An item below that needs a Forward+-only feature is desktop-only.
+
 3.1 **Car paint** in `shaders/sport_car.gdshader`: `CLEARCOAT`,
     `CLEARCOAT_ROUGHNESS`, a procedural flake normal on the body mask,
     metallic ~0.6 / roughness ~0.25 on paint. Headlights for bots in
@@ -210,10 +237,12 @@ Rules for every change:
     start inside the existing `detail_preview` region, then extend to the whole
     lap.
 3.7 **Baked lighting and culling:** `LightmapGI` per environment family for the
-    static city, loaded in `SkyEnv.apply()`; keep SDFGI high-only. Enable
-    occlusion culling with pipeline-generated occluder boxes for tall
-    buildings. Try FSR2/TAA in `Quality.apply_viewport()`; keep only if the
-    A56 p95 frame stays under 16 ms.
+    static city, loaded in `SkyEnv.apply()`; SDFGI stays desktop-only
+    (Forward+, high). Enable occlusion culling with pipeline-generated
+    occluder boxes for tall buildings. FSR2/TAA exist only under Forward+:
+    try them in `Quality.apply_viewport()` only together with the Forward+
+    profile from 1.1, and keep them only if the A56 p95 frame stays under
+    16 ms. On Mobile the anti-aliasing choices are MSAA and FXAA.
 3.8 **Colour grading:** one LUT per `Data.ENV` preset through
     `Environment.adjustment_color_correction`.
 

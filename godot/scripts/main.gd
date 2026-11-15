@@ -11,7 +11,7 @@ func _ready() -> void:
 	var start := "menu"
 	var shots: Array = []
 	var benchmark_seconds := 0.0
-	for a in OS.get_cmdline_user_args():
+	for a in Game.launch_options():
 		if a.begins_with("--benchmark="):
 			benchmark_seconds = clampf(float(a.substr(12)), 1.0, 600.0)
 		elif a.begins_with("--quality="):

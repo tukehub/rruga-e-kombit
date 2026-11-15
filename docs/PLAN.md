@@ -2,7 +2,7 @@
 
 Original architecture decisions (retained; see STATUS.md for current verification):
 - **Engine: Godot 4.4.1 stable** (use matching official binary and export templates). GDScript only; matching official Android Gradle export template (see STATUS.md for the direct-export manifest issue).
-- **Renderer: Forward+ (Vulkan)** on Android (`rendering_method.mobile = forward_plus`). Low/medium presets switch off SDFGI/SSR/volumetrics; high keeps everything.
+- **Renderer: Vulkan.** Android runs Godot's Mobile renderer (`rendering_method.mobile = mobile`; the original Forward+ choice was dropped to cut phone GPU load) and desktop runs Forward+. SSAO, SSR, SDFGI, volumetric fog and soft sun shadows exist only under Forward+, so `Quality.p` switches them off on phones at every preset; desktop low/medium switch off SDFGI/volumetrics and high keeps everything. See [renderer budgets](visual-performance.md#renderer).
 - **Car:** adapted Car Concept © 2024 Darmstadt Graphics Group GmbH and Eric Chadwick, CC BY 4.0; see `tools/import_carconcept.py` and in-app credits for modifications.
 - Package name, keystore (`android/app/rruga.jks`, alias `rruga`), workflow file name and release asset name are unchanged so installs update in place and `releases/latest/download/rruga-e-kombit.apk` keeps working.
 
@@ -10,7 +10,7 @@ Original architecture decisions (retained; see STATUS.md for current verificatio
 
 ```
 godot/                         Godot 4.4 project (res://)
-  project.godot                Forward+, landscape sensor, keep screen on, 60 fps physics
+  project.godot                Forward+ (desktop) / Mobile (Android), landscape sensor, keep screen on, 60 fps physics
   export_presets.cfg           Android arm64, al.tukehub.rruga, immersive, keystore from env
   scripts/data/                cars.gd · powerups.gd · cities.gd · strings_sq.gd  (data only)
   scripts/sim/                 track.gd · race.gd · car_state.gd  (pure logic, port of 02_track/03_sim)
@@ -31,7 +31,7 @@ legacy/                        old three.js game kept for reference (not built)
 
 Simulation stays 1-D along the loop (`s` progress, `d` lateral offset, `yaw` relative to the road) exactly like the web game, so AI, power-ups and balance port 1:1. The track centreline now comes from real OSM streets instead of hand-placed control points; the frame (`pos/tangent/normal/curv`) is the same interface.
 
-Rendering: `Track` → `RoadMesh` (asphalt + kerbs + shoulders conforming to the DEM), `Terrain` (chunked heightmap mesh, 15 m cells, distance LOD, far ring from the same DEM at 90 m), `CityLoader` (OSM buildings as GLB chunks with a procedural facade shader: windows, night lights, wet reflectance), `Landmarks` (hand-made low-poly), `SkyWeather` (`WorldEnvironment`: HDRI sky, sun, glow with neon threshold, SSAO, SDFGI, SSR, volumetric fog, rain particles + wet roughness driven by one `wetness` uniform).
+Rendering: `Track` → `RoadMesh` (asphalt + kerbs + shoulders conforming to the DEM), `Terrain` (chunked heightmap mesh, 15 m cells, distance LOD, far ring from the same DEM at 90 m), `CityLoader` (OSM buildings as GLB chunks with a procedural facade shader: windows, night lights, wet reflectance), `Landmarks` (hand-made low-poly), `SkyWeather` (`WorldEnvironment`: HDRI sky, sun, glow with neon threshold, rain particles + wet roughness driven by one `wetness` uniform; under Forward+ also SSAO, SDFGI, SSR and volumetric fog).
 
 ## 2. Assets and licences
 

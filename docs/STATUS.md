@@ -42,6 +42,15 @@ cap and sustained-load adaptation of rendering, rain, lights, optional effects
 and mirror work. Combat visuals use fixed pools, including domes.
 [Visual behavior, budgets and verification](visual-performance.md).
 
+Phones render with Godot's Mobile renderer and desktop with Forward+. The
+quality budget follows the renderer in use: ambient occlusion, screen-space
+reflections, SDFGI, volumetric fog and soft sun shadows are desktop-only, and
+street plus combat lights fit the Mobile renderer's eight omni lights per mesh.
+Profile builds now pass the benchmark options where the game reads them
+(they were ignored before) and can force either renderer for comparison;
+neither build has been run on a phone yet.
+[Renderer budgets](visual-performance.md#renderer).
+
 Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.

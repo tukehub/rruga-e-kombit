@@ -10,6 +10,15 @@ const SCENES := {
 	"results": "res://scenes/results.tscn",
 }
 
+
+## Debug/benchmark options ("--scene=race", "--benchmark=60", ...), wherever
+## they were given. A desktop run passes them after "--". An exported APK
+## cannot: Godot appends its own engine flags ("--xr-mode off --fullscreen")
+## behind the preset's extra arguments, and a "--" there would hide those
+## from the engine. So the APK bakes the options in bare, and both lists count.
+static func launch_options() -> PackedStringArray:
+	return OS.get_cmdline_args() + OS.get_cmdline_user_args()
+
 # Independent, short curiosities for transitions; shuffled without repeats until
 # the entire collection has been shown. Sources and dated updates:
 # docs/loading-facts.md (reviewed 2026-11-12).

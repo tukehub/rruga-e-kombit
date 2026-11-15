@@ -2,10 +2,25 @@ extends Node
 ## Quality presets (low / medium / high) and device auto-detection.
 ## World builders read the exported fields; environments/viewports get
 ## configured through apply_*().
+##
+## Renderer truth: Android ships Godot's Mobile renderer and desktop runs
+## Forward+ (project.godot, rendering_method[.mobile]). PRESETS say what a
+## tier asks for; `p` is what the active renderer and the current pressure
+## stage actually deliver. Read `p`, never PRESETS, and never ask the
+## RenderingServer which renderer is running: `renderer` already says.
 
 signal preset_changed(preset: String)
 signal budget_changed
 const Governor = preload("res://scripts/game/performance_governor.gd")
+
+## Godot 4.4 runs these under Forward+ only; Mobile and Compatibility ignore
+## them without an error, so `p` switches them off there.
+const FORWARD_PLUS_ONLY: Array[String] = ["ssao", "sdfgi", "ssr", "vol_fog", "sun_penumbra"]
+## Mobile and Compatibility light one mesh with at most eight omni lights.
+## The road is one mesh, so street lamps and combat lights share those eight.
+## Forward+ clusters lights and has no such cap.
+const OMNI_LIGHTS_PER_MESH := 8
+const MESH_OMNI_SHARE := {"lamp_lights": 6, "fx_light_limit": 2}
 
 const PRESETS := {
 	"low": {
@@ -38,6 +53,8 @@ var preset := "medium"
 var p: Dictionary = PRESETS.medium
 var detected := "medium"
 var detect_reason := ""
+## "forward_plus" (desktop), "mobile" (Android) or "gl_compatibility" (fallback).
+var renderer := "forward_plus"
 var frame_target := 60
 var adaptive_enabled := true
 var pressure_stage := 0
@@ -46,6 +63,7 @@ var _settings_signature := {}
 
 
 func _ready() -> void:
+	renderer = RenderingServer.get_current_rendering_method()
 	detected = detect()
 	configure_from_settings()
 	Settings.changed.connect(configure_from_settings)
@@ -99,6 +117,13 @@ func _derive_budget() -> void:
 	if stage >= 3:
 		p.sdfgi = false
 		p.ssao = false
+	# Soft sun shadows cost a penumbra search; only an unpressured high tier pays.
+	p.sun_penumbra = preset == "high" and stage == 0
+	if renderer != "forward_plus":
+		for key in FORWARD_PLUS_ONLY:
+			p[key] = false
+		for key in MESH_OMNI_SHARE:
+			p[key] = mini(int(p[key]), int(MESH_OMNI_SHARE[key]))
 	Engine.max_fps = frame_target
 
 
@@ -118,15 +143,15 @@ func reset_observation(grace := Governor.WARMUP) -> void:
 	governor.reset(frame_target, true, grace)
 
 
-func supports_advanced_effects() -> bool:
-	return RenderingServer.get_current_rendering_method() == "forward_plus"
-
-
 func snapshot() -> Dictionary:
 	var result := governor.snapshot()
 	result.merge({"preset": preset, "adaptive": adaptive_enabled, "render_scale": p.scale,
 		"rain_density": p.rain_density, "mirror_interval": p.mirror_interval,
-		"mirror_width": p.mirror_width, "fx_light_limit": p.fx_light_limit}, true)
+		"mirror_width": p.mirror_width, "fx_light_limit": p.fx_light_limit,
+		"lamp_lights": p.lamp_lights, "renderer": renderer}, true)
+	# What the renderer was really asked to draw, for PROFILE comparisons.
+	for key in FORWARD_PLUS_ONLY:
+		result[key] = bool(p[key])
 	return result
 
 
@@ -163,8 +188,9 @@ func detect() -> String:
 		tier = mini(tier, 0)
 	elif ram_gb > 0.0 and ram_gb < 7.5:
 		tier = mini(tier, 1)
-	# Auto mode avoids the costly high-tier GI and shadow configuration on
-	# mobile; players may still explicitly select high in the settings.
+	# Auto mode stops at medium on a phone. High there means native
+	# resolution, MSAA, a 4096 shadow atlas in four cascades and car shadows
+	# (no GI: the Mobile renderer has none); players may still select it.
 	return ["low", "medium", "high"][mini(tier, 1)]
 
 
@@ -179,9 +205,8 @@ func apply_viewport(vp: Viewport) -> void:
 
 
 func apply_env(env: Environment, wet: bool) -> void:
-	var advanced := supports_advanced_effects()
-	env.ssao_enabled = bool(p.ssao) and advanced
-	env.sdfgi_enabled = bool(p.sdfgi) and advanced
+	env.ssao_enabled = bool(p.ssao)
+	env.sdfgi_enabled = bool(p.sdfgi)
 	if env.sdfgi_enabled:
 		env.sdfgi_cascades = 4
 		env.sdfgi_min_cell_size = 0.5
@@ -191,12 +216,12 @@ func apply_env(env: Environment, wet: bool) -> void:
 		env.sdfgi_read_sky_light = false
 		env.sdfgi_energy = 0.35
 		env.sdfgi_bounce_feedback = 0.2
-	env.ssr_enabled = bool(p.ssr) and wet and advanced
+	env.ssr_enabled = bool(p.ssr) and wet
 	env.ssr_max_steps = int(p.ssr_steps)
 	env.ssr_fade_in = 0.15
 	env.ssr_fade_out = 2.0
 	env.ssr_depth_tolerance = 0.3
-	env.volumetric_fog_enabled = bool(p.vol_fog) and advanced
+	env.volumetric_fog_enabled = bool(p.vol_fog)
 	env.glow_enabled = bool(p.glow)
 	for i in 7:
 		env.set_glow_level(i, 1.0 if i < int(p.glow_levels) else 0.0)

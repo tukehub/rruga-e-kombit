@@ -20,6 +20,31 @@ Final-lap guidance stops at the finish. Reverse, chicanes and corners crossing
 the lap seam use the recomputed driving frame. Positive lateral offset is the
 driver's right; incoming homing-shot side labels now follow that same convention.
 
+## Renderer
+
+Android runs Godot's Mobile renderer; desktop development runs Forward+
+(`project.godot`: `rendering_method` and its `.mobile` override).
+`Quality.renderer` names the one in use, and `Quality.p` holds only what that
+renderer can draw, so scene code reads the budget and never asks which
+renderer is running.
+
+| Budget | Forward+ (desktop) | Mobile (phones) |
+| --- | --- | --- |
+| SSAO; SSR on wet roads | Medium and high | Never |
+| SDFGI, volumetric night fog, soft sun shadows | High | Never |
+| Street lights + combat lights | Up to 14 + 4 | Up to 6 + 2 |
+| 3D scale, MSAA/FXAA, glow, shadows, draw distances | By preset | By preset |
+
+The Mobile renderer lights one mesh with at most eight omni lights, and the
+road is a single mesh; street lamps and combat lights therefore share eight.
+On a phone **E lartë** means native resolution, 2× MSAA, a 4096 shadow atlas
+in four cascades, car shadows, longer draw distances and denser trees, not
+the desktop's global illumination. Automatic detection stops at medium there.
+
+Profile exports accept `--renderer forward_plus` to measure the other renderer
+on the same phone; `PROFILE:` reports the renderer and the effective effects.
+No phone has been measured yet, so Mobile stays the shipped choice.
+
 ## Frame rate and sustained load
 
 Main-menu **Cilësimet** provides **Ritmi i pamjes → 30 FPS · Bateri** or **60 FPS**,
@@ -39,7 +64,7 @@ The saved quality and mirror choices are preserved. The runtime budget reduces
 lights, mirror resolution/cadence and expensive shadows/post-processing.
 MSAA gives way to FXAA under stronger pressure. Core threats, player headlights,
 contact patches and HUD cues remain. The scale floor is 0.6; settings can disable
-adaptation. Forward+ effects are enabled only on a renderer that supports them.
+adaptation.
 
 For example, medium at the strongest reduction changes:
 
@@ -69,7 +94,10 @@ Small GDScript arrays/dictionaries still update during racing.
 
 ## Verification and device review
 
-`tools/run_tests.py` includes 17 scenes. The new checks cover controller
+`tools/run_tests.py` includes 18 scenes. `renderer_truth` and a one-second
+benchmark launch run once as Mobile and once as Forward+, checking the shipped
+renderer settings, every preset/pressure budget, the sky, a weather
+transition, the garage and the `PROFILE:` report. The other checks cover controller
 hysteresis, persistence and real menu choices; automatic budget-signal delivery;
 all quality/pressure combinations with night rain, lights, mirror and 99 combat
 cores; exhaustion priority and stable effect node/mesh/material identities;

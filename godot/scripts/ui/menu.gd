@@ -44,7 +44,7 @@ func _build_garage() -> void:
 	e.glow_intensity = 0.5
 	e.glow_bloom = 0.1
 	e.glow_hdr_threshold = 1.1
-	e.ssao_enabled = Quality.preset != "low" and Quality.supports_advanced_effects()
+	e.ssao_enabled = bool(Quality.p.ssao)
 	env.environment = e
 	add_child(env)
 	var key := DirectionalLight3D.new()
