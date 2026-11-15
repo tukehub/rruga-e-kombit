@@ -126,6 +126,10 @@ func incoming_warnings() -> void:
 		c.shield_t = 8.0
 		check(race.incoming_threat(c).shielded, "warning recognizes a shield lasting through estimated arrival")
 		c.shield_t = 0.0
+		race.projs[0].d = c.d + 4.0
+		check(str(race.incoming_threat(c).direction).ends_with("DJATHTAS"), "incoming side uses the driver's right track frame")
+		race.projs[0].d = c.d - 4.0
+		check(str(race.incoming_threat(c).direction).ends_with("MAJTAS"), "incoming side reverses consistently with the track frame")
 		race.projs[0].s = race.track.mod_s(c.s - 25)
 		check(race.incoming_threat(c).urgent, "near impact escalates urgency")
 		race.projs[0].life = 0.01

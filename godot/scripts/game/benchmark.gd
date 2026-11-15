@@ -41,11 +41,17 @@ static func run(tree: SceneTree, seconds: float) -> void:
 	var report := {"engine": Engine.get_version_info().string, "os": OS.get_name(),
 		"model": OS.get_model_name(), "gpu": RenderingServer.get_video_adapter_name(),
 		"renderer": RenderingServer.get_current_rendering_method(), "quality": Quality.preset,
+		"render_budget": Quality.snapshot(),
 		"resolution": str(tree.root.size), "seconds": seconds,
 		"frame": _stats(frame), "process": _stats(process), "physics": _stats(physics), "gpu_time": _stats(gpu)}
 	if Game._root != null:
 		for scene in Game._root.get_children():
 			if scene is RaceScene:
+				report["effects"] = scene.effects.snapshot()
+				report["workload"] = {"weather": scene.sky.env_id, "wetness": scene.sky.wet,
+					"night": scene.sky.night, "mirror": scene.views.enabled,
+					"mirror_size": str(scene.views.viewport.size), "projectiles": scene.race.projs.size(),
+					"mines": scene.race.mines.size(), "domes": scene.race.domes.size()}
 				if scene.race.pickup_director != null:
 					report["pickups"] = scene.race.pickup_director.snapshot()
 				var combat: Array = []

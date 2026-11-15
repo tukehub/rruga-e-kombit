@@ -17,14 +17,23 @@ var _skids: MultiMesh
 const MAX_SKIDS := 320
 const FLASH_POOL := 8
 const RING_POOL := 6
+const POOL_CAPS := {"bolt": 54, "eagle": 18, "mine": 24, "dome": 3}
+const CORE_DISTANCE := 210.0
 # Sparks outlive the flash itself; the unit stays visible until they are gone.
 const FLASH_SPARK_TAIL := 0.35
 var _flash_pool: Array = []   # [{root, core, halo, ring, light, sparks}]
 var _flash_next := 0
-var _ring_pool: Array = []   # [{root, node, mat, tween}]
+var _ring_pool: Array = []   # fixed activation-ring slots and animation state
 var _ring_next := 0
 var _free: Dictionary = {}   # kind -> hidden nodes ready for reuse
 var _node_key: Dictionary = {}  # id -> kind
+var _pools_ready := false
+var _allocated_units := 0
+var _peak_active := 0
+var _saturated_frames := 0
+var _overflow_samples := 0
+var _lights_left := 0
+var _focus := Vector3.ZERO
 
 static var _mats: Dictionary = {}
 static var _glow_tex: GradientTexture2D
@@ -115,6 +124,9 @@ func setup(p_race: Race, p_track: RaceTrack, p_car: CarVisual = null) -> void:
 	race = p_race
 	track = p_track
 	_skid_car = p_car
+	if _pools_ready:
+		_reset_visuals()
+		return
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(0.18, 1.0)
 	var mat := StandardMaterial3D.new()
@@ -138,6 +150,9 @@ func setup(p_race: Race, p_track: RaceTrack, p_car: CarVisual = null) -> void:
 ## Everything combat spawns is created once here, hidden, and reused, so no
 ## node, mesh or material is allocated when something fires or blows up.
 func _build_pools() -> void:
+	if _pools_ready:
+		return
+	_pools_ready = true
 	var sph := SphereMesh.new()
 	sph.radius = 1.0
 	sph.height = 2.0
@@ -187,7 +202,8 @@ func _build_pools() -> void:
 		sparks.scale_amount_curve = shrink
 		sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(sparks)
-		_flash_pool.append({"root": root, "core": core, "halo": halo, "ring": ring, "light": light, "sparks": sparks})
+		_flash_pool.append({"root": root, "core": core, "halo": halo, "ring": ring, "light": light, "sparks": sparks, "index": i})
+		_allocated_units += 1
 	var torus := TorusMesh.new()
 	torus.inner_radius = 0.88
 	torus.outer_radius = 1.0
@@ -202,11 +218,21 @@ func _build_pools() -> void:
 		root.add_child(node)
 		var halo := glow_quad(glow_material(Color.WHITE, 1.0), 1.5)
 		root.add_child(halo)
-		_ring_pool.append({"root": root, "node": node, "mat": material, "halo": halo, "tween": null})
-	for kind in ["bolt", "bolt", "bolt", "eagle", "eagle"]:
-		_release(kind, _make_proj({"kind": kind}))
-	for i in 3:
-		_release("mine", _make_mine({}))
+		_ring_pool.append({"root": root, "node": node, "mat": material, "halo": halo,
+			"active": false, "elapsed": 0.0, "duration": 0.4, "stretch": Vector3.ONE,
+			"from": Vector3.ZERO, "to": Vector3.ZERO, "index": i})
+		_allocated_units += 1
+	for kind in POOL_CAPS:
+		for i in int(POOL_CAPS[kind]):
+			var unit: Node3D
+			if kind == "dome":
+				unit = _make_dome()
+			elif kind == "mine":
+				unit = _make_mine({})
+			else:
+				unit = _make_proj({"kind": kind})
+			_release(kind, unit)
+			_allocated_units += 1
 
 
 func _acquire(key: String) -> Node3D:
@@ -253,7 +279,9 @@ func _make_proj(p: Dictionary) -> Node3D:
 		l.omni_range = 7.0
 		l.shadow_enabled = false
 		root.add_child(l)
-		root.add_child(glow_quad(glow_material(Color.html(Data.PW.eagle.col), 1.6), 3.2))
+		var halo := glow_quad(glow_material(Color.html(Data.PW.eagle.col), 1.6), 3.2)
+		halo.set_meta("decorative", true)
+		root.add_child(halo)
 		root.add_child(_trail(Color.html(Data.PW.eagle.col), 0.24, 9.0))
 	else:
 		var bolt := CylinderMesh.new()
@@ -270,7 +298,9 @@ func _make_proj(p: Dictionary) -> Node3D:
 		l.omni_range = 6.0
 		l.shadow_enabled = false
 		root.add_child(l)
-		root.add_child(glow_quad(glow_material(Color(0.55, 0.8, 1.0), 1.8), 1.9))
+		var halo := glow_quad(glow_material(Color(0.55, 0.8, 1.0), 1.8), 1.9)
+		halo.set_meta("decorative", true)
+		root.add_child(halo)
 		root.add_child(_trail(Color(0.6, 0.85, 1.0), 0.13, 6.0))
 	return root
 
@@ -290,24 +320,26 @@ func _make_mine(_m: Dictionary) -> Node3D:
 	d.position.y = 0.22
 	d.name = "dot"
 	# The warning light blinks with its own halo once the mine is armed.
-	d.add_child(glow_quad(glow_material(Color.html(Data.PW.mine.col), 1.8), 1.3))
+	var halo := glow_quad(glow_material(Color.html(Data.PW.mine.col), 1.8), 1.3)
+	halo.set_meta("decorative", true)
+	d.add_child(halo)
 	root.add_child(d)
 	return root
 
 
-func _make_dome(dm: Dictionary) -> Node3D:
+func _make_dome() -> Node3D:
 	var root := Node3D.new()
 	add_child(root)
 	var sph := SphereMesh.new()
-	sph.radius = float(dm.r)
-	sph.height = float(dm.r) * 2.0
+	sph.radius = 1.0
+	sph.height = 2.0
 	var mi := _mk(sph, _mat("dome", Color.html(Data.PW.shock.col), 1.2, 0.22))
 	mi.name = "shell"
 	(mi.material_override as StandardMaterial3D).blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	root.add_child(mi)
 	var ring := TorusMesh.new()
-	ring.inner_radius = float(dm.r) - 0.25
-	ring.outer_radius = float(dm.r) + 0.25
+	ring.inner_radius = 0.95
+	ring.outer_radius = 1.05
 	var r := _mk(ring, _mat("dome_ring", Color.html(Data.PW.shock.col), 3.0))
 	r.position.y = 0.1
 	r.name = "ring"
@@ -318,14 +350,12 @@ func _make_dome(dm: Dictionary) -> Node3D:
 func powerup_used(c: CarState, kind: String, back: bool) -> void:
 	# Small, short-lived energy geometry; the established projectile, shield,
 	# nitro and mine visuals continue to show the ability after activation.
-	if not Data.PW.has(kind) or get_tree() == null or _ring_pool.is_empty():
+	if not Data.PW.has(kind) or get_tree() == null or _ring_pool.is_empty() or int(Quality.p.fx_ring_limit) <= 0:
 		return
 	var color := Color.html(Data.PW[kind].col)
 	# Reuse the oldest ring when every pooled one is still animating.
-	var slot: Dictionary = _ring_pool[_ring_next]
-	_ring_next = (_ring_next + 1) % _ring_pool.size()
-	if slot.tween != null and slot.tween.is_valid():
-		slot.tween.kill()
+	var slot: Dictionary = _ring_pool[_ring_next % int(Quality.p.fx_ring_limit)]
+	_ring_next = (_ring_next + 1) % int(Quality.p.fx_ring_limit)
 	var root: Node3D = slot.root
 	var node: MeshInstance3D = slot.node
 	var material: StandardMaterial3D = slot.mat
@@ -363,26 +393,38 @@ func powerup_used(c: CarState, kind: String, back: bool) -> void:
 			root.position.y += 0.8
 			stretch = Vector3(1.6, 1.0, 1.6)
 	root.visible = true
-	var tween := create_tween().set_parallel(true)
-	tween.tween_property(node, "scale", stretch, duration).from(Vector3(0.35, 0.35, 0.35)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(material, "albedo_color:a", 0.0, duration)
-	# A burst of light at the car as the ability goes off.
-	tween.tween_property(halo, "scale", Vector3.ONE * 5.5, duration).from(Vector3.ONE * 1.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(halo.material_override, "albedo_color:a", 0.0, duration)
+	slot.active = true
+	slot.elapsed = 0.0
+	slot.duration = duration
+	slot.stretch = stretch
+	slot.from = root.position
+	slot.to = root.position
 	if kind == "repair":
-		tween.tween_property(root, "position:y", root.position.y + 1.5, duration)
+		slot.to += Vector3.UP * 1.5
 	elif kind in ["eagle", "bolt", "nitro"]:
-		tween.tween_property(root, "position", root.position + tan * (-3.0 if back else 3.0), duration)
-	tween.chain().tween_callback(root.hide)
-	slot.tween = tween
+		slot.to += tan * (-3.0 if back else 3.0)
+	_animate_ring(slot, 0.0)
+
+
+func _animate_ring(slot: Dictionary, dt: float) -> void:
+	slot.elapsed += dt
+	var k := clampf(float(slot.elapsed) / float(slot.duration), 0.0, 1.0)
+	var eased := 1.0 - pow(1.0 - k, 3.0)
+	(slot.node as Node3D).scale = Vector3.ONE * 0.35 + ((slot.stretch as Vector3) - Vector3.ONE * 0.35) * eased
+	(slot.mat as StandardMaterial3D).albedo_color.a = 0.8 * (1.0 - k)
+	(slot.root as Node3D).position = (slot.from as Vector3).lerp(slot.to, eased)
+	(slot.halo as Node3D).scale = Vector3.ONE * lerpf(1.5, 5.5, eased)
+	_set_alpha(slot.halo, 1.0 - k)
+	slot.active = k < 1.0
+	(slot.root as Node3D).visible = bool(slot.active) and int(slot.index) < int(Quality.p.fx_ring_limit)
 
 
 func boom(pos: Vector3, col: Color, r: float = 3.0, ttl: float = 0.45) -> void:
 	if _flash_pool.is_empty():
 		return
 	# Reuse the oldest flash when every pooled one is still fading.
-	var unit: Dictionary = _flash_pool[_flash_next]
-	_flash_next = (_flash_next + 1) % _flash_pool.size()
+	var unit: Dictionary = _flash_pool[_flash_next % int(Quality.p.fx_flash_limit)]
+	_flash_next = (_flash_next + 1) % int(Quality.p.fx_flash_limit)
 	for i in range(_flashes.size() - 1, -1, -1):
 		if _flashes[i].unit == unit:
 			_flashes.remove_at(i)
@@ -397,11 +439,11 @@ func boom(pos: Vector3, col: Color, r: float = 3.0, ttl: float = 0.45) -> void:
 	var root: Node3D = unit.root
 	root.position = pos
 	root.visible = true
-	sparks.restart()
-	sparks.emitting = true
+	if bool(Quality.p.fx_sparks):
+		sparks.restart()
+	sparks.emitting = bool(Quality.p.fx_sparks)
 	var flash := {"unit": unit, "t": 0.0, "ttl": ttl, "r": r}
 	_flashes.append(flash)
-	_animate_flash(flash)
 
 
 func _animate_flash(f: Dictionary) -> void:
@@ -416,11 +458,19 @@ func _animate_flash(f: Dictionary) -> void:
 	var halo: MeshInstance3D = unit.halo
 	halo.scale = Vector3.ONE * r * (1.4 + 2.2 * grow)
 	_set_alpha(halo, fade)
+	halo.visible = bool(Quality.p.fx_extras)
 	var ring: MeshInstance3D = unit.ring
 	var spread := 0.6 + r * 2.4 * grow
 	ring.scale = Vector3(spread, 0.25, spread)
 	_set_alpha(ring, 0.9 * (1.0 - k))
-	(unit.light as OmniLight3D).light_energy = 6.0 * (1.0 - k)
+	ring.visible = bool(Quality.p.fx_extras)
+	var light: OmniLight3D = unit.light
+	light.visible = k < 1.0 and _lights_left > 0 and (unit.root as Node3D).position.distance_squared_to(_focus) < 70.0 * 70.0
+	light.light_energy = 6.0 * (1.0 - k) if light.visible else 0.0
+	if light.visible:
+		_lights_left -= 1
+	if not bool(Quality.p.fx_sparks):
+		(unit.sparks as CPUParticles3D).emitting = false
 
 
 ## Tapered additive streak behind a projectile, whose root faces -Z.
@@ -433,6 +483,7 @@ func _trail(col: Color, radius: float, length: float) -> MeshInstance3D:
 	cone.cap_top = false
 	cone.cap_bottom = false
 	var streak := _mk(cone, add_material(col, 1.6, 0.45))
+	streak.set_meta("decorative", true)
 	streak.rotation.x = PI * 0.5
 	streak.position.z = length * 0.5 + 0.8
 	return streak
@@ -481,82 +532,139 @@ func _update_skids(dt: float) -> void:
 		_skid_previous[side] = pos
 
 
+func _reset_visuals() -> void:
+	for id in _nodes:
+		_release(_node_key[id], _nodes[id])
+	_nodes.clear()
+	_node_key.clear()
+	_flashes.clear()
+	for unit: Dictionary in _flash_pool:
+		(unit.root as Node3D).hide()
+		(unit.sparks as CPUParticles3D).emitting = false
+	for slot: Dictionary in _ring_pool:
+		slot.active = false
+		(slot.root as Node3D).hide()
+	_skid_previous.clear()
+	_skid_count = 0
+	_skid_next = 0
+	_skids.visible_instance_count = 0
+
+
+func snapshot() -> Dictionary:
+	return {"capacities": POOL_CAPS.duplicate(), "allocated_units": _allocated_units,
+		"active_units": _nodes.size(), "peak_active": _peak_active,
+		"saturated_frames": _saturated_frames, "overflow_samples": _overflow_samples,
+		"flash_limit": Quality.p.fx_flash_limit, "light_limit": Quality.p.fx_light_limit}
+
+
+func _priority(a: Dictionary, b: Dictionary) -> bool:
+	var a_threat: bool = race.player != null and a.get("target") == race.player
+	var b_threat: bool = race.player != null and b.get("target") == race.player
+	if a_threat != b_threat:
+		return a_threat
+	var da := track.pos(float(a.s), float(a.d)).distance_squared_to(_focus)
+	var db := track.pos(float(b.s), float(b.d)).distance_squared_to(_focus)
+	return int(a.id) < int(b.id) if is_equal_approx(da, db) else da < db
+
+
+func _unit_budget(n: Node, extras: bool, lit: bool) -> void:
+	for child in n.get_children():
+		if child.has_meta("decorative"):
+			(child as Node3D).visible = extras
+		if child is Light3D:
+			(child as Light3D).visible = lit
+		if child.get_child_count() > 0:
+			_unit_budget(child, extras, lit)
+
+
 func _process(dt: float) -> void:
 	if race == null:
 		return
 	_t += dt
 	_update_skids(dt)
-	var live: Dictionary = {}
-	for p in race.projs:
-		var n: Node3D = _nodes.get(p.id)
-		if n == null:
-			var key := "eagle" if p.kind == "eagle" else "bolt"
-			n = _acquire(key)
-			if n == null:
-				n = _make_proj(p)
-			_nodes[p.id] = n
-			_node_key[p.id] = key
-		live[p.id] = true
-		var pos := _wpos(float(p.s), float(p.d), 0.9 if p.kind == "eagle" else 0.7)
-		var tan := track.tangent(float(p.s)) * float(p.dir)
-		n.position = pos
-		if tan.length_squared() > 0.001:
-			n.look_at(pos + tan, Vector3.UP)
-		if p.kind == "bolt":
-			n.rotation.z = _t * 20.0
-		else:
-			var icon := n.get_node_or_null("Icon") as Sprite3D
-			if icon:
-				icon.rotation.z = sin(_t * 15.0) * 0.15
-	for m in race.mines:
-		var n: Node3D = _nodes.get(m.id)
-		if n == null:
-			n = _acquire("mine")
-			if n == null:
-				n = _make_mine(m)
-			_nodes[m.id] = n
-			_node_key[m.id] = "mine"
-		live[m.id] = true
-		var air := 0.0
-		if float(m.fly) > 0.0 and float(m.fly0) > 0.0:
-			var f := 1.0 - float(m.fly) / float(m.fly0)
-			air = sin(f * PI) * 2.5
-		n.position = _wpos(float(m.s), float(m.d), 0.18 + air)
-		n.rotation.y = _t * 2.0
-		var dot := n.get_node_or_null("dot") as MeshInstance3D
-		if dot:
-			dot.visible = float(m.arm) <= 0.0 and fmod(_t * 3.0, 1.0) < 0.5
-	for dm in race.domes:
-		var n: Node3D = _nodes.get(dm.id)
-		if n == null:
-			# Domes are sized at build time, so they recycle per radius.
-			var key := "dome%s" % str(dm.r)
-			n = _acquire(key)
-			if n == null:
-				n = _make_dome(dm)
-			_nodes[dm.id] = n
-			_node_key[dm.id] = key
-		live[dm.id] = true
-		n.position = _wpos(float(dm.s), float(dm.d), 0.0)
-		var warn := float(dm.warn) > 0.0
-		var shell := n.get_node_or_null("shell") as MeshInstance3D
-		var ring := n.get_node_or_null("ring") as MeshInstance3D
-		if shell:
-			shell.visible = not warn
-			var pulse := 1.0 + 0.04 * sin(_t * 9.0)
-			shell.scale = Vector3.ONE * pulse
-		if ring:
-			ring.scale = Vector3.ONE * (0.4 + 0.6 * (1.0 - float(dm.warn)) if warn else 1.0)
-			ring.visible = (not warn) or fmod(_t * 6.0, 1.0) < 0.5
-	for id in _nodes.keys():
-		if not live.has(id):
-			_release(str(_node_key.get(id, "")), _nodes[id])
-			_nodes.erase(id)
-			_node_key.erase(id)
+	var cam := get_viewport().get_camera_3d()
+	_focus = cam.global_position if cam != null else (track.pos(race.player.s, race.player.d) if race.player != null else Vector3.ZERO)
+	_lights_left = int(Quality.p.fx_light_limit)
 	for i in range(_flashes.size() - 1, -1, -1):
 		var f: Dictionary = _flashes[i]
 		f.t += dt
-		_animate_flash(f)
-		if float(f.t) >= float(f.ttl) + FLASH_SPARK_TAIL:
-			(f.unit.root as Node3D).visible = false
+		if int(f.unit.index) >= int(Quality.p.fx_flash_limit) or float(f.t) >= float(f.ttl) + FLASH_SPARK_TAIL:
+			(f.unit.root as Node3D).hide()
+			(f.unit.sparks as CPUParticles3D).emitting = false
 			_flashes.remove_at(i)
+		else:
+			_animate_flash(f)
+	for slot: Dictionary in _ring_pool:
+		if slot.active:
+			_animate_ring(slot, dt)
+	# Select before acquiring and reclaim before reuse. Legal inventory bursts
+	# fit the fixed pools; out-of-spec stress favors nearby/player threats.
+	var grouped := {"bolt": [], "eagle": [], "mine": [], "dome": []}
+	for p: Dictionary in race.projs:
+		grouped["eagle" if p.kind == "eagle" else "bolt"].append(p)
+	grouped.mine = race.mines.duplicate()
+	grouped.dome = race.domes.duplicate()
+	var wanted := {}
+	var saturated := false
+	for key in POOL_CAPS:
+		var rows: Array = grouped[key]
+		if rows.size() > int(POOL_CAPS[key]):
+			saturated = true
+			_overflow_samples += rows.size() - int(POOL_CAPS[key])
+			rows.sort_custom(_priority)
+		for i in mini(rows.size(), int(POOL_CAPS[key])):
+			wanted[rows[i].id] = {"key": key, "item": rows[i]}
+	if saturated:
+		_saturated_frames += 1
+	for id in _nodes.keys():
+		if not wanted.has(id) or _node_key[id] != wanted[id].key:
+			_release(_node_key[id], _nodes[id])
+			_nodes.erase(id)
+			_node_key.erase(id)
+	for id in wanted:
+		var key: String = wanted[id].key
+		var item: Dictionary = wanted[id].item
+		var n: Node3D = _nodes.get(id)
+		if n == null:
+			n = _acquire(key)
+			if n == null:
+				continue
+			_nodes[id] = n
+			_node_key[id] = key
+		var height := 0.9 if key == "eagle" else 0.7
+		if key == "mine":
+			height = 0.18
+			if float(item.fly) > 0.0 and float(item.fly0) > 0.0:
+				height += sin((1.0 - float(item.fly) / float(item.fly0)) * PI) * 2.5
+		elif key == "dome":
+			height = 0.0
+		n.position = _wpos(float(item.s), float(item.d), height)
+		var distance := n.position.distance_squared_to(_focus)
+		n.visible = distance <= CORE_DISTANCE * CORE_DISTANCE or (item.get("target") == race.player and race.player != null)
+		var lit := n.visible and _lights_left > 0 and distance < 70.0 * 70.0 and key in ["eagle", "bolt"]
+		if lit:
+			_lights_left -= 1
+		_unit_budget(n, bool(Quality.p.fx_extras) and distance < 100.0 * 100.0, lit)
+		if key in ["bolt", "eagle"]:
+			var tangent := track.tangent(float(item.s)) * float(item.dir)
+			if tangent.length_squared() > 0.001:
+				n.look_at(n.position + tangent, Vector3.UP)
+			if key == "bolt":
+				n.rotation.z = _t * 20.0
+			else:
+				(n.get_node("Icon") as Sprite3D).rotation.z = sin(_t * 15.0) * 0.15
+		elif key == "mine":
+			n.rotation.y = _t * 2.0
+			(n.get_node("dot") as Node3D).visible = float(item.arm) <= 0.0 and fmod(_t * 3.0, 1.0) < 0.5
+		else:
+			var radius := maxf(0.1, float(item.r))
+			n.scale = Vector3.ONE * radius
+			var warning := float(item.warn) > 0.0
+			var shell := n.get_node("shell") as Node3D
+			shell.visible = not warning
+			shell.scale = Vector3.ONE * (1.0 + 0.04 * sin(_t * 9.0))
+			var ring := n.get_node("ring") as Node3D
+			ring.position.y = 0.1 / radius
+			ring.scale = Vector3.ONE * (0.4 + 0.6 * (1.0 - float(item.warn)) if warning else 1.0)
+			ring.visible = not warning or fmod(_t * 6.0, 1.0) < 0.5
+	_peak_active = maxi(_peak_active, _nodes.size())

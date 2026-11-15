@@ -32,7 +32,7 @@ var color := Color.WHITE
 
 var progress := 0.0          # total metres since the start (can exceed L)
 var s := 0.0                 # progress mod L
-var d := 0.0                 # lateral offset (+ left)
+var d := 0.0                 # lateral offset (+ driver's right)
 var v := 0.0                 # speed m/s along the heading
 var yaw := 0.0               # heading relative to the track tangent
 var lat_v := 0.0

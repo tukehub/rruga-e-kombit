@@ -11,6 +11,7 @@ const SLOT_N := 3
 const ARC_START := deg_to_rad(135.0)
 const ARC_SWEEP := deg_to_rad(270.0)
 const Feedback = preload("res://scripts/ui/combat_feedback.gd")
+const RouteGuide = preload("res://scripts/sim/route_guide.gd")
 
 var race: Race
 var player: CarState
@@ -55,6 +56,9 @@ var _mm_pts := PackedVector2Array()
 var _mm_rect := Rect2()
 var _mm_scale := 1.0
 var _mm_min := Vector2.ZERO
+var _route_guide: RouteGuide
+var _corner_caption: Label
+var _corner_panel: PanelContainer
 
 
 func animate_pickup(kind: String, index: int) -> void:
@@ -87,10 +91,11 @@ func _ready() -> void:
 	add_child(combat)
 
 
-func setup(p_race: Race, p_player: CarState, p_track: RaceTrack) -> void:
+func setup(p_race: Race, p_player: CarState, p_track: RaceTrack, p_guide: RouteGuide = null) -> void:
 	race = p_race
 	player = p_player
 	track = p_track
+	_route_guide = p_guide if p_guide != null else RouteGuide.new(track)
 	_me.text = player.name
 	_me.add_theme_color_override("font_color", player.color.lightened(0.2))
 	_build_minimap()
@@ -192,6 +197,19 @@ func _build() -> void:
 	# them is redrawn every frame.
 	_mm_dots = _minimap_layer(_draw_minimap_dots)
 	_mm_flag = _minimap_layer(_draw_minimap_flag)
+	_corner_panel = UiTheme.panel(7)
+	_corner_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_corner_panel.offset_top = -36
+	_corner_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var corner_style := UiTheme.flat(Color(0.02, 0.035, 0.05, 0.8), Color(1, 1, 1, 0.15), 7, 1)
+	corner_style.content_margin_top = 0
+	corner_style.content_margin_bottom = 0
+	_corner_panel.add_theme_stylebox_override("panel", corner_style)
+	_minimap.add_child(_corner_panel)
+	_corner_caption = UiTheme.label("", 16, Color.WHITE, false, HORIZONTAL_ALIGNMENT_CENTER)
+	_corner_caption.add_theme_font_override("font", UiTheme.body_bold())
+	_corner_caption.clip_text = true
+	_corner_panel.add_child(_corner_caption)
 	# Compact digital speed and damage bar, rather than an opaque corner dial.
 	_gauge = Control.new()
 	_gauge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -288,9 +306,10 @@ func _build_minimap() -> void:
 		mx = mx.max(p)
 	var sz := _minimap.size
 	var ext := (mx - mn).max(Vector2(1, 1))
-	_mm_scale = minf((sz.x - 24.0) / ext.x, (sz.y - 24.0) / ext.y)
+	var map_size := Vector2(sz.x, maxf(40.0, sz.y - 38.0))
+	_mm_scale = minf((map_size.x - 24.0) / ext.x, (map_size.y - 24.0) / ext.y)
 	_mm_min = mn
-	_mm_rect = Rect2((sz - ext * _mm_scale) * 0.5, ext * _mm_scale)
+	_mm_rect = Rect2((map_size - ext * _mm_scale) * 0.5, ext * _mm_scale)
 	_minimap.queue_redraw()
 	if _mm_flag != null:
 		_mm_flag.queue_redraw()
@@ -455,6 +474,7 @@ func _process(dt: float) -> void:
 	var lap := clampi(player.lap + 1, 1, race.laps)
 	_lap.text = "MBËRRITE" if player.finished else "XHIRO %d/%d" % [lap, race.laps]
 	_time.text = Game.fmt_time(player.finish_time if player.finished else race.time)
+	_update_corner_caption()
 	_speed.text = str(roundi(absf(player.v) * 3.6))
 	# standings
 	var key := ""
@@ -531,3 +551,20 @@ func _process(dt: float) -> void:
 		_fps.text = "%.1f ms  (max %.1f)  %d fps" % [Game.frame_ms_avg, Game.frame_ms_max, Engine.get_frames_per_second()]
 	else:
 		_fps.text = ""
+
+
+func _update_corner_caption() -> void:
+	_corner_panel.visible = race.started and not player.finished
+	if not _corner_panel.visible:
+		return
+	var corner := _route_guide.next(player.s, clampf(absf(player.v) * 3.0 + 40.0, 90.0, 200.0))
+	if corner.is_empty():
+		_corner_caption.text = "VIJO DREJT"
+		_corner_caption.modulate = UiTheme.MUTED
+		return
+	if player.progress + float(corner.distance) > race.laps * race.L:
+		_corner_caption.text = "FUND %dm" % maxi(0, roundi(race.laps * race.L - player.progress))
+		_corner_caption.modulate = UiTheme.AMBER
+		return
+	_corner_caption.text = "%s %s" % ["→" if corner.direction == "right" else "←", "%dm" % roundi(corner.distance) if float(corner.distance) > 5.0 else "TANI"]
+	_corner_caption.modulate = UiTheme.AMBER if int(corner.severity) >= 2 else Color.WHITE

@@ -32,7 +32,8 @@ func load_city(city_id: String, splat: Texture2D) -> void:
 	mat = ShaderMaterial.new()
 	mat.shader = SHADER
 	mat.set_shader_parameter("splat", splat)
-	mat.set_shader_parameter("two_scale", Quality.preset != "low")
+	mat.set_shader_parameter("two_scale", Quality.preset != "low" and Quality.pressure_stage < 2)
+	Quality.budget_changed.connect(_apply_budget)
 	mat.set_shader_parameter("splat_span", float(meta.splat.span))
 	mat.set_shader_parameter("tex_grass", load("res://assets/textures/grass_diff.jpg"))
 	mat.set_shader_parameter("tex_grass_n", load("res://assets/textures/grass_nor.jpg"))
@@ -59,6 +60,10 @@ func set_env(wet: float, snow: float, night: float) -> void:
 	mat.set_shader_parameter("wetness", wet)
 	mat.set_shader_parameter("snow", snow)
 	mat.set_shader_parameter("night", night)
+
+
+func _apply_budget() -> void:
+	mat.set_shader_parameter("two_scale", Quality.preset != "low" and Quality.pressure_stage < 2)
 
 
 ## Bilinear height lookup on the near grid, falling back to far grid.

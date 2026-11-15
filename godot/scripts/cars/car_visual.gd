@@ -36,6 +36,11 @@ var visual_wheel_radius := 0.36
 var visual_wheelbase := 2.7
 var finish_driver: Node3D
 var finish_glass: StandardMaterial3D
+var damage_amount := 0.0
+var _last_damage := -1.0
+var _healthy_paint := Color.WHITE
+var _healthy_roughness := 0.48
+var _nitro_flares: Array[MeshInstance3D] = []
 
 
 func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
@@ -69,6 +74,29 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 	_apply_car_shadows()
 	if not Quality.preset_changed.is_connected(_apply_car_shadows):
 		Quality.preset_changed.connect(_apply_car_shadows)
+	Quality.budget_changed.connect(_apply_render_budget)
+	if mat_paint != null:
+		_healthy_paint = mat_paint.albedo_color
+		_healthy_roughness = mat_paint.roughness
+	_apply_render_budget()
+
+
+func _apply_render_budget() -> void:
+	_apply_car_shadows()
+	for flare in _nitro_flares:
+		flare.visible = bool(Quality.p.fx_extras)
+
+
+func _apply_damage(c: CarState) -> void:
+	damage_amount = clampf(1.0 - c.health / maxf(1.0, c.max_hp), 0.0, 1.0)
+	if is_equal_approx(damage_amount, _last_damage):
+		return
+	_last_damage = damage_amount
+	if sport_paint != null:
+		sport_paint.set_shader_parameter("body_damage", damage_amount)
+	if mat_paint != null:
+		mat_paint.albedo_color = _healthy_paint.darkened(damage_amount * 0.22)
+		mat_paint.roughness = lerpf(_healthy_roughness, 0.82, damage_amount)
 
 
 func _apply_car_shadows(_preset: String = "") -> void:
@@ -353,6 +381,7 @@ func set_night(n: float) -> void:
 
 ## Place and animate from the sim state. Call once per rendered frame.
 func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}) -> void:
+	_apply_damage(c)
 	var s := float(pose.get("s", c.s))
 	var p := track.pos(s, float(pose.get("d", c.d)))
 	var t := track.tangent(s)
@@ -449,6 +478,7 @@ func _make_nitro() -> void:
 		jet.visible = false
 		# Bright bloom where the flame leaves the car.
 		var flare := FxVisual.glow_quad(FxVisual.glow_material(Color(0.25, 0.7, 1.0), 2.6), 1.1)
+		_nitro_flares.append(flare)
 		flare.position.y = -0.7
 		jet.add_child(flare)
 		add_child(jet)

@@ -176,7 +176,7 @@ static func incoming(race, c: CarState) -> Dictionary:
 			soonest = eta
 			var side := "PRAPA" if signed_gap >= 0.0 else "PARA"
 			if absf(float(p.d) - c.d) > 2.5:
-				side += " · " + ("MAJTAS" if float(p.d) > c.d else "DJATHTAS")
+				side += " · " + ("DJATHTAS" if float(p.d) > c.d else "MAJTAS")
 			result = {"id": p.id, "eta": eta, "direction": side, "urgent": eta <= 1.25, "shielded": c.shield_t > eta}
 	if not result.is_empty():
 		result["count"] = count

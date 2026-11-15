@@ -44,7 +44,7 @@ func _build_garage() -> void:
 	e.glow_intensity = 0.5
 	e.glow_bloom = 0.1
 	e.glow_hdr_threshold = 1.1
-	e.ssao_enabled = Quality.preset != "low"
+	e.ssao_enabled = Quality.preset != "low" and Quality.supports_advanced_effects()
 	env.environment = e
 	add_child(env)
 	var key := DirectionalLight3D.new()
@@ -413,7 +413,15 @@ func _page_settings() -> Control:
 	_set_row(list, "haptics", "Dridhje", ["Jo", "Po"], func(i): Settings.haptics = (i == 1))
 	_set_row(list, "quality", "Cilësia grafike", ["Auto", "E ulët", "Mesatare", "E lartë"], func(i):
 		Settings.quality = ["auto", "low", "medium", "high"][i]
-		Quality.set_preset(Settings.quality)
+		Quality.configure_from_settings()
+		Quality.apply_viewport(get_viewport()))
+	_set_row(list, "frame_target", "Ritmi i pamjes", ["60 FPS", "30 FPS · Bateri"], func(i):
+		Settings.frame_target = 60 if i == 0 else 30
+		Quality.configure_from_settings()
+		Quality.apply_viewport(get_viewport()))
+	_set_row(list, "adaptive_quality", "Përshtat cilësinë gjatë lojës", ["Jo", "Po"], func(i):
+		Settings.adaptive_quality = i == 1
+		Quality.configure_from_settings()
 		Quality.apply_viewport(get_viewport()))
 	_set_row(list, "fps", "Trego FPS", ["Jo", "Po"], func(i): Settings.show_fps = (i == 1))
 	_set_slider(list, "master", "Volumi", func(x): Settings.vol_master = x)
@@ -477,6 +485,8 @@ func _refresh_settings() -> void:
 	_seg_set(_set_rows.haptics, 1 if Settings.haptics else 0)
 	_seg_set(_set_rows.quality, maxi(0, ["auto", "low", "medium", "high"].find(Settings.quality)))
 	_seg_set(_set_rows.fps, 1 if Settings.show_fps else 0)
+	_seg_set(_set_rows.frame_target, 1 if Settings.frame_target == 30 else 0)
+	_seg_set(_set_rows.adaptive_quality, 1 if Settings.adaptive_quality else 0)
 	(_set_rows.master as HSlider).set_value_no_signal(Settings.vol_master)
 	(_set_rows.engine as HSlider).set_value_no_signal(Settings.vol_engine)
 	(_set_rows.tyres as HSlider).set_value_no_signal(Settings.vol_tyres)

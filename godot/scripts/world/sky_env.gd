@@ -34,6 +34,14 @@ func _ready() -> void:
 	sun.shadow_enabled = true
 	add_child(sun)
 	_make_weather()
+	Quality.budget_changed.connect(_apply_quality)
+
+
+func _apply_quality() -> void:
+	Quality.apply_env(env, wet > 0.05)
+	env.volumetric_fog_enabled = env.volumetric_fog_enabled and night > 0.3
+	Quality.apply_sun(sun)
+	sun.light_angular_distance = 0.0 if Quality.preset != "high" or Quality.pressure_stage > 0 else (0.3 if night > 0.3 else 0.15)
 
 
 func apply(id: String, is_wet_override: bool = false) -> void:
@@ -132,7 +140,7 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	# PCSS penumbra: values >= ~0.3 smear PSSM shadows into nothing at this
 	# shadow distance, so keep the sun disc small (real sun is 0.26 deg).
 	# Below high quality the penumbra search is skipped entirely.
-	sun.light_angular_distance = 0.0 if Quality.preset != "high" else (0.15 if not is_night else 0.3)
+	sun.light_angular_distance = 0.0 if Quality.preset != "high" or Quality.pressure_stage > 0 else (0.15 if not is_night else 0.3)
 	sun.shadow_enabled = true
 	sun.shadow_opacity = (0.5 if id == "rainy" else 0.78) if not is_night else 0.5
 	Quality.apply_sun(sun)
@@ -265,7 +273,7 @@ func advance(dt: float) -> void:
 	env.fog_light_color = (_from.fog_color as Color).lerp(_to.fog_color, k)
 	env.fog_density = lerpf(_from.fog_density, _to.fog_density, k)
 	env.glow_intensity = lerpf(_from.glow, _to.glow, k)
-	env.ssr_enabled = bool(Quality.p.ssr) and wet > 0.05
+	env.ssr_enabled = bool(Quality.p.ssr) and wet > 0.05 and Quality.supports_advanced_effects()
 	_sky_blend.set_shader_parameter("blend", k)
 	rain.amount_ratio = wet
 	if wet > 0.01:

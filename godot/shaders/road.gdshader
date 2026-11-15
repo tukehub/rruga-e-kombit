@@ -46,6 +46,12 @@ void fragment() {
 	// direction back before blending or the surface grain lights incorrectly.
 	vec3 nrm = mix(n1, vec3(1.0 - n2.g, n2.r, n2.b), 0.5);
 	float rough = texture(tex_asphalt_r, tuv).r * 0.45 + 0.5;
+	// A darker, matte gutter ties the asphalt to the physical curb. The outer
+	// edge blends toward the shoulder instead of reading as a bright raised slab.
+	float gutter = smoothstep(half_w - 1.0, half_w + 0.3, abs(across));
+	asphalt *= 1.0 - gutter * 0.10;
+	asphalt = mix(asphalt, asphalt * vec3(0.78, 0.74, 0.65), (1.0 - COLOR.a) * 0.6);
+	rough = min(0.98, rough + gutter * 0.08);
 
 	// darker tyre tracks in the lanes
 	float lane_w = 2.0 * half_w / lane_count;

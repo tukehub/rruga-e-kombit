@@ -28,6 +28,8 @@ var difficulty := 1
 var dynamic_weather := false
 var haptics := true
 var quality := "auto"           # "auto" | "low" | "medium" | "high"
+var frame_target := 60          # rendering only; simulation stays at60Hz
+var adaptive_quality := true
 var vol_master := 1.0
 var vol_engine := 0.8
 var vol_tyres := 0.7
@@ -83,6 +85,8 @@ func load_settings() -> void:
 	haptics = cf.get_value("game", "haptics", haptics)
 	dynamic_weather = cf.get_value("game", "dynamic_weather", dynamic_weather)
 	quality = cf.get_value("video", "quality", quality)
+	frame_target = 30 if int(cf.get_value("video", "frame_target", frame_target)) == 30 else 60
+	adaptive_quality = bool(cf.get_value("video", "adaptive_quality", adaptive_quality))
 	show_fps = cf.get_value("video", "show_fps", show_fps)
 	mirror = bool(cf.get_value("video", "mirror", mirror))
 	vol_master = cf.get_value("audio", "master", vol_master)
@@ -112,6 +116,8 @@ func save() -> void:
 	cf.set_value("game", "haptics", haptics)
 	cf.set_value("game", "dynamic_weather", dynamic_weather)
 	cf.set_value("video", "quality", quality)
+	cf.set_value("video", "frame_target", frame_target)
+	cf.set_value("video", "adaptive_quality", adaptive_quality)
 	cf.set_value("video", "show_fps", show_fps)
 	cf.set_value("video", "mirror", mirror)
 	cf.set_value("audio", "master", vol_master)

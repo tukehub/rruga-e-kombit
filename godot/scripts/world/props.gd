@@ -59,6 +59,13 @@ func load_city(city_id: String, terrain: Terrain) -> void:
 		l.light_specular = 0.6
 		add_child(l)
 		lights.append(l)
+	Quality.budget_changed.connect(_apply_light_budget)
+
+
+func _apply_light_budget() -> void:
+	for i in lights.size():
+		if i >= int(Quality.p.lamp_lights):
+			lights[i].visible = false
 
 
 func _lamp_mesh() -> ArrayMesh:
@@ -375,7 +382,7 @@ func update_lights(player_pos: Vector3, forward: Vector3) -> void:
 	cand.sort_custom(func(a, b): return a[0] < b[0])
 	for i in lights.size():
 		var l := lights[i]
-		if i < cand.size():
+		if i < cand.size() and i < int(Quality.p.lamp_lights):
 			var p: Vector3 = cand[i][1]
 			l.global_position = p + Vector3(0, 7.7, 0) + Vector3(0, 0, 0)
 			l.light_energy = 2.2 * night

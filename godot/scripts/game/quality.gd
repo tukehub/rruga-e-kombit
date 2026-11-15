@@ -4,6 +4,8 @@ extends Node
 ## configured through apply_*().
 
 signal preset_changed(preset: String)
+signal budget_changed
+const Governor = preload("res://scripts/game/performance_governor.gd")
 
 const PRESETS := {
 	"low": {
@@ -36,10 +38,26 @@ var preset := "medium"
 var p: Dictionary = PRESETS.medium
 var detected := "medium"
 var detect_reason := ""
+var frame_target := 60
+var adaptive_enabled := true
+var pressure_stage := 0
+var governor := Governor.new()
+var _settings_signature := {}
 
 
 func _ready() -> void:
 	detected = detect()
+	configure_from_settings()
+	Settings.changed.connect(configure_from_settings)
+
+
+func configure_from_settings() -> void:
+	var signature := {"quality": Settings.quality, "fps": Settings.frame_target, "adaptive": Settings.adaptive_quality}
+	if signature == _settings_signature:
+		return
+	_settings_signature = signature
+	frame_target = 30 if Settings.frame_target == 30 else 60
+	adaptive_enabled = Settings.adaptive_quality
 	set_preset(Settings.quality)
 
 
@@ -48,9 +66,68 @@ func set_preset(name: String) -> void:
 	if want == "auto" or not PRESETS.has(want):
 		want = detected
 	preset = want
-	p = PRESETS[want]
-	Engine.max_fps = int(p.max_fps)
+	pressure_stage = 0
+	governor.reset(frame_target)
+	_derive_budget()
 	preset_changed.emit(preset)
+	budget_changed.emit()
+
+
+func _derive_budget() -> void:
+	p = PRESETS[preset].duplicate(true)
+	var stage := pressure_stage
+	p.scale = maxf(0.6, float(p.scale) * [1.0, 0.9, 0.8, 0.7][stage])
+	p.max_fps = frame_target
+	p.rain_density = [1.0, 0.85, 0.65, 0.45][stage] * (0.8 if frame_target == 30 else 1.0)
+	p.mirror_interval = 3 + stage
+	p.mirror_width = 256 if stage == 0 else (192 if stage == 1 else 128)
+	p.fx_extras = preset != "low" and stage < 2
+	p.fx_flash_limit = maxi(2, {"low": 3, "medium": 5, "high": 8}[preset] - stage * 2)
+	p.fx_ring_limit = maxi(0, {"low": 2, "medium": 4, "high": 6}[preset] - stage * 2)
+	p.fx_light_limit = maxi(0, {"low": 0, "medium": 2, "high": 4}[preset] - stage)
+	p.fx_sparks = stage < 2 and preset != "low"
+	p.lamp_lights = mini(int(p.lamp_lights), [14, 6, 3, 2][stage])
+	p.shadow_dist = maxf(50.0, float(p.shadow_dist) * (1.0 - stage * 0.15))
+	if stage >= 2:
+		p.msaa = Viewport.MSAA_DISABLED
+		p.fxaa = true
+		p.car_shadows = false
+		p.shadow_splits = 1
+		p.shadow_size = mini(1024, int(p.shadow_size))
+		p.ssr = false
+		p.vol_fog = false
+	if stage >= 3:
+		p.sdfgi = false
+		p.ssao = false
+	Engine.max_fps = frame_target
+
+
+func observe_frame(dt: float, active := true) -> void:
+	if adaptive_enabled and governor.observe(dt, active):
+		set_pressure_stage(governor.stage)
+
+
+func set_pressure_stage(stage: int) -> void:
+	pressure_stage = clampi(stage, 0, Governor.MAX_STAGE)
+	governor.stage = pressure_stage
+	_derive_budget()
+	budget_changed.emit()
+
+
+func reset_observation(grace := Governor.WARMUP) -> void:
+	governor.reset(frame_target, true, grace)
+
+
+func supports_advanced_effects() -> bool:
+	return RenderingServer.get_current_rendering_method() == "forward_plus"
+
+
+func snapshot() -> Dictionary:
+	var result := governor.snapshot()
+	result.merge({"preset": preset, "adaptive": adaptive_enabled, "render_scale": p.scale,
+		"rain_density": p.rain_density, "mirror_interval": p.mirror_interval,
+		"mirror_width": p.mirror_width, "fx_light_limit": p.fx_light_limit}, true)
+	return result
 
 
 ## Rough device tiering from GPU name and RAM. Desktop always high.
@@ -102,9 +179,10 @@ func apply_viewport(vp: Viewport) -> void:
 
 
 func apply_env(env: Environment, wet: bool) -> void:
-	env.ssao_enabled = bool(p.ssao)
-	env.sdfgi_enabled = bool(p.sdfgi)
-	if p.sdfgi:
+	var advanced := supports_advanced_effects()
+	env.ssao_enabled = bool(p.ssao) and advanced
+	env.sdfgi_enabled = bool(p.sdfgi) and advanced
+	if env.sdfgi_enabled:
 		env.sdfgi_cascades = 4
 		env.sdfgi_min_cell_size = 0.5
 		env.sdfgi_use_occlusion = true
@@ -113,12 +191,12 @@ func apply_env(env: Environment, wet: bool) -> void:
 		env.sdfgi_read_sky_light = false
 		env.sdfgi_energy = 0.35
 		env.sdfgi_bounce_feedback = 0.2
-	env.ssr_enabled = bool(p.ssr) and wet
+	env.ssr_enabled = bool(p.ssr) and wet and advanced
 	env.ssr_max_steps = int(p.ssr_steps)
 	env.ssr_fade_in = 0.15
 	env.ssr_fade_out = 2.0
 	env.ssr_depth_tolerance = 0.3
-	env.volumetric_fog_enabled = bool(p.vol_fog)
+	env.volumetric_fog_enabled = bool(p.vol_fog) and advanced
 	env.glow_enabled = bool(p.glow)
 	for i in 7:
 		env.set_glow_level(i, 1.0 if i < int(p.glow_levels) else 0.0)

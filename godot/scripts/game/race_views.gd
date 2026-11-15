@@ -78,6 +78,14 @@ func setup(cam: ChaseCam, player_visual: CarVisual, layer: Node) -> void:
 	view_button.pressed.connect(_toggle_view)
 	mirror_button = _button(layer, "PASQYRA: PO" if enabled else "PASQYRA: JO", 268)
 	mirror_button.pressed.connect(_toggle_mirror)
+	Quality.budget_changed.connect(_apply_budget)
+	_apply_budget()
+
+
+func _apply_budget() -> void:
+	var width := int(Quality.p.mirror_width)
+	viewport.size = Vector2i(width, width / 4)
+	_mirror_frames = int(Quality.p.mirror_interval) - 1
 
 
 func _button(layer: Node, label: String, top: float) -> Button:
@@ -117,7 +125,7 @@ func _toggle_mirror() -> void:
 	if not enabled:
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	else:
-		_mirror_frames = MIRROR_FRAME_INTERVAL - 1
+		_mirror_frames = int(Quality.p.mirror_interval) - 1
 	Sfx.ui_click()
 
 
@@ -135,6 +143,6 @@ func update_pose(c: CarState, pose: Dictionary, _dt: float) -> void:
 	rear.global_position = p
 	rear.look_at(p + backwards * 30.0, Vector3.UP)
 	_mirror_frames += 1
-	if _mirror_frames >= MIRROR_FRAME_INTERVAL:
+	if _mirror_frames >= int(Quality.p.mirror_interval):
 		_mirror_frames = 0
 		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE

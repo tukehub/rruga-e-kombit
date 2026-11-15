@@ -5,6 +5,7 @@ render_mode unshaded, blend_add, depth_draw_never, cull_disabled, skip_vertex_tr
 // UV (x, y) and UV2 (z, w); the vertex shader places it inside a box that
 // wraps around the camera, so no drop is ever simulated on the CPU.
 uniform float rain = 1.0;
+uniform float density : hint_range(0.0, 1.0) = 1.0;
 uniform vec3 fall_velocity = vec3(-2.6, -9.4, 1.1);
 uniform vec3 camera_velocity = vec3(0.0);
 uniform vec3 box = vec3(26.0, 15.0, 26.0);
@@ -45,7 +46,7 @@ void vertex() {
 	float phase = 0.3 + 1.6 * pow(max(c, 0.0), 6.0);
 	v_col = ambient_light + sun_light * phase;
 	v_alpha = a * (0.55 + 0.45 * fract(seed.w * 13.3));
-	if (fract(seed.w * 7.13 + seed.x) > rain) {
+	if (seed.z > density || fract(seed.w * 7.13 + seed.x) > rain) {
 		// Thinned out: collapse behind the camera.
 		VERTEX = vec3(0.0, 0.0, 10.0);
 	} else {

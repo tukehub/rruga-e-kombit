@@ -8,6 +8,8 @@ const DT := 1.0 / 60.0
 const MAX_CATCHUP_STEPS := 3
 const RenderPose = preload("res://scripts/game/render_pose.gd")
 const CombatFeedback = preload("res://scripts/ui/combat_feedback.gd")
+const RouteGuide = preload("res://scripts/sim/route_guide.gd")
+const RouteSigns = preload("res://scripts/world/route_signs.gd")
 
 var city_id := "tirane"
 var env_id := "night"
@@ -18,6 +20,7 @@ var cars: Array[CarVisual] = []
 var sky: SkyEnv
 var terrain: Terrain
 var road: RoadMesh
+var route_guide: RouteGuide
 var cam: ChaseCam
 var views: RaceViews
 var hud: Hud
@@ -60,10 +63,16 @@ func _ready() -> void:
 	_build_world()
 	_build_race()
 	_build_ui()
+	Quality.budget_changed.connect(_apply_render_budget)
 	_begin()
 
 
+func _apply_render_budget() -> void:
+	Quality.apply_viewport(get_viewport())
+
+
 func _begin() -> void:
+	Quality.reset_observation()
 	get_tree().paused = false
 	paused = false
 	state = "intro"
@@ -112,13 +121,18 @@ func _build_world() -> void:
 	add_child(terrain)
 	terrain.load_city(city_id, splat)
 	track = RaceTrack.load_city(city_id, bool(Game.race_opts.reverse))
+	route_guide = RouteGuide.new(track)
 	var tj: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/%s/track.json" % city_id))
 	sky = SkyEnv.new()
 	add_child(sky)
 	sky.apply(env_id)
 	road = RoadMesh.new()
 	add_child(road)
-	road.build(track, float(tj.get("hw", track.half_w)), sky.wet)
+	road.build(track, float(tj.get("hw", track.half_w)), sky.wet, terrain.height_at)
+	var route_signs := RouteSigns.new()
+	route_signs.name = "RouteSigns"
+	road.add_child(route_signs)
+	route_signs.build(track, route_guide, terrain.height_at)
 	buildings = Buildings.new()
 	var side_path := "res://assets/cities/%s/roads.glb" % city_id
 	if Quality.preset != "low" and ResourceLoader.exists(side_path):
@@ -242,7 +256,7 @@ func _build_ui() -> void:
 	input.bind(player, race)
 	hud = Hud.new()
 	safe.add_child(hud)
-	hud.setup(race, player, track)
+	hud.setup(race, player, track, route_guide)
 	input.bind_inventory(hud._slots)
 	input.inventory_selected.connect(func(i: int): hud.slot_selected.emit(i))
 	input.inventory_hold_changed.connect(hud.inventory_hold)
@@ -367,6 +381,7 @@ func toggle_pause() -> void:
 	if paused:
 		Sfx.stop_loops()
 	else:
+		Quality.reset_observation(2.0)
 		input.resume_controls()
 		input.set_driving_enabled(state == "race")
 
@@ -414,6 +429,8 @@ func _process(dt: float) -> void:
 	if paused:
 		return
 	var elapsed := maxf(dt, 0.0)
+	if DisplayServer.get_name() != "headless":
+		Quality.observe_frame(elapsed, state == "race")
 	dt = minf(dt, 0.1)
 	# Children process after this node: poll here so steering and pedals reach
 	# the simulation in the same frame instead of the next one.

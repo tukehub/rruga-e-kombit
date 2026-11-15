@@ -42,6 +42,12 @@ recovery rules](combat-recovery.md) describe the current gameplay behavior.
 Help and the short driving prompt explain the default layout, drift braking,
 manual mode, calibration and Nitro braking. A/D and arrow steering both work.
 
+The minimap includes a corner arrow and distance, with **TANI** for the current
+bend. Matching roadside chevrons sit outside the barriers. Main-menu settings
+also offer **30 FPS · Bateri** or **60 FPS** and automatic rendering adjustment
+under sustained load. The simulation remains at 60 Hz; HUD and control layouts
+retain their native canvas resolution. [Visual and performance behavior](visual-performance.md).
+
 ## Validation
 
 `tools/run_tests.py` includes `two_thumb_controls.tscn`. It exercises simultaneous

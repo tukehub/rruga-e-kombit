@@ -37,6 +37,16 @@ func _init() -> void:
 	_splash_mat.set_shader_parameter("rain", 0.0)
 
 
+func _ready() -> void:
+	Quality.budget_changed.connect(_apply_budget)
+	_apply_budget()
+
+
+func _apply_budget() -> void:
+	_streak_mat.set_shader_parameter("density", float(Quality.p.rain_density))
+	_splash_mat.set_shader_parameter("density", float(Quality.p.rain_density))
+
+
 ## `count` unit quads (x -0.5..0.5, y 0..1), each with four random numbers
 ## stored in UV and UV2 for its shader.
 static func _seed_quads(count: int, rng_seed: int) -> ArrayMesh:

@@ -8,16 +8,21 @@ const KERB_H := 0.14
 const KERB_W := 0.5
 const BARRIER_H := 0.5
 const SKIRT := 6.0
+const KERB_RED := Color(0.58, 0.075, 0.055)
+const KERB_WHITE := Color(0.72, 0.72, 0.68)
 
 var surface_mat: ShaderMaterial
 var kerb_mat: StandardMaterial3D
 var skirt_mat: StandardMaterial3D
 var surface: MeshInstance3D
 var length := 0.0
+var barrier_mat: StandardMaterial3D
+var _terrain_height := Callable()
 
 
-func build(track: RaceTrack, hw: float, wet: float) -> void:
+func build(track: RaceTrack, hw: float, wet: float, terrain_height := Callable()) -> void:
 	length = track.L
+	_terrain_height = terrain_height
 	surface_mat = ShaderMaterial.new()
 	surface_mat.shader = ROAD_SHADER
 	surface_mat.set_shader_parameter("tex_asphalt", load("res://assets/textures/asphalt_diff.jpg"))
@@ -29,19 +34,29 @@ func build(track: RaceTrack, hw: float, wet: float) -> void:
 
 	kerb_mat = StandardMaterial3D.new()
 	kerb_mat.vertex_color_use_as_albedo = true
-	kerb_mat.roughness = 0.6
+	kerb_mat.roughness = 0.86
 	skirt_mat = StandardMaterial3D.new()
-	skirt_mat.albedo_color = Color(0.22, 0.21, 0.2)
+	skirt_mat.albedo_color = Color(0.46, 0.44, 0.40)
+	skirt_mat.albedo_texture = load("res://assets/textures/concrete_diff.jpg")
 	skirt_mat.roughness = 0.95
 
 	_build_surface(track, hw)
 	_build_kerbs(track, hw)
 	_build_edge_barriers(track, hw)
 	_build_skirt(track, hw)
+	set_wet(wet)
 
 
 func set_wet(w: float) -> void:
 	surface_mat.set_shader_parameter("wetness", w)
+	var wet := clampf(w, 0.0, 1.0)
+	kerb_mat.roughness = lerpf(0.86, 0.67, wet)
+	kerb_mat.albedo_color = Color.WHITE.darkened(wet * 0.12)
+	skirt_mat.albedo_color = Color(0.46, 0.44, 0.40).darkened(wet * 0.16)
+	skirt_mat.roughness = lerpf(0.95, 0.82, wet)
+	if barrier_mat != null:
+		barrier_mat.roughness = lerpf(0.88, 0.7, wet)
+		barrier_mat.albedo_color = Color.WHITE.darkened(wet * 0.1)
 
 
 func _build_surface(track: RaceTrack, hw: float) -> void:
@@ -96,7 +111,8 @@ func _build_kerbs(track: RaceTrack, hw: float) -> void:
 		for i in M:
 			var k0 := i
 			var k1 := (i + 1) % M
-			var seg_col := Color(0.85, 0.12, 0.1) if (i / 3) % 2 == 0 else Color(0.95, 0.95, 0.92)
+			var seg_col := KERB_RED if (i / 3) % 2 == 0 else KERB_WHITE
+			seg_col = seg_col.darkened(0.04 + 0.035 * (1.0 + sin(i * 0.37)))
 			var pts: Array[Vector3] = []
 			for k: int in [k0, k1]:
 				var p := Vector3(track.X[k], track.Y[k], track.Z[k])
@@ -141,12 +157,12 @@ func _build_edge_barriers(track: RaceTrack, hw: float) -> void:
 	for side: float in [-1.0, 1.0]:
 		for i in track.M:
 			var j := (i + 1) % track.M
-			var color := Color(0.78, 0.10, 0.08) if int(i * track.ds / 8.0) % 2 == 0 else Color(0.93, 0.93, 0.88)
+			var color := KERB_RED if int(i * track.ds / 8.0) % 2 == 0 else KERB_WHITE
 			var a := Vector3(track.X[i], track.Y[i], track.Z[i]) + Vector3(track.NX[i], 0.0, track.NZ[i]) * side * (hw + KERB_W)
 			var b := Vector3(track.X[j], track.Y[j], track.Z[j]) + Vector3(track.NX[j], 0.0, track.NZ[j]) * side * (hw + KERB_W)
 			var normal := Vector3(track.NX[i], 0.0, track.NZ[i]) * -side
 			for point in [a, b, b + Vector3.UP * BARRIER_H, a + Vector3.UP * BARRIER_H]:
-				st.set_color(color)
+				st.set_color(color.darkened(0.18 if point.y < a.y + BARRIER_H * 0.5 else 0.0))
 				st.set_normal(normal)
 				st.add_vertex(point)
 			for index in [0, 1, 2, 0, 2, 3]:
@@ -155,6 +171,7 @@ func _build_edge_barriers(track: RaceTrack, hw: float) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
 	mat.roughness = 0.8
+	barrier_mat = mat
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var barrier := MeshInstance3D.new()
 	barrier.name = "RoadsideBarriers"
@@ -180,7 +197,9 @@ func _build_skirt(track: RaceTrack, hw: float) -> void:
 				var p := Vector3(track.X[k], track.Y[k], track.Z[k])
 				var n := Vector3(track.NX[k], 0.0, track.NZ[k]) * side
 				pts.append(p + n * outer + Vector3(0, -0.02, 0))
-				pts.append(p + n * (outer + SKIRT) + Vector3(0, -2.2, 0))
+				var edge := p + n * (outer + SKIRT)
+				edge.y = float(_terrain_height.call(edge.x, edge.z)) + 0.015 if _terrain_height.is_valid() else p.y - 2.2
+				pts.append(edge)
 			var a := pts[0]
 			var b := pts[1]
 			var c := pts[3]
@@ -204,5 +223,6 @@ func _build_skirt(track: RaceTrack, hw: float) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = skirt_mat
+	mi.name = "RoadShoulders"
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)

@@ -7,7 +7,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--godot', default='godot')
 args = ap.parse_args()
 root = Path(__file__).resolve().parents[1]
-for scene in ['readiness', 'city_worlds', 'flow_test', 'wall_contact', 'driving_dynamics', 'road_geometry', 'lana_river', 'simulation_timing', 'reverse_race', 'car_visual_regression', 'tirana_turns', 'adaptive_pickups', 'two_thumb_controls', 'combat_recovery', 'combat_ui']:
+for scene in ['readiness', 'city_worlds', 'flow_test', 'wall_contact', 'driving_dynamics', 'road_geometry', 'lana_river', 'simulation_timing', 'reverse_race', 'car_visual_regression', 'tirana_turns', 'adaptive_pickups', 'two_thumb_controls', 'combat_recovery', 'combat_ui', 'visual_performance', 'route_readability']:
     try:
         run = subprocess.run([args.godot, '--headless', '--path', str(root / 'godot'),
                               'res://tests/' + scene + '.tscn'], stdout=subprocess.PIPE,

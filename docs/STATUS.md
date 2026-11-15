@@ -34,6 +34,14 @@ control loss. Hold a slot to discard; full inventories may replace only an
 unusable reserve while protecting the selected item. Clean drift distance earns
 a banked short turbo beside inventory. [Rules and verification](combat-recovery.md).
 
+Health now leaves persistent paint wear, cleared by repair or respawn. Terrain
+shoulders, subdued road-edge materials and corner-specific chevrons establish
+shared visual rules around the lap. The minimap adds matching turn/distance
+guidance for normal and reverse races. Settings offer a battery-oriented 30 FPS
+cap and sustained-load adaptation of rendering, rain, lights, optional effects
+and mirror work. Combat visuals use fixed pools, including domes.
+[Visual behavior, budgets and verification](visual-performance.md).
+
 Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.
