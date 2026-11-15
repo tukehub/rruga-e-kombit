@@ -26,6 +26,8 @@ const CORNER_ASSIST_GRIP := 1.15
 const CORNER_ASSIST_PLAN_DECEL := 9.0
 const CORNER_ASSIST_DECEL := 2.0
 const CORNER_ASSIST_MIN_SPEED := 10.0
+const FINISH_ASSIST_OFF_DISTANCE := 150.0
+const UNASSISTED_STEERING_DAMPING := 0.9
 var _assist_noted := false
 var time := 0.0
 var events: Array = []
@@ -51,7 +53,7 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	diff = Data.DIFFS[clampi(int(opt.get("diff", 1)), 0, 2)]
 	rng.seed = int(opt.get("seed", 1234))
 	wet = bool(opt.get("wet", false))
-	assist = 0.9 if opt.get("assist", true) == false else 1.6
+	assist = UNASSISTED_STEERING_DAMPING if opt.get("assist", true) == false else 1.6
 	brake_assist = bool(opt.get("brake_assist", false))
 	var no_player := bool(opt.get("no_player", false))
 	var pi := -1 if no_player else int(opt.get("driver", 0))
@@ -261,10 +263,17 @@ func step(dt: float) -> void:
 		c.vmax_mul = mul
 
 
+func _near_finish(c: CarState) -> bool:
+	# Use total race progress so earlier laps and the starting grid keep the
+	# selected assistance. This also works with the reversed track frame.
+	return c.finished or laps * L - c.progress <= FINISH_ASSIST_OFF_DISTANCE
+
+
 func physics(c: CarState, dt: float) -> void:
 	var T := track
 	var def := c.def
 	var tirana_driver := c.is_player and not c.autopilot and T.id == "tirane"
+	var near_finish := _near_finish(c)
 	c.invuln_t = maxf(0.0, c.invuln_t - dt)
 	c.shield_t = maxf(0.0, c.shield_t - dt)
 	c.nitro_t = maxf(0.0, c.nitro_t - dt)
@@ -347,7 +356,7 @@ func physics(c: CarState, dt: float) -> void:
 			c.v = maxf(-9.0, c.v - 10.0 * dt)
 	if c.v > vmax * 1.02 and c.nitro_t <= 0.0:
 		c.v -= (c.v - vmax) * 1.5 * dt
-	if brake_assist and started and c.is_player and not c.autopilot and c.v > 8.0:
+	if brake_assist and not near_finish and started and c.is_player and not c.autopilot and c.v > 8.0:
 		var corner_grip: float = def.grip * (29.0 if tirana_driver else 22.0) * (0.93 if wet else 1.0) * CORNER_ASSIST_GRIP
 		var v_corner := maxf(CORNER_ASSIST_MIN_SPEED, corner_speed(c.s, corner_grip, CORNER_ASSIST_PLAN_DECEL, c.v * c.v / (2.0 * CORNER_ASSIST_PLAN_DECEL) + 12.0))
 		if c.v > v_corner:
@@ -378,7 +387,7 @@ func physics(c: CarState, dt: float) -> void:
 	var dsdt := v * cos(c.yaw) / maxf(0.8, 1.0 - k * c.d)
 	var asst: float
 	if c.is_player and not c.autopilot:
-		asst = assist * (1.5 if absf(c.steer) < 0.05 else 1.0)
+		asst = (UNASSISTED_STEERING_DAMPING if near_finish else assist) * (1.5 if absf(c.steer) < 0.05 else 1.0)
 	else:
 		asst = BOT_ASSIST
 	c.yaw += (cc * v - k * dsdt - asst * c.yaw * minf(1.0, av / 10.0)) * dt

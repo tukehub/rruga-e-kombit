@@ -92,10 +92,11 @@ void fragment() {
 		float pud = vnoise(vec2(across, along) * 0.11) * 0.6 + vnoise(vec2(along, across) * 0.37) * 0.4;
 		float puddle = smoothstep(0.62 - 0.25 * wetness, 0.72 - 0.25 * wetness, pud) * wetness;
 		puddle *= 0.5 + 0.5 * smoothstep(0.2, 0.8, abs(across) / half_w);
-		wet = wetness * 0.75 + puddle;
-		col *= 1.0 - 0.25 * clamp(wet, 0.0, 1.0);
-		rough = mix(rough, 0.08, clamp(wet, 0.0, 1.0));
-		rough = mix(rough, 0.03, puddle);
+		wet = clamp(wetness * 0.75 + puddle, 0.0, 1.0);
+		// Damp asphalt stays dark and textured; only puddles become smooth.
+		col *= 1.0 - 0.40 * wet;
+		rough = mix(rough, 0.22, wet);
+		rough = mix(rough, 0.07, puddle);
 		nrm = mix(nrm, vec3(0.5, 0.5, 1.0), puddle);
 	}
 
@@ -109,7 +110,7 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = rough;
 	METALLIC = 0.0;
-	SPECULAR = mix(0.5, 0.8, wet);
+	SPECULAR = 0.5;
 	NORMAL_MAP = nrm;
 	NORMAL_MAP_DEPTH = mix(0.45, 0.2, clamp(wet, 0.0, 1.0));
 }

@@ -23,7 +23,6 @@ var env_id := "day"
 var preset: Dictionary
 var wet := 0.0
 var night := 0.0
-var daytime_ambient_floor := 0.78
 
 
 func _ready() -> void:
@@ -70,17 +69,17 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	# including on low quality where there are no GI or local lamp lights.
 	# Sky-only lighting made the old night preset almost black on a phone.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.64, 0.70, 0.80) if is_night else Color(0.86, 0.90, 0.97)
+	env.ambient_light_color = Color(0.64, 0.70, 0.80) if is_night else Color(0.78, 0.82, 0.88)
 	env.ambient_light_sky_contribution = 0.25
-	# Keep the night visibility floor, while giving clear midday sunlight a
-	# little more contrast than the bright, uniform ambient fill.
-	var ambient_floor := 0.48 if is_night else (daytime_ambient_floor if id == "day" else 0.78)
+	# Preserve phone visibility at night, but let daytime presets retain shade
+	# and surface detail instead of lifting every surface toward white.
+	var ambient_floor := 0.48 if is_night else 0.45
 	env.ambient_light_energy = maxf(float(preset.ambient), ambient_floor)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
 	# tonemap + exposure
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = maxf(float(preset.exposure), 1.0)
+	env.tonemap_exposure = float(preset.exposure)
 	env.tonemap_white = 4.0
 
 	# bloom with neon threshold (sunlit white stays below the threshold)
@@ -88,7 +87,7 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.glow_intensity = 0.45 * float(preset.bloom)
 	env.glow_strength = 1.0
-	env.glow_bloom = 0.05
+	env.glow_bloom = 0.05 if is_night else 0.0
 	env.glow_hdr_threshold = 1.15 if is_night else 1.7
 	env.glow_hdr_scale = 2.0
 	env.glow_hdr_luminance_cap = 12.0
@@ -118,8 +117,8 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	env.ssao_detail = 0.3
 	env.ssil_enabled = false
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.08
-	env.adjustment_contrast = 1.0
+	env.adjustment_saturation = 1.08 if is_night else 0.98
+	env.adjustment_contrast = 1.0 if is_night else 1.02
 	Quality.apply_env(env, wet > 0.5)
 	# Clear daylight needs no volume pass or haze over the racing corridor.
 	env.volumetric_fog_enabled = env.volumetric_fog_enabled and is_night
@@ -135,7 +134,7 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	# Below high quality the penumbra search is skipped entirely.
 	sun.light_angular_distance = 0.0 if Quality.preset != "high" else (0.15 if not is_night else 0.3)
 	sun.shadow_enabled = true
-	sun.shadow_opacity = 0.58 if not is_night else 0.5
+	sun.shadow_opacity = (0.5 if id == "rainy" else 0.78) if not is_night else 0.5
 	Quality.apply_sun(sun)
 
 	rain.set_light(dir, sun.light_color * sun.light_energy, env.fog_light_color)
@@ -149,7 +148,7 @@ func _sky_energy(id: String) -> float:
 	match id:
 		"night": return 0.9
 		"rain", "snow": return 0.35
-		"rainy": return 0.85
+		"rainy": return 0.60
 		"dusk": return 0.8
 		"sunset": return 0.9
 		_: return 1.0

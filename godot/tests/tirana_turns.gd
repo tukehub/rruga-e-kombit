@@ -1,6 +1,7 @@
 extends Node
 
 func _ready() -> void:
+	_check_finish_assist()
 	# Corner assist: held on the centreline with the gas down, the assisted car
 	# should get a gentle speed trim rather than heavy automatic braking.
 	# The driver remains responsible for stronger braking in a tight bend.
@@ -95,3 +96,51 @@ func _ready() -> void:
 	assert(tirana_yaw > c.yaw * 1.2, "extra cornering authority must be confined to Tirana")
 	print("TIRANA TURNS: steering response and simultaneous gas/brake passed")
 	get_tree().quit()
+
+
+func _check_finish_assist() -> void:
+	for reverse in [false, true]:
+		var track := RaceTrack.load_city("tirane", reverse)
+		# Force a bend even where the actual finishing straight is flat, so
+		# the check proves the assistant is suppressed rather than unneeded.
+		track.K.fill(0.04)
+		for laps in [1, 2]:
+			for distance in [151.0, 150.0, 50.0, 1.0, -1.0, track.L + 50.0, laps * track.L + 25.0]:
+				var states: Array[CarState] = []
+				for enabled in [false, true]:
+					var race := Race.new(track, {"laps": laps, "seed": 13, "assist": enabled, "brake_assist": enabled})
+					race.started = true
+					race.hw = 1000.0
+					var c := race.player
+					c.progress = laps * track.L - distance
+					c.s = track.mod_s(c.progress)
+					c.d = 0.0
+					c.yaw = 0.2
+					c.v = 40.0
+					c.steer = 0.25
+					c.ctrl.steer = 0.25
+					c.ctrl.gas = true
+					race.physics(c, 1.0 / 60.0)
+					states.append(c)
+					assert(race.brake_assist == enabled, "finish override must preserve the selected preference")
+					if distance <= 150.0:
+						assert(race.take_events().is_empty(), "finish approach must not emit automatic braking feedback")
+				if distance <= 150.0:
+					assert(is_equal_approx(states[0].v, states[1].v) and states[1].v > 40.0, "finish approach must allow acceleration through a bend")
+					assert(is_equal_approx(states[0].yaw, states[1].yaw), "finish approach must use the unassisted steering response")
+					assert(not states[1].braking, "finish approach must release automatic brake lights")
+				else:
+					assert(states[1].v < states[0].v and states[1].braking, "assistance must remain active outside the final approach, including earlier laps and the start")
+		# Manual brakes still work in the automatic-assistance exclusion zone.
+		var race := Race.new(track, {"laps": 1, "brake_assist": true})
+		race.started = true
+		var c := race.player
+		c.progress = track.L - 50.0
+		c.s = track.mod_s(c.progress)
+		c.v = 40.0
+		c.brake_force = 1.0
+		c.ctrl.gas = true
+		c.ctrl.brake = true
+		race.physics(c, 1.0 / 60.0)
+		assert(c.v < 40.0 and c.braking, "manual braking must remain effective near the finish")
+	print("FINISH ASSIST: final 150 m, boundary, earlier laps, starting grid, reverse and manual brakes passed")

@@ -12,6 +12,12 @@ The chase camera and car poses interpolate between simulation steps. Controls
 include side pedals, forward/back fire, an optional cabin view and a toggleable
 rear-view mirror. Menu transitions show loading feedback while the city is built.
 
+Daylight and daytime rain use lower ambient fill and preset exposure, with
+restrained bloom and saturation. Wet asphalt stays darker and textured between
+puddles. During the final 150 metres of the race, automatic corner braking and
+the optional steering correction switch to the unassisted response; manual
+braking remains available. Earlier laps retain the selected assistance.
+
 Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.
