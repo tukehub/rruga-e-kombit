@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dfw230tp02fs4"
-path="res://.godot/imported/asphalt_diff.jpg-27ea49bd38f93d4bc5621cd36c5ff96c.ctex"
+path.s3tc="res://.godot/imported/asphalt_diff.jpg-27ea49bd38f93d4bc5621cd36c5ff96c.s3tc.ctex"
+path.etc2="res://.godot/imported/asphalt_diff.jpg-27ea49bd38f93d4bc5621cd36c5ff96c.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/asphalt_diff.jpg"
-dest_files=["res://.godot/imported/asphalt_diff.jpg-27ea49bd38f93d4bc5621cd36c5ff96c.ctex"]
+dest_files=["res://.godot/imported/asphalt_diff.jpg-27ea49bd38f93d4bc5621cd36c5ff96c.s3tc.ctex", "res://.godot/imported/asphalt_diff.jpg-27ea49bd38f93d4bc5621cd36c5ff96c.etc2.ctex"]
 
 [params]
 

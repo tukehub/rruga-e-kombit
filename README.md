@@ -1,10 +1,15 @@
 # Vortex
 
 Native Godot **4.4.1**, GDScript, Forward+ / Vulkan combat racer for Android.
-Package: `al.tukehub.rruga`. The fixed release key remains at
-`android/app/rruga.jks`; changing it would break updates to existing installs.
+**Vortex** is the only name used for the game. The strings `rruga-e-kombit`,
+`al.tukehub.rruga` and `rruga.jks` survive only as the repository folder,
+Android package, keystore and release-asset filenames, because changing those
+would break updates to existing installs. Package: `al.tukehub.rruga`; the
+fixed release key remains at `android/app/rruga.jks`.
 
-This review build focuses on **daylight Tirana**. It has one shared sports car
+Vortex is being perfected on **daylight Tirana** with the single Vortex GT car
+model first; other cities and online play follow (see
+[Changes to be made](#changes-to-be-made)). The current build has one shared sports car
 for all six drivers, six paint choices with identical performance,
 recognizable eagle/lightning/etc power-up badges, larger phone text, explicit
 corner pedals and forward/back shooting buttons, and always-visible translucent
@@ -115,3 +120,174 @@ still required.
 The old `src/`, Capacitor wrapper and `build.py` remain as balance/reference
 material and to preserve the keystore path. They are no longer used by APK CI.
 Remove legacy code only after the native release is validated and published.
+
+## Vision
+
+Vortex is an arcade combat racer on real city maps. Tirana is the proving ground:
+one circuit from OpenStreetMap streets and Copernicus elevation, one car model
+(Vortex GT) in six paints. Once Tirana is a finished medium/high-end mobile
+experience, the same pipeline produces the other Albanian cities already in the
+repo (Vlorë, Berat, Gjirokastër, Shkodër, Tetovë), and online multiplayer lets
+two or more friends race from home against each other, with or without bots.
+Free and openly licensed assets only (CC0 / CC BY / OFL / MIT).
+
+## Changes to be made
+
+Ordered most critical first. Each item is self-contained; do them one at a time.
+
+Rules for every change:
+- The simulation in `godot/scripts/sim/` stays node-free and deterministic (it
+  will carry multiplayer). Visuals consume `Race.take_events()`.
+- New render features read `Quality.p` and react to `Quality.budget_changed`.
+- New persisted data carries a version and a migration, like
+  `PRESENTATION_VERSION` in `scripts/game/settings.gd`.
+- Every change adds or updates a test under `godot/tests/` run by
+  `tools/run_tests.py`.
+- UI strings go through one table, not literals.
+- The name is always "Vortex".
+
+### 1. Foundations (critical)
+
+1.1 **Renderer truth.** `project.godot` sets `rendering_method.mobile="mobile"`
+    while `Quality.supports_advanced_effects()` and the docs assume Forward+.
+    Run on a phone, read the `PROFILE:` JSON, and either remove the mobile
+    override or make the quality code and docs honest. Section 3 depends on
+    this answer.
+1.2 **String table.** Move all UI literals (`scripts/ui/*.gd`,
+    `scripts/game/race_input.gd`, `scripts/data/data.gd`) into
+    `scripts/data/strings_sq.gd`, accessed via `Data.t(key)`.
+1.3 **`Progress` autoload** (`scripts/game/progress.gd`, `user://progress.cfg`):
+    version, fans, unlocked paints/cities, cup stars. Load/save/migrate + test.
+1.4 **`Music` autoload** (`scripts/game/music.gd`): "Music" bus added to
+    `Sfx.BUSES`, two players for crossfade, duck API, `vol_music` in settings.
+    No tracks yet.
+
+### 2. Gameplay feel (Tirana)
+
+2.1 **Camera dynamics** in `scripts/game/chase_cam.gd`: roll from steer/drift,
+    lateral lag tightens while drifting, hit kick uses the hit direction from
+    the event (not random), nitro pulls the camera back; add a bumper view to
+    the chase/cabin selection.
+2.2 **Handling difficulty** separate from AI difficulty: an "Arcade / Pro"
+    switch in settings that scales `assist`, `brake_assist` and drift grip in
+    `scripts/sim/race.gd`.
+2.3 **Traffic and hazards:** static parked cars and a few slow traffic vehicles
+    on the (s, d) ribbon as non-firing `CarState`s with `autopilot`; collision
+    uses the existing footprint check. Count capped by quality preset.
+2.4 **Rubber-band pass:** mild catch-up for bots behind the player and slight
+    drag on a runaway leader, tuned in `Data.DIFFS`; verified by the fixed-step
+    race tests (finish spread inside a target window).
+2.5 **Combat counterplay:** a defensive use for `bolt` fired backward (destroys
+    an incoming eagle) and last-place weighting in
+    `scripts/sim/pickup_director.gd`.
+
+### 3. Graphics (Tirana, medium/high-end target)
+
+3.1 **Car paint** in `shaders/sport_car.gdshader`: `CLEARCOAT`,
+    `CLEARCOAT_ROUGHNESS`, a procedural flake normal on the body mask,
+    metallic ~0.6 / roughness ~0.25 on paint. Headlights for bots in
+    `scripts/cars/car_visual.gd` (emissive always; real `SpotLight3D` only
+    within `Quality.p.fx_light_limit`).
+3.2 **Speed feedback:** `GPUParticles3D` tyre smoke on drift, exhaust
+    puff/flame on nitro, wheel spray when wet, wall sparks on scrape (pooled in
+    `scripts/game/fx_visual.gd` with caps in `POOL_CAPS`); fullscreen
+    `shaders/speed_post.gdshader` (radial blur, vignette, slight chroma) driven
+    by speed ratio and nitro, disabled on low.
+3.3 **Reflections:** one `ReflectionProbe` following the player (medium+),
+    static probes at landmarks on high; garage in `scripts/ui/menu.gd` gets an
+    HDRI background, a probe and a glossy floor. Lower the flat ambient floor in
+    `scripts/world/sky_env.gd`.
+3.4 **Street dressing from OSM:** the pipeline emits traffic lights, bus stops,
+    benches, bins, bollards and parked-car slots into `props.json`;
+    `scripts/world/props.gd` draws each kind as one `MultiMeshInstance3D` with
+    visibility ranges. Low-poly CC0 props (< 500 tris each) under
+    `godot/assets/props/`.
+3.5 **Road decals** in `shaders/road.gdshader`: zebra crossings at OSM junction
+    nodes, manholes and patches by hash, via a small decal atlas and a uniform
+    list.
+3.6 **Facade depth:** balcony/ledge boxes for buildings within ~60 m of the
+    track (pipeline), or parallax-interior windows in `shaders/facade.gdshader`;
+    start inside the existing `detail_preview` region, then extend to the whole
+    lap.
+3.7 **Baked lighting and culling:** `LightmapGI` per environment family for the
+    static city, loaded in `SkyEnv.apply()`; keep SDFGI high-only. Enable
+    occlusion culling with pipeline-generated occluder boxes for tall
+    buildings. Try FSR2/TAA in `Quality.apply_viewport()`; keep only if the
+    A56 p95 frame stays under 16 ms.
+3.8 **Colour grading:** one LUT per `Data.ENV` preset through
+    `Environment.adjustment_color_correction`.
+
+### 4. Audio
+
+4.1 **Music:** CC0/CC BY menu loop, 2–3 race loops (chosen by env), results
+    sting, countdown hit; credits in `godot/assets/CREDITS.txt`. Hook via
+    `Game.scene_changed` and `RaceScene._begin()`; duck on wreck and finish.
+4.2 **Engine:** replace the two-loop crossfade in `RaceScene._engine_audio()`
+    with idle/low/mid/high layers plus fake gears (pitch ramp, shift one-shot)
+    and an off-throttle layer; the nearest two bots get 3D engine loops.
+4.3 **Announcer (Albanian):** countdown, final lap, position changes, power-up
+    names, new record; priority queue with a minimum gap, its own bus, a
+    settings toggle.
+4.4 **Mix:** reverb send under landmarks/tunnels, low-pass while
+    stunned/wrecked, haptic patterns per event instead of one buzz.
+
+### 5. Controls and UI
+
+5.1 **Icon controls:** replace text labels ("GAZ", "FRENA", "TIMONI", ...) in
+    `RaceInput._mk_button()` with SVG icons, a press scale tween and a glow
+    ring; keep the `control_rect()` geometry contract; the steering pad draws a
+    half-wheel. Update the text assertions in `tests/combat_ui.gd`.
+5.2 **Motion:** `UiTheme` helpers `slide_in`/`fade`/`press`; animated page
+    changes in `menu.gd`, fade in `Game._transition_overlay()`, staggered rows
+    in `results.gd`, standings collapse to position-only until tapped in
+    `hud.gd`.
+5.3 **Cinematics:** driver name cards during the intro sweep; brief slow motion
+    on the finish line before results.
+
+### 6. Progression
+
+6.1 **Fans persist** (`Race.FANS` → `Progress`), animated tally on results.
+6.2 **Tirana Cup** in `Data.CUPS`: 4–6 events (laps/env/diff/reverse/goal),
+    0–3 stars each; a cup grid in the menu replaces the single "Nisu!" button.
+6.3 **Shop:** paints, rims and livery decals bought with fans;
+    `CarVisual.setup()` takes a cosmetics dictionary; livery as a second atlas
+    in the car shader.
+6.4 **Tutorial** as the first cup event: one lap, bots do not fire, fixed
+    pickups, HUD prompts by track position; skippable.
+
+### 7. Online multiplayer (2+ friends from home, bots optional)
+
+7.1 **Model:** deterministic lockstep on the existing fixed-step `Race`. Each
+    peer sends only `CarState.ctrl` per tick; seed, city, env, laps and diff
+    are agreed in the lobby. Add an input-delay buffer (2–3 ticks) and a
+    per-tick state hash for desync detection. Prerequisite: audit `race.gd` and
+    `pickup_director.gd` for nondeterminism (RNG usage, dictionary iteration
+    order, float accumulation) and lock it with a replay test comparing two
+    runs of the same seed.
+7.2 **Transport:** Godot `ENetMultiplayerPeer`; one player hosts. Add a small
+    relay server (headless Godot, same project, `--server`) for players behind
+    NAT.
+7.3 **Lobby UI** in `menu.gd`: host/join by code, paint pick, ready, bot count
+    0..(6 − humans). Remote players fill `CarState` slots in `Race._init()`.
+7.4 **Resilience:** pause/resync on disconnect, bot takeover of a dropped
+    player, 3 s rejoin grace. Test: two headless instances finish a race with
+    equal final state hashes.
+
+### 8. Other cities
+
+8.1 Re-run `tools/pipeline/build_all.py` for the five datasets; fix side-road
+    and terrain clearance failures; add per-city landmarks via
+    `scripts/world/landmarks.gd`.
+8.2 Remove the city exclusions from `godot/export_presets.cfg`; keep the APK
+    under ~150 MB (compress heightmaps/meshes) or use Play Asset Delivery.
+8.3 City unlock chain through cup stars; the multiplayer host may pick any
+    unlocked city.
+
+### 9. Release polish
+
+9.1 Adaptive launcher icons, target SDK 35, Android back button → pause.
+9.2 Translations (sq, en, de, it) from the string table; Google Play Games
+    leaderboards (best lap per city, total fans) and cloud save; crash
+    reporting.
+9.3 Privacy policy link and a credits refresh for every new asset.
+

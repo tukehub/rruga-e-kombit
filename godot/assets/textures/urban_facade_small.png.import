@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ope7xgbpjk5t"
-path="res://.godot/imported/urban_facade_small.png-ecb171974ee128e2cb1848e929a557d3.ctex"
+path.s3tc="res://.godot/imported/urban_facade_small.png-ecb171974ee128e2cb1848e929a557d3.s3tc.ctex"
+path.etc2="res://.godot/imported/urban_facade_small.png-ecb171974ee128e2cb1848e929a557d3.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/urban_facade_small.png"
-dest_files=["res://.godot/imported/urban_facade_small.png-ecb171974ee128e2cb1848e929a557d3.ctex"]
+dest_files=["res://.godot/imported/urban_facade_small.png-ecb171974ee128e2cb1848e929a557d3.s3tc.ctex", "res://.godot/imported/urban_facade_small.png-ecb171974ee128e2cb1848e929a557d3.etc2.ctex"]
 
 [params]
 

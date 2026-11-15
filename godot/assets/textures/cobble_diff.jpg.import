@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qnau1oqsdr1f"
-path="res://.godot/imported/cobble_diff.jpg-6432d5780128784b4821d93380beb110.ctex"
+path.s3tc="res://.godot/imported/cobble_diff.jpg-6432d5780128784b4821d93380beb110.s3tc.ctex"
+path.etc2="res://.godot/imported/cobble_diff.jpg-6432d5780128784b4821d93380beb110.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/cobble_diff.jpg"
-dest_files=["res://.godot/imported/cobble_diff.jpg-6432d5780128784b4821d93380beb110.ctex"]
+dest_files=["res://.godot/imported/cobble_diff.jpg-6432d5780128784b4821d93380beb110.s3tc.ctex", "res://.godot/imported/cobble_diff.jpg-6432d5780128784b4821d93380beb110.etc2.ctex"]
 
 [params]
 

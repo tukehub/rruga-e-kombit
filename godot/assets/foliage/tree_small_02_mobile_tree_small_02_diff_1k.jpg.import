@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://brlxg3bgccvlx"
-path="res://.godot/imported/tree_small_02_mobile_tree_small_02_diff_1k.jpg-faab4b7243cd08c8f71954a90cad624b.ctex"
+path.s3tc="res://.godot/imported/tree_small_02_mobile_tree_small_02_diff_1k.jpg-faab4b7243cd08c8f71954a90cad624b.s3tc.ctex"
+path.etc2="res://.godot/imported/tree_small_02_mobile_tree_small_02_diff_1k.jpg-faab4b7243cd08c8f71954a90cad624b.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "c3f78c4aad8498eb40df1a1f20c5c6f0"
@@ -14,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/foliage/tree_small_02_mobile_tree_small_02_diff_1k.jpg"
-dest_files=["res://.godot/imported/tree_small_02_mobile_tree_small_02_diff_1k.jpg-faab4b7243cd08c8f71954a90cad624b.ctex"]
+dest_files=["res://.godot/imported/tree_small_02_mobile_tree_small_02_diff_1k.jpg-faab4b7243cd08c8f71954a90cad624b.s3tc.ctex", "res://.godot/imported/tree_small_02_mobile_tree_small_02_diff_1k.jpg-faab4b7243cd08c8f71954a90cad624b.etc2.ctex"]
 
 [params]
 

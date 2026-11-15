@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://drphs7ra8wst2"
-path="res://.godot/imported/skanderbeg_approx_Image_0.jpg-7eda2224f499c86b8767c731fdf5e0a6.ctex"
+path.s3tc="res://.godot/imported/skanderbeg_approx_Image_0.jpg-7eda2224f499c86b8767c731fdf5e0a6.s3tc.ctex"
+path.etc2="res://.godot/imported/skanderbeg_approx_Image_0.jpg-7eda2224f499c86b8767c731fdf5e0a6.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "dea162f4b057c30d430667bb7dcd7bc2"
@@ -14,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/landmarks/skanderbeg_approx_Image_0.jpg"
-dest_files=["res://.godot/imported/skanderbeg_approx_Image_0.jpg-7eda2224f499c86b8767c731fdf5e0a6.ctex"]
+dest_files=["res://.godot/imported/skanderbeg_approx_Image_0.jpg-7eda2224f499c86b8767c731fdf5e0a6.s3tc.ctex", "res://.godot/imported/skanderbeg_approx_Image_0.jpg-7eda2224f499c86b8767c731fdf5e0a6.etc2.ctex"]
 
 [params]
 

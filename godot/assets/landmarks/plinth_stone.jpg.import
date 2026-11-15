@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bjrejk8mdhv0s"
-path="res://.godot/imported/plinth_stone.jpg-de2c822c193f1a32be6b3c75cd45c959.ctex"
+path.s3tc="res://.godot/imported/plinth_stone.jpg-de2c822c193f1a32be6b3c75cd45c959.s3tc.ctex"
+path.etc2="res://.godot/imported/plinth_stone.jpg-de2c822c193f1a32be6b3c75cd45c959.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/landmarks/plinth_stone.jpg"
-dest_files=["res://.godot/imported/plinth_stone.jpg-de2c822c193f1a32be6b3c75cd45c959.ctex"]
+dest_files=["res://.godot/imported/plinth_stone.jpg-de2c822c193f1a32be6b3c75cd45c959.s3tc.ctex", "res://.godot/imported/plinth_stone.jpg-de2c822c193f1a32be6b3c75cd45c959.etc2.ctex"]
 
 [params]
 

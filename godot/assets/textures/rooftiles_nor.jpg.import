@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://epjib5w18o12"
-path="res://.godot/imported/rooftiles_nor.jpg-2d7a1e54ddd0863970bec408cdc22f2a.ctex"
+path.s3tc="res://.godot/imported/rooftiles_nor.jpg-2d7a1e54ddd0863970bec408cdc22f2a.s3tc.ctex"
+path.etc2="res://.godot/imported/rooftiles_nor.jpg-2d7a1e54ddd0863970bec408cdc22f2a.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/rooftiles_nor.jpg"
-dest_files=["res://.godot/imported/rooftiles_nor.jpg-2d7a1e54ddd0863970bec408cdc22f2a.ctex"]
+dest_files=["res://.godot/imported/rooftiles_nor.jpg-2d7a1e54ddd0863970bec408cdc22f2a.s3tc.ctex", "res://.godot/imported/rooftiles_nor.jpg-2d7a1e54ddd0863970bec408cdc22f2a.etc2.ctex"]
 
 [params]
 

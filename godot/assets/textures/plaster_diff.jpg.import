@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dm1anaj5gxf6a"
-path="res://.godot/imported/plaster_diff.jpg-5fcaa6e61826b2e06c1ca685bb6ea2ca.ctex"
+path.s3tc="res://.godot/imported/plaster_diff.jpg-5fcaa6e61826b2e06c1ca685bb6ea2ca.s3tc.ctex"
+path.etc2="res://.godot/imported/plaster_diff.jpg-5fcaa6e61826b2e06c1ca685bb6ea2ca.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/plaster_diff.jpg"
-dest_files=["res://.godot/imported/plaster_diff.jpg-5fcaa6e61826b2e06c1ca685bb6ea2ca.ctex"]
+dest_files=["res://.godot/imported/plaster_diff.jpg-5fcaa6e61826b2e06c1ca685bb6ea2ca.s3tc.ctex", "res://.godot/imported/plaster_diff.jpg-5fcaa6e61826b2e06c1ca685bb6ea2ca.etc2.ctex"]
 
 [params]
 

@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://jajrnx51ji6n"
-path="res://.godot/imported/polyhaven_tree_leaves.png-bb92e2cfb0306c8fbbed8cc3f955f062.ctex"
+path.s3tc="res://.godot/imported/polyhaven_tree_leaves.png-bb92e2cfb0306c8fbbed8cc3f955f062.s3tc.ctex"
+path.etc2="res://.godot/imported/polyhaven_tree_leaves.png-bb92e2cfb0306c8fbbed8cc3f955f062.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/foliage/polyhaven_tree_leaves.png"
-dest_files=["res://.godot/imported/polyhaven_tree_leaves.png-bb92e2cfb0306c8fbbed8cc3f955f062.ctex"]
+dest_files=["res://.godot/imported/polyhaven_tree_leaves.png-bb92e2cfb0306c8fbbed8cc3f955f062.s3tc.ctex", "res://.godot/imported/polyhaven_tree_leaves.png-bb92e2cfb0306c8fbbed8cc3f955f062.etc2.ctex"]
 
 [params]
 

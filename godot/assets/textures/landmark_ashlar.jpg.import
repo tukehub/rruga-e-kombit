@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d0twmjr80i10k"
-path="res://.godot/imported/landmark_ashlar.jpg-74a9b1bc84ac494d13e71ed71b6e65a1.ctex"
+path.s3tc="res://.godot/imported/landmark_ashlar.jpg-74a9b1bc84ac494d13e71ed71b6e65a1.s3tc.ctex"
+path.etc2="res://.godot/imported/landmark_ashlar.jpg-74a9b1bc84ac494d13e71ed71b6e65a1.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/landmark_ashlar.jpg"
-dest_files=["res://.godot/imported/landmark_ashlar.jpg-74a9b1bc84ac494d13e71ed71b6e65a1.ctex"]
+dest_files=["res://.godot/imported/landmark_ashlar.jpg-74a9b1bc84ac494d13e71ed71b6e65a1.s3tc.ctex", "res://.godot/imported/landmark_ashlar.jpg-74a9b1bc84ac494d13e71ed71b6e65a1.etc2.ctex"]
 
 [params]
 

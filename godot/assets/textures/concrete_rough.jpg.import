@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d37mugaac6tmw"
-path="res://.godot/imported/concrete_rough.jpg-fa0b9317233d7d33c9834e14b27d9e9d.ctex"
+path.s3tc="res://.godot/imported/concrete_rough.jpg-fa0b9317233d7d33c9834e14b27d9e9d.s3tc.ctex"
+path.etc2="res://.godot/imported/concrete_rough.jpg-fa0b9317233d7d33c9834e14b27d9e9d.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/concrete_rough.jpg"
-dest_files=["res://.godot/imported/concrete_rough.jpg-fa0b9317233d7d33c9834e14b27d9e9d.ctex"]
+dest_files=["res://.godot/imported/concrete_rough.jpg-fa0b9317233d7d33c9834e14b27d9e9d.s3tc.ctex", "res://.godot/imported/concrete_rough.jpg-fa0b9317233d7d33c9834e14b27d9e9d.etc2.ctex"]
 
 [params]
 

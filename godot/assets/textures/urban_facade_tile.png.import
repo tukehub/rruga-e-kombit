@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dkxy10jdlaiho"
-path="res://.godot/imported/urban_facade_tile.png-35bb17f8d40365fe27c237b9d3a12d1d.ctex"
+path.s3tc="res://.godot/imported/urban_facade_tile.png-35bb17f8d40365fe27c237b9d3a12d1d.s3tc.ctex"
+path.etc2="res://.godot/imported/urban_facade_tile.png-35bb17f8d40365fe27c237b9d3a12d1d.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/urban_facade_tile.png"
-dest_files=["res://.godot/imported/urban_facade_tile.png-35bb17f8d40365fe27c237b9d3a12d1d.ctex"]
+dest_files=["res://.godot/imported/urban_facade_tile.png-35bb17f8d40365fe27c237b9d3a12d1d.s3tc.ctex", "res://.godot/imported/urban_facade_tile.png-35bb17f8d40365fe27c237b9d3a12d1d.etc2.ctex"]
 
 [params]
 

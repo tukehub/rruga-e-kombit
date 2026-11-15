@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dj0mcuqombwht"
-path="res://.godot/imported/tree_small_02_mobile_tree_small_02_branch_arm_1k.jpg-09a6a4aef23d1b59847b238707eb7df5.ctex"
+path.s3tc="res://.godot/imported/tree_small_02_mobile_tree_small_02_branch_arm_1k.jpg-09a6a4aef23d1b59847b238707eb7df5.s3tc.ctex"
+path.etc2="res://.godot/imported/tree_small_02_mobile_tree_small_02_branch_arm_1k.jpg-09a6a4aef23d1b59847b238707eb7df5.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "921ae33f6f354858c83679811f0c4e34"
@@ -14,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/foliage/tree_small_02_mobile_tree_small_02_branch_arm_1k.jpg"
-dest_files=["res://.godot/imported/tree_small_02_mobile_tree_small_02_branch_arm_1k.jpg-09a6a4aef23d1b59847b238707eb7df5.ctex"]
+dest_files=["res://.godot/imported/tree_small_02_mobile_tree_small_02_branch_arm_1k.jpg-09a6a4aef23d1b59847b238707eb7df5.s3tc.ctex", "res://.godot/imported/tree_small_02_mobile_tree_small_02_branch_arm_1k.jpg-09a6a4aef23d1b59847b238707eb7df5.etc2.ctex"]
 
 [params]
 

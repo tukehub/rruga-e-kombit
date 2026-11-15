@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://djtgd5ojojytb"
-path="res://.godot/imported/brick_nor.jpg-4f1aa5799064a1e2e88d5a016b38fd3d.ctex"
+path.s3tc="res://.godot/imported/brick_nor.jpg-4f1aa5799064a1e2e88d5a016b38fd3d.s3tc.ctex"
+path.etc2="res://.godot/imported/brick_nor.jpg-4f1aa5799064a1e2e88d5a016b38fd3d.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/brick_nor.jpg"
-dest_files=["res://.godot/imported/brick_nor.jpg-4f1aa5799064a1e2e88d5a016b38fd3d.ctex"]
+dest_files=["res://.godot/imported/brick_nor.jpg-4f1aa5799064a1e2e88d5a016b38fd3d.s3tc.ctex", "res://.godot/imported/brick_nor.jpg-4f1aa5799064a1e2e88d5a016b38fd3d.etc2.ctex"]
 
 [params]
 

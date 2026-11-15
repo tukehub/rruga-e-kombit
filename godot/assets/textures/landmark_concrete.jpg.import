@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dpm886nq4sbqd"
-path="res://.godot/imported/landmark_concrete.jpg-9291b581576641aca463fea20775c523.ctex"
+path.s3tc="res://.godot/imported/landmark_concrete.jpg-9291b581576641aca463fea20775c523.s3tc.ctex"
+path.etc2="res://.godot/imported/landmark_concrete.jpg-9291b581576641aca463fea20775c523.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/landmark_concrete.jpg"
-dest_files=["res://.godot/imported/landmark_concrete.jpg-9291b581576641aca463fea20775c523.ctex"]
+dest_files=["res://.godot/imported/landmark_concrete.jpg-9291b581576641aca463fea20775c523.s3tc.ctex", "res://.godot/imported/landmark_concrete.jpg-9291b581576641aca463fea20775c523.etc2.ctex"]
 
 [params]
 

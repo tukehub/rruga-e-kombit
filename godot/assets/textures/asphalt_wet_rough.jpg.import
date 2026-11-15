@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cemb0sect5c1o"
-path="res://.godot/imported/asphalt_wet_rough.jpg-9f91a14b4079b1a98f160f33ac159460.ctex"
+path.s3tc="res://.godot/imported/asphalt_wet_rough.jpg-9f91a14b4079b1a98f160f33ac159460.s3tc.ctex"
+path.etc2="res://.godot/imported/asphalt_wet_rough.jpg-9f91a14b4079b1a98f160f33ac159460.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/asphalt_wet_rough.jpg"
-dest_files=["res://.godot/imported/asphalt_wet_rough.jpg-9f91a14b4079b1a98f160f33ac159460.ctex"]
+dest_files=["res://.godot/imported/asphalt_wet_rough.jpg-9f91a14b4079b1a98f160f33ac159460.s3tc.ctex", "res://.godot/imported/asphalt_wet_rough.jpg-9f91a14b4079b1a98f160f33ac159460.etc2.ctex"]
 
 [params]
 

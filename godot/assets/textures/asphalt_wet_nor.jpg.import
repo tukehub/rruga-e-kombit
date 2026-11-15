@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ceukuxp68lwr3"
-path="res://.godot/imported/asphalt_wet_nor.jpg-dfcfc53dcc1940ba0280de30114c025d.ctex"
+path.s3tc="res://.godot/imported/asphalt_wet_nor.jpg-dfcfc53dcc1940ba0280de30114c025d.s3tc.ctex"
+path.etc2="res://.godot/imported/asphalt_wet_nor.jpg-dfcfc53dcc1940ba0280de30114c025d.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/asphalt_wet_nor.jpg"
-dest_files=["res://.godot/imported/asphalt_wet_nor.jpg-dfcfc53dcc1940ba0280de30114c025d.ctex"]
+dest_files=["res://.godot/imported/asphalt_wet_nor.jpg-dfcfc53dcc1940ba0280de30114c025d.s3tc.ctex", "res://.godot/imported/asphalt_wet_nor.jpg-dfcfc53dcc1940ba0280de30114c025d.etc2.ctex"]
 
 [params]
 

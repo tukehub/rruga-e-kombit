@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bfcdj1i37ef5y"
-path="res://.godot/imported/urban_facade_double.png-3d2d469c097f92e349c5d2fa86c30a52.ctex"
+path.s3tc="res://.godot/imported/urban_facade_double.png-3d2d469c097f92e349c5d2fa86c30a52.s3tc.ctex"
+path.etc2="res://.godot/imported/urban_facade_double.png-3d2d469c097f92e349c5d2fa86c30a52.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/urban_facade_double.png"
-dest_files=["res://.godot/imported/urban_facade_double.png-3d2d469c097f92e349c5d2fa86c30a52.ctex"]
+dest_files=["res://.godot/imported/urban_facade_double.png-3d2d469c097f92e349c5d2fa86c30a52.s3tc.ctex", "res://.godot/imported/urban_facade_double.png-3d2d469c097f92e349c5d2fa86c30a52.etc2.ctex"]
 
 [params]
 

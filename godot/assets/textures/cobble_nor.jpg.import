@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://x2qxpffhqtxf"
-path="res://.godot/imported/cobble_nor.jpg-899a63c50d99ca4d168031c9eea952e8.ctex"
+path.s3tc="res://.godot/imported/cobble_nor.jpg-899a63c50d99ca4d168031c9eea952e8.s3tc.ctex"
+path.etc2="res://.godot/imported/cobble_nor.jpg-899a63c50d99ca4d168031c9eea952e8.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/cobble_nor.jpg"
-dest_files=["res://.godot/imported/cobble_nor.jpg-899a63c50d99ca4d168031c9eea952e8.ctex"]
+dest_files=["res://.godot/imported/cobble_nor.jpg-899a63c50d99ca4d168031c9eea952e8.s3tc.ctex", "res://.godot/imported/cobble_nor.jpg-899a63c50d99ca4d168031c9eea952e8.etc2.ctex"]
 
 [params]
 

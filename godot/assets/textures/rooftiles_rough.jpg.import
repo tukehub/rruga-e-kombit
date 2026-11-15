@@ -3,15 +3,17 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://celq0g2vnes0q"
-path="res://.godot/imported/rooftiles_rough.jpg-057974eec50026491cc9f3717e371bd7.ctex"
+path.s3tc="res://.godot/imported/rooftiles_rough.jpg-057974eec50026491cc9f3717e371bd7.s3tc.ctex"
+path.etc2="res://.godot/imported/rooftiles_rough.jpg-057974eec50026491cc9f3717e371bd7.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/textures/rooftiles_rough.jpg"
-dest_files=["res://.godot/imported/rooftiles_rough.jpg-057974eec50026491cc9f3717e371bd7.ctex"]
+dest_files=["res://.godot/imported/rooftiles_rough.jpg-057974eec50026491cc9f3717e371bd7.s3tc.ctex", "res://.godot/imported/rooftiles_rough.jpg-057974eec50026491cc9f3717e371bd7.etc2.ctex"]
 
 [params]
 
