@@ -24,8 +24,9 @@ the same advertised items as the player.
   offers three distinct item types with randomized lane positions.
 - New storm supply is reserved for 24 seconds after one is planned or fired,
   and is suppressed during active storms or the leader's recent recovery.
-  Existing advertised/carried storms remain available; this is a supply limit,
-  not a new weapon-use cooldown.
+  Existing advertised/carried storms retain their identity. [Combat readiness
+  rules](combat-recovery.md) separately prevent overlapping storms and launching
+  another while the leader has recovery or respawn protection.
 
 ## Opportunities within the next 100–200 metres
 
@@ -45,7 +46,9 @@ This distance is a planning target, not a promise to spawn in an unsafe location
 The director skips close existing stations, positions beyond the finish, unsuitable
 immediate boosts, and points already in view on nearby streets or tight turns.
 It never changes the icon a racer is currently approaching. A useful item may
-be taken by a rival, and a full inventory receives no additional offer.
+be taken by a rival. A full useful inventory receives no additional offer; one
+with an eligible blocked reserve can receive a collectable replacement choice
+under the shared [inventory policy](combat-recovery.md#inventory-policy).
 
 ## Visibility and timing
 

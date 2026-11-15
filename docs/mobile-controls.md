@@ -35,7 +35,9 @@ says **FRENO NITRO** because it consumes Nitro to brake. Non-directional abiliti
 have one action. Empty inventory, full-health repair, leader lightning, spin and
 wreck states disable unavailable actions. A held item thumb fires once per tap;
 that tap stays latched across render frames until a fixed simulation tick consumes
-it. Combat effects, ammunition and balance are unchanged.
+it. Inventory uses the same pointer ownership, with hold-to-discard and a compact
+earned-drift boost button beside the slots. [Combat readiness, inventory and
+recovery rules](combat-recovery.md) describe the current gameplay behavior.
 
 Help and the short driving prompt explain the default layout, drift braking,
 manual mode, calibration and Nitro braking. A/D and arrow steering both work.

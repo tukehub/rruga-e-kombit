@@ -27,6 +27,13 @@ recent combat and the road ahead. A bounded pool can add shared, one-shot help
 190–200 metres ahead when useful supply is missing, with distance/time limits
 and protection against visible item changes. [Behavior and diagnostics](adaptive-pickups.md).
 
+Combat now shares readiness/target checks between firing and UI, warns about
+incoming homing shots, and displays effect durations, recovery and critical
+health. A fixed recovery window prevents repeated disabling attacks extending
+control loss. Hold a slot to discard; full inventories may replace only an
+unusable reserve while protecting the selected item. Clean drift distance earns
+a banked short turbo beside inventory. [Rules and verification](combat-recovery.md).
+
 Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.

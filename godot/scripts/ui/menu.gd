@@ -515,7 +515,10 @@ func _page_help() -> Control:
 		"[b]Timoni:[/b] prek bllokun majtas dhe rrëshqit nga pika ku vendose gishtin. Gazi është automatik; [color=%s]FRENA[/color] djathtas e ndal gazin. Frena + kthesë = drift.\n\n" % cy +
 		"[b]Përshtatja:[/b] te Cilësimet ose Pauzë → Kontrollet zgjidh pedale manuale, timon me anim, anën e timonit, madhësinë, dukshmërinë dhe vendosjen. Për anim, mbaje telefonin si gjatë lojës dhe prek Kalibro animin.\n\n" +
 		"[b]Fuqitë:[/b] butonat mbi frenën tregojnë veprimin e fuqisë së zgjedhur. Prek fuqinë në inventar për ta zgjedhur. [color=%s]NITRO[/color] përshpejton; [color=%s]FRENO NITRO[/color] e harxhon për frenim të menjëhershëm.\n\n" % [cy, cy] +
-		"[b]Tastiera:[/b] A/D ose shigjetat për timon, W gaz, S frena, Hapësirë gjuaj para, Shift/X prapa, Q/E ndërro fuqinë, Esc pauzë.")
+		"[b]Inventari:[/b] fuqia me kornizë të kaltër është e zgjedhur. Mbaj një slot derisa të mbushet vija për ta lëshuar. Kur je plot, një fuqi e dobishme nga pista mund të zëvendësojë Ustën me shëndet plot ose Stuhinë kur je i pari, vetëm në rezervë. Fuqia e zgjedhur ruhet.\n\n" +
+		"[b]Paralajmërimet:[/b] SHQIPONJË tregon nga vjen sulmi dhe sa afër është. Kohët e mburojës, turbos dhe rimarrjes shfaqen lart. Gjatë rimarrjes, goditjet e tjera bëjnë më pak dëm dhe nuk ta bllokojnë sërish timonin. Prek një buton të zbehur për të parë pse fuqia nuk përdoret.\n\n" +
+		"[b]Turbo nga drifti:[/b] drifto shpejt pa prekur muret. Mbush DRIFT pranë inventarit dhe preke për një turbo të fituar; ngarkesa ruhet mes kthesave.\n\n" +
+		"[b]Tastiera:[/b] A/D ose shigjetat për timon, W gaz, S frena, Hapësirë gjuaj para, Shift/X prapa, Q/E ndërro fuqinë, B turbo nga drifti, Esc pauzë.")
 	inner.add_child(rt)
 	inner.add_child(_eyebrow("Fuqitë"))
 	var grid := GridContainer.new()

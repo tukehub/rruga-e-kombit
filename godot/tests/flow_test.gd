@@ -206,6 +206,7 @@ func _ready() -> void:
 	scene.input.gas = true
 	scene.toggle_pause()
 	check(scene.paused and not scene.input.gas, "pause resets input")
+	check(not scene.hud.can_process() and not scene.input.can_process() and scene.pause_ui.can_process(), "combat HUD/input pause while pause controls stay interactive")
 	button(scene, "Kontrollet").pressed.emit()
 	check(scene._controls_ui.visible and not scene._pause_box.visible and get_tree().paused, "control configuration opens over the preserved paused race")
 	var previous_input := Settings.input_config()

@@ -20,6 +20,8 @@ class Ctrl:
 	var back := false
 	var cycle := false
 	var select := 0
+	var boost := false
+	var discard: Dictionary = {} # exact item reference; never discard a stale index
 
 var id := 0
 var def: Dictionary          # entry from Data.CARS
@@ -53,6 +55,12 @@ var nitro_t := 0.0
 var shield_t := 0.0
 var invuln_t := 0.0
 var hbrake_t := 0.0
+var recovery_t := 0.0         # fixed anti-chain window; further hits cannot extend it
+var chain_hits := 0
+var nitro_duration := 2.6
+var nitro_from_drift := false
+var skill_charge := 0.0       # clean drift distance, banked up to one short boost
+var skill_boosts := 0
 
 var finished := false
 var finish_time := 0.0

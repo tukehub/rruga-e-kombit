@@ -4,12 +4,18 @@ extends Control
 ## other. Pointer ownership lasts until release, even outside a control's rect.
 
 signal fire_pressed(back: bool)
+signal action_denied(reason: String)
+signal inventory_selected(index: int)
+signal inventory_hold_changed(index: int, fraction: float)
+
+const Rules = preload("res://scripts/sim/combat_rules.gd")
+const DISCARD_HOLD := 0.65
 
 const DEAD_DEG := 2.2
 const TILT_SMOOTH := 14.0
 const EDGE := 20.0
 const GAP := 12.0
-const STEER_SLOT_CLEARANCE := 138.0
+const STEER_SLOT_CLEARANCE := 206.0
 const HUD_CLEARANCE := 344.0
 
 var steer := 0.0
@@ -25,6 +31,8 @@ var _back_btn: Button
 var _gas_btn: Button
 var _brake_btn: Button
 var _steer_btn: Button
+var _boost_btn: Button
+var _boost_fill: ColorRect
 var _auto_label: Label
 var _steer_marker: ColorRect
 var _touches := {}
@@ -38,6 +46,12 @@ var _suspended := false
 var _car: CarState
 var _race: Race
 var _settings_signature := {}
+var _inventory_buttons: Array[Button] = []
+var _inventory_finger := -1
+var _boost := false
+var _discard: Dictionary = {}
+var _denial_t := 0.0
+var _last_denial := ""
 
 
 func _ready() -> void:
@@ -49,6 +63,11 @@ func _ready() -> void:
 	_gas_btn = _mk_button("GAZ", "gas", Color("77e8b0"))
 	_brake_btn = _mk_button("FRENA", "brake", Color("ff9c94"))
 	_steer_btn = _mk_button("‹   TIMONI   ›", "steer", Color("b8d9ef"))
+	_boost_btn = _mk_button("DRIFT 0%", "boost", UiTheme.GREEN)
+	_boost_fill = ColorRect.new()
+	_boost_fill.color = UiTheme.GREEN
+	_boost_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boost_btn.add_child(_boost_fill)
 	_auto_label = UiTheme.label("GAZ AUTO", 15, Color("77e8b0"), false, HORIZONTAL_ALIGNMENT_CENTER)
 	_auto_label.add_theme_font_override("font", UiTheme.body_bold())
 	_auto_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -75,6 +94,14 @@ func bind(car: CarState, race: Race) -> void:
 
 func is_desktop() -> bool:
 	return _desktop
+
+
+func bind_inventory(buttons: Array[Button]) -> void:
+	_inventory_buttons = buttons
+	# Native mouse emulation only owns the first finger. Inventory shares the
+	# same pointer-ID route as steering so the other thumb can select/discard.
+	for button in buttons:
+		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func set_driving_enabled(enabled: bool) -> void:
@@ -104,6 +131,18 @@ func _can_act() -> bool:
 ## offsets move both thumb groups inward/upward without covering the inventory.
 func control_rect(zone: String) -> Rect2:
 	var scale := float(Settings.CONTROL_SCALES[Settings.control_size])
+	if zone.begins_with("slot"):
+		var index := int(zone.trim_prefix("slot"))
+		if index < 0 or index >= _inventory_buttons.size():
+			return Rect2()
+		var button: Button = _inventory_buttons[index]
+		if not is_instance_valid(button) or not button.is_visible_in_tree():
+			return Rect2()
+		return get_global_transform_with_canvas().affine_inverse() * button.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, button.size)
+	if zone == "boost":
+		var boost_size := Vector2(100, 58) * scale
+		var left := size.x * 0.5 - 76.0 - boost_size.x if Settings.left_handed else size.x * 0.5 + 76.0
+		return Rect2(Vector2(left, size.y - 18.0 - boost_size.y), boost_size)
 	var manual := not Settings.auto_accel
 	var pedal := Vector2(108 if manual else 156, 96 if manual else 92) * scale
 	var action := Vector2(228 if manual else 200, 68) * scale
@@ -140,13 +179,16 @@ func control_rect(zone: String) -> Rect2:
 func zone_at(local_position: Vector2) -> String:
 	if not _can_drive():
 		return ""
-	for zone in ["gas", "brake", "fire", "back", "steer"]:
+	for zone in ["gas", "brake", "fire", "back", "boost", "steer"]:
 		if zone == "steer" and not Settings.touch_steer:
 			continue
-		if zone in ["fire", "back"] and not action_available(zone == "back"):
+		if zone == "back" and not _back_btn.visible:
 			continue
 		if control_rect(zone).has_point(local_position):
 			return zone
+	for i in mini(_inventory_buttons.size(), _car.slots.size()):
+		if control_rect("slot%d" % i).has_point(local_position):
+			return "slot%d" % i
 	return ""
 
 
@@ -166,15 +208,15 @@ func _settings_changed() -> void:
 
 
 func _layout_buttons() -> void:
-	for pair in [[_fire_btn, "fire"], [_back_btn, "back"], [_gas_btn, "gas"], [_brake_btn, "brake"], [_steer_btn, "steer"]]:
+	for pair in [[_fire_btn, "fire"], [_back_btn, "back"], [_gas_btn, "gas"], [_brake_btn, "brake"], [_steer_btn, "steer"], [_boost_btn, "boost"]]:
 		var button: Button = pair[0]
 		if button == null:
 			continue
 		var rect := control_rect(pair[1])
+		button.add_theme_font_size_override("font_size", roundi((16.0 if pair[1] == "boost" else 21.0) * float(Settings.CONTROL_SCALES[Settings.control_size])))
 		button.position = rect.position
 		button.size = rect.size
 		button.modulate.a = Settings.control_opacity
-		button.add_theme_font_size_override("font_size", roundi(21.0 * float(Settings.CONTROL_SCALES[Settings.control_size])))
 	if _steer_btn != null:
 		_steer_btn.visible = Settings.touch_steer
 		_gas_btn.visible = not Settings.auto_accel
@@ -211,21 +253,18 @@ func _mk_button(text: String, zone: String, col: Color) -> Button:
 	button.add_theme_color_override("font_disabled_color", Color(0.7, 0.75, 0.78))
 	button.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.75))
 	button.add_theme_constant_override("outline_size", 2)
+	if zone == "boost":
+		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+			var style := button.get_theme_stylebox(state).duplicate() as StyleBoxFlat
+			style.content_margin_top = 3
+			style.content_margin_bottom = 7
+			button.add_theme_stylebox_override(state, style)
 	add_child(button)
 	return button
 
 
 func action_available(backward: bool) -> bool:
-	if not _can_act() or _car.slots.is_empty():
-		return false
-	var type := _car.slot_type()
-	if backward and type not in ["eagle", "bolt", "mine", "nitro"]:
-		return false
-	if type == "repair" and _car.health >= _car.max_hp * 0.97:
-		return false
-	if type == "shock" and _race.leader() == _car:
-		return false
-	return Data.PW.has(type)
+	return _can_act() and bool(_race.item_status(_car, backward).ready)
 
 
 func sync_actions() -> void:
@@ -245,16 +284,45 @@ func sync_actions() -> void:
 	_back_btn.add_theme_color_override("font_color", UiTheme.AMBER if type == "nitro" else Color.WHITE)
 	_fire_btn.disabled = not action_available(false)
 	_back_btn.disabled = not action_available(true)
+	if _car != null:
+		var why: String = _race.item_status(_car).reason
+		if why in ["no_target", "too_far"]:
+			_fire_btn.text = "PA RIVAL" if why == "no_target" else "AFROHU · 15 m"
+		if type == "eagle" and not bool(_race.item_status(_car, true).ready):
+			_back_btn.text = "PA RIVAL"
+		_boost_btn.text = "TURBO" if _car.skill_charge >= 1.0 else "DRIFT %d%%" % floori(_car.skill_charge * 100.0)
+		_boost_btn.disabled = not _can_act() or not Rules.boost_status(_race, _car).is_empty()
+		_boost_fill.position = Vector2(8, _boost_btn.size.y - 7)
+		_boost_fill.size = Vector2((_boost_btn.size.x - 16) * _car.skill_charge, 3)
+	else:
+		_boost_btn.disabled = true
 
 
 func _request_action(backward: bool) -> void:
 	if not action_available(backward):
+		if _race != null and _car != null:
+			_deny(str(_race.item_status(_car, backward).reason))
 		return
 	if backward:
 		back = true
 	else:
 		fire = true
 	fire_pressed.emit(backward)
+
+
+func _deny(reason: String) -> void:
+	if _denial_t <= 0.0 or _last_denial != reason:
+		_denial_t = 0.65
+		_last_denial = reason
+		action_denied.emit(reason)
+
+
+func _request_boost() -> void:
+	var why := Rules.boost_status(_race, _car)
+	if why.is_empty() and _can_act():
+		_boost = true
+	else:
+		_deny(why)
 
 
 func _input(event: InputEvent) -> void:
@@ -270,6 +338,8 @@ func _input(event: InputEvent) -> void:
 				_request_action(true)
 			KEY_Q, KEY_E:
 				_cycle = true
+			KEY_B:
+				_request_boost()
 			_:
 				return
 		get_viewport().set_input_as_handled()
@@ -288,9 +358,17 @@ func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 			var zone := zone_at(local)
 			if zone.is_empty() or (zone == "steer" and _steer_finger != -1):
 				return false
+			if zone.begins_with("slot") and _inventory_finger != -1:
+				return false
 			_touches[touch.index] = {"zone": zone}
 			if zone in ["fire", "back"]:
 				_request_action(zone == "back")
+			elif zone == "boost":
+				_request_boost()
+			elif zone.begins_with("slot"):
+				_inventory_finger = touch.index
+				var index := int(zone.trim_prefix("slot"))
+				_touches[touch.index].merge({"elapsed": 0.0, "discarded": false, "canceled": false, "item": _car.slots[index]})
 			elif zone == "steer":
 				_steer_finger = touch.index
 				_steer_origin = local.x
@@ -299,6 +377,18 @@ func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 			if not _touches.has(touch.index):
 				return false
 			var zone: String = _touches[touch.index].zone
+			if zone.begins_with("slot"):
+				_inventory_finger = -1
+				var held: Dictionary = _touches[touch.index]
+				var index := int(zone.trim_prefix("slot"))
+				if not touch.canceled and not held.canceled and not held.discarded and index < _car.slots.size() and is_same(held.item, _car.slots[index]):
+					inventory_selected.emit(index)
+				inventory_hold_changed.emit(-1, 0.0)
+				if touch.canceled:
+					if is_same(_discard, held.item):
+						_discard = {}
+					if is_same(_car.ctrl.discard, held.item):
+						_car.ctrl.discard = {}
 			if touch.index == _steer_finger:
 				_steer_finger = -1
 			if touch.canceled:
@@ -310,6 +400,9 @@ func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 					back = false
 					if _car != null:
 						_car.ctrl.back = false
+				elif zone == "boost":
+					_boost = false
+					_car.ctrl.boost = false
 			_touches.erase(touch.index)
 		_recount()
 		return true
@@ -323,8 +416,30 @@ func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 			if absf(_pad_steer) < 0.06:
 				_pad_steer = 0.0
 			_update_marker()
+		var zone: String = _touches[drag.index].zone
+		if zone.begins_with("slot") and not control_rect(zone).grow(16).has_point(local):
+			_touches[drag.index].canceled = true
+			inventory_hold_changed.emit(-1, 0.0)
 		return true
 	return false
+
+
+func _poll_inventory(dt: float) -> void:
+	for held: Dictionary in _touches.values():
+		if not str(held.zone).begins_with("slot") or held.canceled or held.discarded:
+			continue
+		var index := int(str(held.zone).trim_prefix("slot"))
+		if not _can_act() or index >= _car.slots.size() or not is_same(held.item, _car.slots[index]):
+			held.canceled = true
+			inventory_hold_changed.emit(-1, 0.0)
+			_deny("inventory_changed" if _can_act() else str(_race.item_status(_car).reason))
+			continue
+		held.elapsed += dt
+		inventory_hold_changed.emit(index, minf(1.0, float(held.elapsed) / DISCARD_HOLD))
+		if float(held.elapsed) >= DISCARD_HOLD:
+			_discard = held.item
+			held.discarded = true
+			inventory_hold_changed.emit(-1, 0.0)
 
 
 func _held(zone: String) -> bool:
@@ -339,7 +454,7 @@ func _recount(kb_gas := false, kb_brake := false) -> void:
 	gas = _can_drive() and ((not brake) if Settings.auto_accel else (_held("gas") or kb_gas))
 	if _steer_finger == -1:
 		_pad_steer = 0.0
-	for pair in [[_gas_btn, "gas"], [_brake_btn, "brake"], [_fire_btn, "fire"], [_back_btn, "back"], [_steer_btn, "steer"]]:
+	for pair in [[_gas_btn, "gas"], [_brake_btn, "brake"], [_fire_btn, "fire"], [_back_btn, "back"], [_steer_btn, "steer"], [_boost_btn, "boost"]]:
 		var button: Button = pair[0]
 		if button != null:
 			button.set_pressed_no_signal(_held(pair[1]))
@@ -393,6 +508,7 @@ func _sample_tilt(sensor: Vector3, dt: float) -> void:
 
 ## RaceScene polls before each frame's fixed simulation steps.
 func poll(dt: float) -> void:
+	_denial_t = maxf(0.0, _denial_t - dt)
 	if not Settings.touch_steer:
 		_sample_tilt(read_tilt_sensor(), dt)
 	if not _can_drive():
@@ -401,6 +517,7 @@ func poll(dt: float) -> void:
 		brake = false
 		sync_actions()
 		return
+	_poll_inventory(dt)
 	var kb_steer := 0.0
 	if _desktop:
 		kb_steer = float(Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A))
@@ -422,13 +539,19 @@ func apply(car: CarState) -> void:
 	car.ctrl.fire = car.ctrl.fire or (fire and _can_act())
 	car.ctrl.back = car.ctrl.back or (back and _can_act())
 	car.ctrl.cycle = car.ctrl.cycle or _cycle
+	car.ctrl.boost = car.ctrl.boost or (_boost and _can_act())
+	if not _discard.is_empty() and _can_act():
+		car.ctrl.discard = _discard
 	fire = false
 	back = false
 	_cycle = false
+	_boost = false
+	_discard = {}
 
 
 func reset_controls() -> void:
 	_touches.clear()
+	_inventory_finger = -1
 	_steer_finger = -1
 	_pad_steer = 0.0
 	steer = 0.0
@@ -437,6 +560,9 @@ func reset_controls() -> void:
 	fire = false
 	back = false
 	_cycle = false
+	_boost = false
+	_discard = {}
+	inventory_hold_changed.emit(-1, 0.0)
 	if _car != null:
 		_car.ctrl.steer = 0.0
 		_car.ctrl.gas = false
@@ -445,7 +571,9 @@ func reset_controls() -> void:
 		_car.ctrl.back = false
 		_car.ctrl.cycle = false
 		_car.ctrl.select = 0
-	for button in [_gas_btn, _brake_btn, _fire_btn, _back_btn, _steer_btn]:
+		_car.ctrl.boost = false
+		_car.ctrl.discard = {}
+	for button in [_gas_btn, _brake_btn, _fire_btn, _back_btn, _steer_btn, _boost_btn]:
 		if button != null:
 			button.set_pressed_no_signal(false)
 	_update_marker()

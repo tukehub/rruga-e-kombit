@@ -7,6 +7,7 @@ extends Node3D
 const DT := 1.0 / 60.0
 const MAX_CATCHUP_STEPS := 3
 const RenderPose = preload("res://scripts/game/render_pose.gd")
+const CombatFeedback = preload("res://scripts/ui/combat_feedback.gd")
 
 var city_id := "tirane"
 var env_id := "night"
@@ -231,6 +232,8 @@ func _build_ui() -> void:
 	add_child(layer)
 	_ui_layer = layer
 	var safe := UiTheme.safe_area(layer)
+	# Layout updates may run while paused; racing HUD/audio/input must not.
+	safe.process_mode = Node.PROCESS_MODE_PAUSABLE
 	views = RaceViews.new()
 	add_child(views)
 	views.setup(cam, cars[race.cars.find(player)], safe)
@@ -240,6 +243,10 @@ func _build_ui() -> void:
 	hud = Hud.new()
 	safe.add_child(hud)
 	hud.setup(race, player, track)
+	input.bind_inventory(hud._slots)
+	input.inventory_selected.connect(func(i: int): hud.slot_selected.emit(i))
+	input.inventory_hold_changed.connect(hud.inventory_hold)
+	input.action_denied.connect(_action_denied)
 	hud.slot_selected.connect(func(i: int):
 		if i > 0 and i < player.slots.size():
 			player.ctrl.select = i
@@ -373,6 +380,8 @@ func _clear_pending_actions() -> void:
 		player.ctrl.back = false
 		player.ctrl.cycle = false
 		player.ctrl.select = 0
+		player.ctrl.boost = false
+		player.ctrl.discard = {}
 
 
 func _notification(what: int) -> void:
@@ -535,9 +544,10 @@ func _events() -> void:
 		match e.t:
 			"pickup":
 				if c == player:
-					hud.animate_pickup(str(e.type), player.slots.size() - 1)
+					hud.animate_pickup(str(e.type), int(e.get("slot", player.slots.size() - 1)))
 					Sfx.play("pickup", "Pickups", -3.0)
-					hud.feed("+ " + Data.PW[e.type].name, Color.html(Data.PW[e.type].col), 1.6)
+					var replaced := str(e.get("replaced", ""))
+					hud.feed((Data.PW[replaced].name + " → " if not replaced.is_empty() else "+ ") + Data.PW[e.type].name, Color.html(Data.PW[e.type].col), 2.6)
 					if not Settings.seen_pw(e.type):
 						hud.feed(Data.PW[e.type].desc, Color.html(Data.PW[e.type].col), 4.5)
 						Settings.mark_pw(e.type)
@@ -554,12 +564,16 @@ func _events() -> void:
 					Sfx.haptic(25)
 			"hit":
 				var col := Color.html(Data.PW[e.kind].col) if Data.PW.has(e.kind) else Color.WHITE
-				Sfx.play_at("impact_hard", _wpos(c.s, c.d, 0.8), "Impacts", _vol_db(_near_vol(c.s)))
+				var softened := bool(e.get("recovering", false))
+				if not softened or _limited("soft_impact_%d" % c.id, 0.2):
+					Sfx.play_at("impact_hard", _wpos(c.s, c.d, 0.8), "Impacts", _vol_db(_near_vol(c.s)) - (5.0 if softened else 0.0))
 				if c == player:
-					hud.flash(Color(1.0, 0.88, 0.23, 1.0) if e.kind == "shock" else Color(0.9, 0.12, 0.12, 1.0), 0.8)
-					cam.add_shake(1.2 if e.kind == "eagle" else 0.6)
-					hud.feed("%s → %s" % [e.by.name if e.by else "?", player.name], col)
-					Sfx.haptic(60)
+					if not softened or _limited("chain_feedback", 0.35):
+						hud.flash(Color(1.0, 0.88, 0.23, 1.0) if e.kind == "shock" else Color(0.9, 0.12, 0.12, 1.0), 0.16 if softened else 0.5)
+						cam.add_shake(0.12 if softened else (1.2 if e.kind == "eagle" else 0.6))
+						Sfx.haptic(15 if softened else 60)
+					if not softened or _limited("chain_hit", 0.8):
+						hud.feed("Goditje e zbutur · rimarrje" if softened else "%s → %s" % [e.by.name if e.by else "?", player.name], col)
 				elif e.by == player:
 					var pts := int(Race.FANS.get(e.kind, 0))
 					hud.feed("%s → %s  +%d" % [player.name, c.name, pts], col)
@@ -567,9 +581,25 @@ func _events() -> void:
 			"blocked":
 				Sfx.play_at("shield", _wpos(c.s, c.d, 0.8), "Pickups", _vol_db(_near_vol(c.s) * 0.6))
 				if c == player:
-					hud.feed("Mburoja e priti!", Color.html(Data.PW.shield.col))
+					hud.feed("Mburoja e priti!" if str(e.get("why", "shield")) == "shield" else "Mbrojtja e rikthimit e priti!", Color.html(Data.PW.shield.col))
 				elif e.by == player:
-					hud.feed("%s kishte mburojë" % c.name, Color.html(Data.PW.shield.col))
+					hud.feed("%s ishte i mbrojtur" % c.name, Color.html(Data.PW.shield.col))
+			"recovery":
+				if c == player:
+					hud.feed("Rimarrje: goditjet e tjera nuk të bllokojnë timonin", UiTheme.CYAN, 3.0)
+			"discard":
+				if c == player:
+					hud.feed("Lëshove " + Data.PW[e.type].name, UiTheme.MUTED, 2.0)
+					Sfx.ui_click()
+			"drift_ready":
+				if c == player:
+					hud.pop("TURBO DRIFT GATI!")
+					Sfx.play("pickup", "Pickups", -8.0)
+			"drift_boost":
+				effects.powerup_used(c, "nitro", false)
+				Sfx.play_at("nitro", _wpos(c.s, c.d, 0.8), "Pickups", _vol_db(_near_vol(c.s)))
+				if c == player:
+					hud.pop("TURBO DRIFT!")
 			"wreck":
 				Sfx.play_at("wreck", _wpos(c.s, c.d, 0.6), "Impacts", _vol_db(_near_vol(c.s)))
 				if c == player:
@@ -618,8 +648,7 @@ func _events() -> void:
 					hud.feed("Usta Ramizi e rregulloi", Color.html(Data.PW.repair.col))
 			"denied":
 				if c == player:
-					Sfx.play("denied", "UI", -6.0)
-					hud.feed("Je i pari. S’ka kë të godasë Stuhia." if e.why == "first" else "Makina s’ka asnjë gërvishtje. Ende.", UiTheme.MUTED)
+					_action_denied(str(e.why))
 			"cycle":
 				if c == player:
 					Sfx.ui_click()
@@ -643,6 +672,13 @@ func _events() -> void:
 					Sfx.play("finish", "UI", -2.0)
 					hud.flash(Color(1.0, 0.71, 0.28), 0.7)
 					hud.finish_place(Data.ORD[clampi(player.place - 1, 0, Data.ORD.size() - 1)] + "!", Game.fmt_time(player.finish_time))
+
+
+func _action_denied(reason: String) -> void:
+	if paused or state != "race" or not _limited("denied", 0.65):
+		return
+	Sfx.play("denied", "UI", -9.0)
+	hud.feed(CombatFeedback.reason(reason), UiTheme.AMBER, 3.5)
 
 
 func _engine_audio(ratio: float, gas_on: bool, alive: bool, scrape: float, dt: float) -> void:

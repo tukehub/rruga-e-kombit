@@ -194,14 +194,14 @@ func _test_layouts() -> void:
 			for handed in [false, true]:
 				for scale in [0, 1, 2]:
 					configure({"auto_accel": not manual, "left_handed": handed, "control_size": scale, "control_offset_x": 1.0, "control_offset_y": 1.0})
-					var zones := ["steer", "brake", "fire", "back"]
+					var zones := ["steer", "brake", "fire", "back", "boost"]
 					if manual:
 						zones.append("gas")
 					var bounds := Rect2(Vector2.ZERO, controls.size)
-					var inventory := Rect2(Vector2(width * 0.5 - 126, 650 - 76), Vector2(252, 58))
+					var inventory := Rect2(Vector2(width * 0.5 + (-70 if handed else -166), 650 - 76), Vector2(236, 58))
 					for i in zones.size():
 						var rect := controls.control_rect(zones[i])
-						check(bounds.encloses(rect) and rect.size.x >= 90 and rect.size.y >= 50, "controls stay inside safe viewport with usable targets")
+						check(bounds.encloses(rect) and rect.size.x >= (72 if zones[i] == "boost" else 90) and rect.size.y >= 50, "controls stay inside safe viewport with usable targets")
 						check(not rect.intersects(inventory), "thumb controls never cover inventory buttons")
 						check(not rect.intersects(Rect2(0, 0, 300, 330)) and not rect.intersects(Rect2(width - 184, 0, 184, 310)), "mirrored and raised controls clear standings and view buttons")
 						for j in range(i + 1, zones.size()):

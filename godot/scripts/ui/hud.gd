@@ -10,6 +10,7 @@ signal pause_pressed
 const SLOT_N := 3
 const ARC_START := deg_to_rad(135.0)
 const ARC_SWEEP := deg_to_rad(270.0)
+const Feedback = preload("res://scripts/ui/combat_feedback.gd")
 
 var race: Race
 var player: CarState
@@ -35,6 +36,12 @@ var _gauge: Control
 var _slot_name: Label
 var _slots: Array[Button] = []
 var _slot_key := ""
+var combat: Control
+var _target_hint: Label
+var _hold_index := -1
+var _hold_fraction := 0.0
+var _hold_bars: Array[ColorRect] = []
+var _inventory: HBoxContainer
 var _minimap: Control
 var _mm_dots: Control
 var _mm_flag: Control
@@ -60,7 +67,9 @@ func animate_pickup(kind: String, index: int) -> void:
 	icon.size = Vector2(44, 44)
 	icon.position = Vector2(size.x * 0.5 - 22, size.y - 155)
 	add_child(icon)
-	var destination := Vector2(size.x * 0.5 - 112 + clampi(index, 0, 2) * 80, size.y - 70)
+	var count := mini(3, maxi(1, player.slots.size()))
+	var center_x := size.x * 0.5 + (48.0 if Settings.left_handed else -48.0)
+	var destination := Vector2(center_x - (count * 80.0 - 8.0) * 0.5 + clampi(index, 0, 2) * 80.0 + 21, size.y - 62)
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(icon, "position", destination, 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(icon, "scale", Vector2(0.68, 0.68), 0.32)
@@ -74,6 +83,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme = UiTheme.theme()
 	_build()
+	combat = preload("res://scripts/ui/combat_hud.gd").new()
+	add_child(combat)
 
 
 func setup(p_race: Race, p_player: CarState, p_track: RaceTrack) -> void:
@@ -83,6 +94,7 @@ func setup(p_race: Race, p_player: CarState, p_track: RaceTrack) -> void:
 	_me.text = player.name
 	_me.add_theme_color_override("font_color", player.color.lightened(0.2))
 	_build_minimap()
+	combat.setup(race, player)
 
 
 func _build() -> void:
@@ -121,7 +133,8 @@ func _build() -> void:
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bv.add_child(_board)
 	_feed = VBoxContainer.new()
-	_feed.position = Vector2(20, 344)
+	_feed.position = Vector2(20, 330)
+	_feed.size.x = 360
 	_feed.add_theme_constant_override("separation", 2)
 	_feed.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_feed)
@@ -213,10 +226,21 @@ func _build() -> void:
 	_slot_name.offset_top = -108
 	_slot_name.offset_bottom = -78
 	add_child(_slot_name)
+	_target_hint = UiTheme.label("", 16, UiTheme.MUTED, false, HORIZONTAL_ALIGNMENT_CENTER)
+	_target_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_target_hint.offset_left = -136
+	_target_hint.offset_right = 136
+	_target_hint.offset_top = -134
+	_target_hint.offset_bottom = -110
+	_target_hint.clip_text = true
+	_target_hint.add_theme_color_override("font_outline_color", Color.BLACK)
+	_target_hint.add_theme_constant_override("outline_size", 3)
+	add_child(_target_hint)
 	var inventory := HBoxContainer.new()
+	_inventory = inventory
 	inventory.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	inventory.offset_left = -126
-	inventory.offset_right = 126
+	inventory.offset_left = -166
+	inventory.offset_right = 70
 	inventory.offset_top = -76
 	inventory.offset_bottom = -18
 	inventory.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -233,11 +257,18 @@ func _build() -> void:
 		button.pressed.connect(func(): slot_selected.emit(index))
 		inventory.add_child(button)
 		_slots.append(button)
+		var hold_bar := ColorRect.new()
+		hold_bar.color = UiTheme.CYAN
+		hold_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(hold_bar)
+		_hold_bars.append(hold_bar)
+		if i == 0:
+			button.add_theme_stylebox_override("normal", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.65), UiTheme.CYAN, 12, 2))
 	_fps = UiTheme.label("", 18, UiTheme.TEXT)
 	_fps.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_fps.offset_left = -350
 	_fps.offset_right = -140
-	_fps.offset_top = 112
+	_fps.offset_top = 140
 	_fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_fps)
 	for label in [_slot_name, _speed_unit, _center_sub, _fps]:
@@ -333,9 +364,12 @@ func _draw_gauge() -> void:
 
 
 func feed(text: String, col := UiTheme.TEXT, ttl := 2.6) -> void:
-	var l := UiTheme.label(text, 22, col)
+	var l := UiTheme.label(text, 16, col)
+	l.custom_minimum_size.y = 32
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.max_lines_visible = 2
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	l.add_theme_constant_override("outline_size", 4)
+	l.add_theme_constant_override("outline_size", 3)
 	l.set_meta("ttl", ttl)
 	_feed.add_child(l)
 	while _feed.get_child_count() > 2:
@@ -372,9 +406,24 @@ func flash(col: Color, a := 0.45) -> void:
 	_flash_a = minf(a, 0.55)
 
 
+func inventory_hold(index: int, fraction: float) -> void:
+	_hold_index = index
+	_hold_fraction = fraction
+	for i in _hold_bars.size():
+		_hold_bars[i].position = Vector2(4, _slots[i].size.y - 6)
+		_hold_bars[i].size = Vector2(maxf(0.0, _slots[i].size.x - 8) * (fraction if i == index else 0.0), 3)
+
+
 func _process(dt: float) -> void:
 	if race == null or player == null:
 		return
+	# Put short feedback above the steering thumb, opposite the item stack.
+	# Bounded wrapping prevents long explanations covering the driving controls.
+	_feed.position = Vector2(size.x - 380.0 if Settings.left_handed else 20.0, 330)
+	_inventory.offset_left = -70 if Settings.left_handed else -166
+	_inventory.offset_right = 166 if Settings.left_handed else 70
+	_slot_name.offset_left = _inventory.offset_left
+	_slot_name.offset_right = _inventory.offset_right
 	# fades
 	if _center_t > 0.0:
 		_center_t -= dt
@@ -469,6 +518,13 @@ func _process(dt: float) -> void:
 				b.tooltip_text = ""
 				b.visible = false
 		_slot_name.text = Data.PW[player.slots[0].type].name.to_upper() if not player.slots.is_empty() else ""
+	if _hold_index >= 0:
+		_target_hint.text = "MBAJ PËR TA LËSHUAR · %d%%" % roundi(_hold_fraction * 100.0)
+		_target_hint.modulate = UiTheme.CYAN
+	else:
+		var status := race.item_status(player)
+		_target_hint.text = Feedback.target_hint(race, player, status)
+		_target_hint.modulate = UiTheme.MUTED if bool(status.ready) else UiTheme.AMBER
 	_mm_dots.queue_redraw()
 	_gauge.queue_redraw()
 	if Settings.show_fps or diagnostic_fps:

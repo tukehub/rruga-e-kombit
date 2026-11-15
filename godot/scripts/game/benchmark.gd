@@ -45,8 +45,14 @@ static func run(tree: SceneTree, seconds: float) -> void:
 		"frame": _stats(frame), "process": _stats(process), "physics": _stats(physics), "gpu_time": _stats(gpu)}
 	if Game._root != null:
 		for scene in Game._root.get_children():
-			if scene is RaceScene and scene.race.pickup_director != null:
-				report["pickups"] = scene.race.pickup_director.snapshot()
+			if scene is RaceScene:
+				if scene.race.pickup_director != null:
+					report["pickups"] = scene.race.pickup_director.snapshot()
+				var combat: Array = []
+				for c: CarState in scene.race.cars:
+					combat.append({"car": c.id, "player": c.is_player, "followup_hits_softened": c.chain_hits,
+						"earned_boosts_used": c.skill_boosts, "drift_charge": c.skill_charge})
+				report["combat"] = combat
 	var file := FileAccess.open("user://profile.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(report, "  "))
 	file.close()

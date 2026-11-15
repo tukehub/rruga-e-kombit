@@ -174,6 +174,15 @@ func _ready() -> void:
 	effects._process(0.1)
 	check(effects._skids.visible_instance_count == 2, "new braking does not bridge the gap")
 	combat.player.braking = false
+	# Real target-required items only spend ammunition in a valid encounter.
+	for i in combat.cars.size():
+		var rival: CarState = combat.cars[i]
+		if rival == combat.player:
+			continue
+		rival.progress = combat.player.progress + 8.0 + i * 20.0
+		rival.s = combat.track.mod_s(rival.progress)
+		rival.d = combat.player.d
+	combat.compute_order()
 	for type in Data.PW_KEYS:
 		effects.powerup_used(combat.player, type, false)
 		combat.player.health = 1.0

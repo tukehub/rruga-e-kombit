@@ -119,7 +119,7 @@ func _approaching_car(race, s: float) -> CarState:
 	var best: CarState = null
 	var nearest := PLAN_DISTANCE
 	for c: CarState in race.cars:
-		if c.finished or c.wreck_t > 0.0 or c.slots.size() >= 3:
+		if c.finished or c.wreck_t > 0.0 or not race.has_pickup_room(c):
 			continue
 		var distance: float = race.track.mod_s(s - c.s)
 		if distance > BOT_GUARD and distance <= nearest and c.progress + distance < race.laps * race.L:
@@ -179,7 +179,7 @@ func weights(race, c: CarState, s: float, new_supply := true) -> Dictionary:
 		w.shock = 0.0
 	elif new_supply and (race.time < _shock_reserved_until or not race.domes.is_empty()):
 		w.shock = 0.0
-	elif lead.wreck_t > 0.0 or lead.spin_t > 0.0 or lead.stun_t > 0.0 or race.time - float(_state(lead.id).hit_t) < 5.0:
+	elif lead.wreck_t > 0.0 or lead.spin_t > 0.0 or lead.stun_t > 0.0 or lead.recovery_t > 0.0 or lead.invuln_t > 0.0 or race.time - float(_state(lead.id).hit_t) < 5.0:
 		w.shock = 0.0
 	else:
 		w.shock *= 4.0 if bool(h.behind) else 0.35
@@ -188,6 +188,10 @@ func weights(race, c: CarState, s: float, new_supply := true) -> Dictionary:
 	# Keep a drought from becoming a repetitive stream of the same other item.
 	for kind in h.recent:
 		w[kind] *= 0.65
+	if c.slots.size() >= 3:
+		for kind in w:
+			if race.pickup_slot(c, kind) < 0:
+				w[kind] = 0.0
 	return w
 
 
@@ -204,7 +208,7 @@ func _opponent(race, c: CarState, range_m: float, behind := false) -> CarState:
 
 
 func _reason(race, c: CarState) -> String:
-	if c.slots.size() >= 3 or c.finished or c.wreck_t > 0.0 or c.v < 12.0:
+	if not race.has_pickup_room(c) or c.finished or c.wreck_t > 0.0 or c.v < 12.0:
 		return ""
 	var h := _state(c.id)
 	var held := {}
@@ -390,6 +394,11 @@ func note_use(c: CarState, kind: String, now: float) -> void:
 
 func note_hit(c: CarState, now: float) -> void:
 	_state(c.id).hit_t = now
+
+
+func note_mastery_boost(c: CarState, now: float) -> void:
+	# Earned speed also ends a boost drought; it is not a consumed road item.
+	_state(c.id).nitro_t = now
 
 
 func _log(decision: Dictionary) -> void:

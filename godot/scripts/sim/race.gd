@@ -7,6 +7,7 @@ extends RefCounted
 const FANS := {"eagle": 100, "bolt": 35, "barge": 50, "mine": 60, "shock": 70, "wreck": 150, "place": 15}
 const BOT_ASSIST := 1.4
 const PickupDirector = preload("res://scripts/sim/pickup_director.gd")
+const CombatRules = preload("res://scripts/sim/combat_rules.gd")
 
 var track: RaceTrack
 var L := 0.0
@@ -217,6 +218,15 @@ func step(dt: float) -> void:
 		physics(c, dt)
 	collisions(dt)
 	for c in cars:
+		if not c.ctrl.discard.is_empty():
+			if not discard_item(c, c.ctrl.discard):
+				emit({"t": "denied", "car": c, "why": "inventory_changed"})
+			c.ctrl.discard = {}
+			# Discard and fire cannot accidentally consume the item that shifts in.
+			c.ctrl.fire = false
+			c.ctrl.back = false
+			c.ctrl.cycle = false
+			c.ctrl.select = 0
 		if c.ctrl.cycle:
 			c.ctrl.cycle = false
 			if c.slots.size() > 1:
@@ -236,6 +246,9 @@ func step(dt: float) -> void:
 		if c.ctrl.back:
 			c.ctrl.back = false
 			use_item(c, true)
+		if c.ctrl.boost:
+			c.ctrl.boost = false
+			use_skill_boost(c)
 	update_pickups(dt)
 	update_projs(dt)
 	update_mines(dt)
@@ -283,6 +296,7 @@ func physics(c: CarState, dt: float) -> void:
 	var tirana_driver := c.is_player and not c.autopilot and T.id == "tirane"
 	var near_finish := _near_finish(c)
 	c.invuln_t = maxf(0.0, c.invuln_t - dt)
+	c.recovery_t = maxf(0.0, c.recovery_t - dt)
 	c.shield_t = maxf(0.0, c.shield_t - dt)
 	c.nitro_t = maxf(0.0, c.nitro_t - dt)
 	c.stun_t = maxf(0.0, c.stun_t - dt)
@@ -305,6 +319,7 @@ func physics(c: CarState, dt: float) -> void:
 			c.lat_v = 0.0
 			c.v = 10.0
 			c.invuln_t = 2.5
+			c.recovery_t = 0.0
 			c.spin_t = 0.0
 			c.stun_t = 0.0
 			c.d = clampf(c.d, -5.0, 5.0)
@@ -482,6 +497,7 @@ func physics(c: CarState, dt: float) -> void:
 		if c.drift_t > 0.5:
 			c.drift_t -= 0.5
 			c.fans += 5
+	CombatRules.advance_drift(self, c, dt, s_step)
 
 
 # Collision footprint follows the actual GLB body (about 4.39 x 1.96 m).
@@ -610,6 +626,7 @@ func wreck(c: CarState, by: CarState, kind: String) -> void:
 	c.wrecks += 1
 	c.nitro_t = 0.0
 	c.shield_t = 0.0
+	c.recovery_t = 0.0
 	if by != null and by != c:
 		by.fans += FANS.wreck
 	emit({"t": "wreck", "car": c, "by": by, "kind": kind})
@@ -619,35 +636,44 @@ func hit(o: CarState, by: CarState, kind: String, dmg: float, fx: Dictionary) ->
 	if o.finished or o.wreck_t > 0.0:
 		return false
 	if o.shield_t > 0.0 or o.invuln_t > 0.0:
-		emit({"t": "blocked", "car": o, "by": by, "kind": kind})
+		emit({"t": "blocked", "car": o, "by": by, "kind": kind, "why": "shield" if o.shield_t > 0.0 else "respawn"})
 		return false
+	var recovering := o.recovery_t > 0.0
+	if recovering:
+		dmg *= CombatRules.RECOVERY_DAMAGE_SCALE
+		o.chain_hits += 1
 	o.health -= dmg
 	if pickup_director != null:
 		pickup_director.note_hit(o, time)
-	if fx.get("spin", false):
+	if not recovering and not fx.is_empty():
+		o.recovery_t = CombatRules.RECOVERY_DURATION
+		emit({"t": "recovery", "car": o})
+	if not recovering and fx.get("spin", false):
 		o.spin_t = 1.15
 		o.spin_dir = -1 if rng.randf() < 0.5 else 1
 		o.v *= 0.35
 		o.hop_v = maxf(o.hop_v, 7.0)
-	if fx.has("slow"):
+	if not recovering and fx.has("slow"):
 		o.v *= fx.slow
-	if fx.has("stun"):
+	if not recovering and fx.has("stun"):
 		o.stun_t = maxf(o.stun_t, fx.stun)
-	if fx.has("hop"):
+	if not recovering and fx.has("hop"):
 		o.hop_v = maxf(o.hop_v, fx.hop)
-	if fx.has("push"):
+	if not recovering and fx.has("push"):
 		o.lat_v += fx.push
 	if by != null and by != o:
 		by.fans += FANS.get(kind, 0)
 		by.hits += 1
-	emit({"t": "hit", "car": o, "by": by, "kind": kind, "dmg": dmg})
+	emit({"t": "hit", "car": o, "by": by, "kind": kind, "dmg": dmg, "recovering": recovering})
 	if o.health <= 0.0:
 		wreck(o, by, kind)
 	return true
 
 
 func use_item(c: CarState, back: bool) -> void:
-	if c.slots.is_empty() or c.wreck_t > 0.0 or c.spin_t > 0.0 or not started:
+	var status := item_status(c, back)
+	if not bool(status.ready):
+		emit({"t": "denied", "car": c, "why": status.reason})
 		return
 	var it: Dictionary = c.slots[0]
 	var T := track
@@ -655,7 +681,7 @@ func use_item(c: CarState, back: bool) -> void:
 	var used := true
 	match type:
 		"eagle":
-			var tgt := car_behind(c, 160.0) if back else car_ahead(c, 420.0)
+			var tgt: CarState = status.target
 			projs.append({"id": _nid(), "kind": "eagle", "owner": c, "s": T.mod_s(c.s + (-5.0 if back else 4.0)), "d": c.d,
 				"dir": -1.0 if back else 1.0, "speed": 32.0 if back else maxf(c.v + 25.0, 55.0), "target": tgt, "life": 3.2 if back else 7.0, "born": time})
 		"bolt":
@@ -680,44 +706,83 @@ func use_item(c: CarState, back: bool) -> void:
 			else:
 				mines.append({"id": _nid(), "owner": c, "s": T.mod_s(c.s + 4.0), "d": c.d, "fly": 0.7, "fly0": 0.7, "vs": maxf(c.v, 10.0) + 40.0, "life": 45.0, "arm": 0.4, "born": time})
 		"shock":
-			var lead := leader()
-			if lead == null or lead == c:
-				used = false
-				emit({"t": "denied", "car": c, "why": "first"})
-			else:
-				var lanes := [-7.0, 0.0, 7.0]
-				for i in range(2, 0, -1):
-					var j := rng.randi_range(0, i)
-					var tmp = lanes[i]
-					lanes[i] = lanes[j]
-					lanes[j] = tmp
-				for k in 3:
-					domes.append({"id": _nid(), "owner": c, "s": T.mod_s(lead.s + 110.0 + k * 45.0), "d": lanes[k] + (rng.randf() - 0.5) * 2.0,
-						"r": 4.8, "warn": 1.0, "life": 9.0, "hit_set": {}})
-				emit({"t": "shock", "car": c, "target": lead})
+			var lead: CarState = status.target
+			var lanes := [-7.0, 0.0, 7.0]
+			for i in range(2, 0, -1):
+				var j := rng.randi_range(0, i)
+				var tmp = lanes[i]
+				lanes[i] = lanes[j]
+				lanes[j] = tmp
+			for k in 3:
+				domes.append({"id": _nid(), "owner": c, "s": T.mod_s(lead.s + 110.0 + k * 45.0), "d": lanes[k] + (rng.randf() - 0.5) * 2.0,
+					"r": 4.8, "warn": 1.0, "life": 9.0, "hit_set": {}})
+			emit({"t": "shock", "car": c, "target": lead})
 		"nitro":
 			if back:
+				c.nitro_t = 0.0
 				c.v *= 0.5
 				c.hbrake_t = 0.8
 			else:
-				c.nitro_t = 2.6
+				c.nitro_t = CombatRules.NITRO_DURATION
+				c.nitro_duration = CombatRules.NITRO_DURATION
+				c.nitro_from_drift = false
 			emit({"t": "nitro", "car": c, "back": back})
 		"shield":
-			c.shield_t = 8.0
+			c.shield_t = CombatRules.SHIELD_DURATION
 			emit({"t": "shield", "car": c})
 		"repair":
-			if c.health >= c.max_hp * 0.97:
-				used = false
-				emit({"t": "denied", "car": c, "why": "full"})
-			else:
-				c.health = c.max_hp
-				emit({"t": "repair", "car": c})
+			c.health = c.max_hp
+			emit({"t": "repair", "car": c})
 	if used or type == "bolt":
 		if pickup_director != null:
 			pickup_director.note_use(c, type, time)
 		emit({"t": "fire", "car": c, "type": type, "back": back})
 	if used:
 		c.slots.pop_front()
+
+
+func item_status(c: CarState, back := false, kind := "") -> Dictionary:
+	return CombatRules.item_status(self, c, back, kind)
+
+
+func incoming_threat(c: CarState) -> Dictionary:
+	return CombatRules.incoming(self, c)
+
+
+func has_pickup_room(c: CarState) -> bool:
+	return c.slots.size() < 3 or CombatRules.replaceable_slot(self, c) >= 0
+
+
+func pickup_slot(c: CarState, kind: String) -> int:
+	return CombatRules.pickup_slot(self, c, kind)
+
+
+func discard_item(c: CarState, item: Dictionary) -> bool:
+	if not CombatRules.phase_reason(self, c).is_empty():
+		return false
+	for i in c.slots.size():
+		if is_same(item, c.slots[i]):
+			var kind: String = item.type
+			c.slots.remove_at(i)
+			emit({"t": "discard", "car": c, "type": kind})
+			return true
+	return false
+
+
+func use_skill_boost(c: CarState) -> bool:
+	var why := CombatRules.boost_status(self, c)
+	if not why.is_empty():
+		emit({"t": "denied", "car": c, "why": why})
+		return false
+	c.skill_charge = 0.0
+	c.skill_boosts += 1
+	c.nitro_t = CombatRules.DRIFT_BOOST_DURATION
+	c.nitro_duration = CombatRules.DRIFT_BOOST_DURATION
+	c.nitro_from_drift = true
+	if pickup_director != null:
+		pickup_director.note_mastery_boost(c, time)
+	emit({"t": "drift_boost", "car": c})
+	return true
 
 
 func update_pickups(dt: float) -> void:
@@ -734,15 +799,24 @@ func update_pickups(dt: float) -> void:
 				emit({"t": "pickup_back", "p": p})
 			continue
 		for c in cars:
-			if c.slots.size() >= 3 or c.wreck_t > 0.0 or c.finished:
+			if c.wreck_t > 0.0 or c.finished:
 				continue
 			if absf(T.wrap_s(c.s - p.s)) < 3.2 and absf(c.d - p.d) < 2.6:
+				var slot := pickup_slot(c, str(p.type))
+				if slot < 0:
+					continue
 				p.alive = false
 				p.t = 2.0
-				c.slots.append({"type": p.type, "ammo": int(Data.PW[p.type].ammo)})
+				var item := {"type": p.type, "ammo": int(Data.PW[p.type].ammo)}
+				var replaced := ""
+				if slot < c.slots.size():
+					replaced = str(c.slots[slot].type)
+					c.slots[slot] = item
+				else:
+					c.slots.append(item)
 				if pickup_director != null:
 					pickup_director.note_pickup(c, str(p.type), time, bool(p.get("adaptive", false)))
-				emit({"t": "pickup", "car": c, "type": p.type, "p": p})
+				emit({"t": "pickup", "car": c, "type": p.type, "p": p, "slot": slot, "replaced": replaced})
 				break
 
 
@@ -950,6 +1024,8 @@ func _avoid(c: CarState, d_t: float, hs: float, hd: float, rad: float) -> float:
 
 
 func ai_weapons(c: CarState) -> void:
+	if c.skill_charge >= 1.0 and c.nitro_t <= 0.1 and c.v > 18.0 and absf(track.curv(c.s + 40.0)) < 1.0 / 160.0 and CombatRules.phase_reason(self, c).is_empty():
+		use_skill_boost(c)
 	if c.slots.is_empty() or not started:
 		return
 	var it: Dictionary = c.slots[0]
