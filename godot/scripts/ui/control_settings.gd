@@ -9,45 +9,46 @@ var _calibration_note: Label
 
 func _ready() -> void:
 	add_theme_constant_override("separation", 8)
-	add_child(UiTheme.label("KONTROLLET", 25, UiTheme.CYAN, true))
-	_choice("auto_accel", "Përshpejtimi", ["Manual", "Automatik"], [false, true])
-	_choice("touch_steer", "Timoni", ["Anim", "Prekje"], [false, true])
-	_choice("left_handed", "Dora e timonit", ["Majtas", "Djathtas"], [false, true])
-	_choice("touch_sens", "Ndjeshmëria e prekjes", Settings.TILT_LABELS, [0, 1, 2])
-	_choice("control_size", "Madhësia e butonave", ["E vogël", "Normale", "E madhe"], [0, 1, 2])
-	_slider("control_opacity", "Dukshmëria", 0.45, 1.0)
-	_slider("control_offset_x", "Më afër qendrës", 0.0, 1.0)
-	_slider("control_offset_y", "Më lart", 0.0, 1.0)
-	_choice("tilt_sens", "Ndjeshmëria e animit", Settings.TILT_LABELS, [0, 1, 2])
-	_choice("tilt_invert", "Anim i kundërt", ["Jo", "Po"], [false, true])
+	add_child(UiTheme.label(Data.t("controls.title").to_upper(), 25, UiTheme.CYAN, true))
+	var levels := [Data.t("level.low"), Data.t("level.normal"), Data.t("level.high")]
+	_choice("auto_accel", Data.t("controls.acceleration"), [Data.t("controls.acceleration.manual"), Data.t("controls.acceleration.auto")], [false, true])
+	_choice("touch_steer", Data.t("controls.steering"), [Data.t("controls.steering.tilt"), Data.t("controls.steering.touch")], [false, true])
+	_choice("left_handed", Data.t("controls.hand"), [Data.t("controls.hand.left"), Data.t("controls.hand.right")], [false, true])
+	_choice("touch_sens", Data.t("controls.touch_sensitivity"), levels, [0, 1, 2])
+	_choice("control_size", Data.t("controls.size"), [Data.t("controls.size.small"), Data.t("controls.size.normal"), Data.t("controls.size.large")], [0, 1, 2])
+	_slider("control_opacity", Data.t("controls.opacity"), 0.45, 1.0)
+	_slider("control_offset_x", Data.t("controls.offset_x"), 0.0, 1.0)
+	_slider("control_offset_y", Data.t("controls.offset_y"), 0.0, 1.0)
+	_choice("tilt_sens", Data.t("controls.tilt_sensitivity"), levels, [0, 1, 2])
+	_choice("tilt_invert", Data.t("controls.tilt_invert"), [Data.t("common.no"), Data.t("common.yes")], [false, true])
 	var calibration := HBoxContainer.new()
 	calibration.add_theme_constant_override("separation", 12)
 	add_child(calibration)
-	_calibrate = UiTheme.button("Kalibro animin")
+	_calibrate = UiTheme.button(Data.t("controls.calibrate"))
 	_calibrate.pressed.connect(func():
 		var ok := RaceInput.calibrate_tilt()
-		_calibration_note.text = "Qendra u ruajt. Mbaje telefonin si gjatë lojës." if ok else "Sensori nuk lexohet. Përdor timonin me prekje."
+		_calibration_note.text = Data.t("controls.calibrated") if ok else Data.t("controls.no_sensor")
 		_calibration_note.modulate = UiTheme.GREEN if ok else UiTheme.AMBER
 		Sfx.ui_click())
 	calibration.add_child(_calibrate)
-	var neutral := UiTheme.button("Qendra standarde")
+	var neutral := UiTheme.button(Data.t("controls.neutral"))
 	neutral.pressed.connect(func():
 		Settings.tilt_center = 0.0
 		Settings.save()
-		_calibration_note.text = "Qendra e animit u rivendos."
+		_calibration_note.text = Data.t("controls.neutral_done")
 		Sfx.ui_click())
 	calibration.add_child(neutral)
-	_calibration_note = UiTheme.label("Për kalibrim, mbaje telefonin në pozicionin e drejtimit.", 20, UiTheme.MUTED)
+	_calibration_note = UiTheme.label(Data.t("controls.calibration_note"), 20, UiTheme.MUTED)
 	_calibration_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_calibration_note)
-	var reset := UiTheme.button("Rivendos vendosjen e butonave")
+	var reset := UiTheme.button(Data.t("controls.reset_layout"))
 	reset.pressed.connect(func():
 		Settings.reset_control_layout()
 		Settings.save()
 		refresh()
 		Sfx.ui_click())
 	add_child(reset)
-	var hint := UiTheme.label("Gazi automatik ndalet kur frenon. Timoni nis në qendër aty ku vendos gishtin. Provo ndryshimet duke vazhduar garën.", 20, UiTheme.MUTED)
+	var hint := UiTheme.label(Data.t("controls.hint"), 20, UiTheme.MUTED)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(hint)
 	visibility_changed.connect(refresh)

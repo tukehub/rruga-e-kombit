@@ -418,7 +418,7 @@ func build(root: Node3D, id: String) -> void:
 				_box(root, Vector3(x, 1.5, 0), Vector3(2, 7, 8), stone)
 		"blloku_sign":
 			var label := Label3D.new()
-			label.text = "BLLOKU"
+			label.text = Data.t("sign.blloku")
 			label.font_size = 96
 			label.pixel_size = 0.04
 			label.position.y = 6

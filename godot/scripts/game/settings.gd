@@ -8,7 +8,6 @@ const PRESENTATION_VERSION := 1
 
 # tilt sensitivity: index into TILT_FULL (degrees for full steer)
 const TILT_FULL := [32.0, 23.0, 15.0]
-const TILT_LABELS := ["E ulët", "Normale", "E lartë"]
 const CONTROL_SCALES := [0.9, 1.0, 1.15]
 const TOUCH_TRAVEL := [125.0, 100.0, 75.0]
 

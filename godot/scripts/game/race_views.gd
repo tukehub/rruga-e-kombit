@@ -74,9 +74,9 @@ func setup(cam: ChaseCam, player_visual: CarVisual, layer: Node) -> void:
 	mirror.flip_h = true
 	mirror.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mirror_panel.add_child(mirror)
-	view_button = _button(layer, "KAMERA: JASHTË", 218)
+	view_button = _button(layer, Data.t("view.camera.chase"), 218)
 	view_button.pressed.connect(_toggle_view)
-	mirror_button = _button(layer, "PASQYRA: PO" if enabled else "PASQYRA: JO", 268)
+	mirror_button = _button(layer, Data.t("view.mirror.on") if enabled else Data.t("view.mirror.off"), 268)
 	mirror_button.pressed.connect(_toggle_mirror)
 	Quality.budget_changed.connect(_apply_budget)
 	_apply_budget()
@@ -111,7 +111,7 @@ func _toggle_view() -> void:
 	race_camera.cabin = not race_camera.cabin
 	race_camera.set_cull_mask_value(PLAYER_LAYER, not race_camera.cabin)
 	cabin_overlay.visible = race_camera.cabin
-	view_button.text = "KAMERA: KABINË" if race_camera.cabin else "KAMERA: JASHTË"
+	view_button.text = Data.t("view.camera.cabin") if race_camera.cabin else Data.t("view.camera.chase")
 	race_camera._snap = true
 	Sfx.ui_click()
 
@@ -121,7 +121,7 @@ func _toggle_mirror() -> void:
 	Settings.mirror = enabled
 	Settings.save()
 	mirror_panel.visible = enabled
-	mirror_button.text = "PASQYRA: PO" if enabled else "PASQYRA: JO"
+	mirror_button.text = Data.t("view.mirror.on") if enabled else Data.t("view.mirror.off")
 	if not enabled:
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	else:

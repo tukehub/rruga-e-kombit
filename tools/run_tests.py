@@ -26,7 +26,7 @@ def godot(name, *arguments, expected_noise=()):
     return run.stdout
 
 
-for scene in ['readiness', 'city_worlds', 'flow_test', 'wall_contact', 'driving_dynamics', 'road_geometry', 'lana_river', 'simulation_timing', 'reverse_race', 'car_visual_regression', 'tirana_turns', 'adaptive_pickups', 'two_thumb_controls', 'combat_recovery', 'combat_ui', 'visual_performance', 'route_readability']:
+for scene in ['readiness', 'city_worlds', 'flow_test', 'wall_contact', 'driving_dynamics', 'road_geometry', 'lana_river', 'simulation_timing', 'reverse_race', 'car_visual_regression', 'tirana_turns', 'adaptive_pickups', 'two_thumb_controls', 'combat_recovery', 'combat_ui', 'visual_performance', 'route_readability', 'string_table']:
     godot(scene, 'res://tests/' + scene + '.tscn')
 
 # Phones run the Mobile renderer and desktop Forward+. Headless Godot keeps the

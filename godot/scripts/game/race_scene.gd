@@ -77,8 +77,7 @@ func _begin() -> void:
 	paused = false
 	state = "intro"
 	cam.start_intro()
-	var city: Dictionary = Data.city(city_id)
-	hud.center(city.name, "%s · %d xhiro" % [Data.ENV[env_id].label, race.laps], 2.6)
+	hud.center(Data.city_name(city_id), Data.t("race.intro", [Data.env_label(env_id), race.laps]), 2.6)
 
 
 ## Restart in place: terrain, buildings, props, road and sky stay loaded; only
@@ -299,27 +298,27 @@ func _build_pause(layer: CanvasLayer) -> void:
 	v.add_theme_constant_override("separation", 12)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(v)
-	v.add_child(UiTheme.headline("PAUZË", 64))
+	v.add_child(UiTheme.headline(Data.t("pause.title"), 64))
 	v.add_child(UiTheme.spacer(6))
-	var b_resume := UiTheme.button("Vazhdo", UiTheme.CYAN.darkened(0.4))
+	var b_resume := UiTheme.button(Data.t("pause.resume"), UiTheme.CYAN.darkened(0.4))
 	b_resume.pressed.connect(func(): Sfx.ui_click(); toggle_pause())
 	v.add_child(b_resume)
-	var b_controls := UiTheme.button("Kontrollet")
+	var b_controls := UiTheme.button(Data.t("controls.title"))
 	b_controls.pressed.connect(func():
 		_pause_box.hide()
 		_controls_ui.show()
 		Sfx.ui_click())
 	v.add_child(b_controls)
-	var b_compare := UiTheme.button("Test: fshih peizazhin")
+	var b_compare := UiTheme.button(Data.t("pause.hide_scenery"))
 	b_compare.pressed.connect(func():
 		set_scenery_visible(not scenery_visible)
-		b_compare.text = "Test: fshih peizazhin" if scenery_visible else "Test: shfaq peizazhin"
+		b_compare.text = Data.t("pause.hide_scenery") if scenery_visible else Data.t("pause.show_scenery")
 		Sfx.ui_click())
 	v.add_child(b_compare)
-	var b_restart := UiTheme.button("Rifillo")
+	var b_restart := UiTheme.button(Data.t("pause.restart"))
 	b_restart.pressed.connect(func(): Sfx.ui_click(); restart())
 	v.add_child(b_restart)
-	var b_quit := UiTheme.button("Dil")
+	var b_quit := UiTheme.button(Data.t("pause.quit"))
 	b_quit.pressed.connect(func(): Sfx.ui_back(); get_tree().paused = false; Sfx.stop_loops(); Game.goto("menu"))
 	v.add_child(b_quit)
 	_build_control_settings(safe)
@@ -340,7 +339,7 @@ func _build_control_settings(parent: Control) -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 12)
 	margins.add_child(column)
-	column.add_child(UiTheme.headline("Kontrollet", 40, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	column.add_child(UiTheme.headline(Data.t("controls.title"), 40, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -348,7 +347,7 @@ func _build_control_settings(parent: Control) -> void:
 	var settings_panel := preload("res://scripts/ui/control_settings.gd").new()
 	settings_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(settings_panel)
-	var back_button := UiTheme.button("Kthehu te pauza")
+	var back_button := UiTheme.button(Data.t("pause.back"))
 	back_button.pressed.connect(_close_control_settings)
 	column.add_child(back_button)
 	_controls_ui.hide()
@@ -455,9 +454,9 @@ func _process(dt: float) -> void:
 				cd_n = 4
 				if not _seen_tip:
 					_seen_tip = true
-					var steering_tip := "Prek timonin dhe rrëshqit" if Settings.touch_steer else "Anoje telefonin për të kthyer"
-					var gas_tip := "gazi automatik · freno për drift" if Settings.auto_accel else "mbaj GAZ për të përshpejtuar"
-					hud.feed(steering_tip + " · " + gas_tip + " · Pauzë → Kontrollet", UiTheme.AMBER, 5.0)
+					var steering_tip := Data.t("race.tip.touch") if Settings.touch_steer else Data.t("race.tip.tilt")
+					var gas_tip := Data.t("race.tip.auto_gas") if Settings.auto_accel else Data.t("race.tip.manual_gas")
+					hud.feed(Data.t("race.tip", [steering_tip, gas_tip]), UiTheme.AMBER, 5.0)
 		"countdown":
 			cd_t -= dt
 			var n := int(ceil(cd_t))
@@ -468,7 +467,7 @@ func _process(dt: float) -> void:
 			if cd_t <= 0.0:
 				race.started = true
 				state = "race"
-				hud.center("Hajde!", "", 1.0)
+				hud.center(Data.t("race.go"), "", 1.0)
 				Sfx.play("go", "UI", -2.0)
 				acc = 0.0
 				if not Settings.touch_steer and not input.tilt_ok and not input.is_desktop():
@@ -494,7 +493,7 @@ func _process(dt: float) -> void:
 				var left := race.laps * race.L - player.progress
 				if player.lap == race.laps - 1 and left > 0.0 and left < 500.0:
 					last500 = true
-					hud.center("500 metrat e fundit!", "", 2.0)
+					hud.center(Data.t("race.last_500"), "", 2.0)
 					Sfx.play("lap", "UI", -4.0)
 			var player_index := race.cars.find(player)
 			var player_pose := RenderPose.sample(_previous_poses[player_index], player, acc / DT, track.L)
@@ -532,7 +531,7 @@ func _recover_missing_tilt(dt: float) -> void:
 		Settings.touch_steer = true
 		Settings.save()
 		_tilt_missing_t = 0.0
-		hud.feed("Sensori nuk lexohet. Timoni me prekje u aktivizua.", UiTheme.AMBER, 6.0)
+		hud.feed(Data.t("race.tilt_missing"), UiTheme.AMBER, 6.0)
 
 
 func _near_vol(s: float) -> float:
@@ -572,9 +571,9 @@ func _events() -> void:
 					hud.animate_pickup(str(e.type), int(e.get("slot", player.slots.size() - 1)))
 					Sfx.play("pickup", "Pickups", -3.0)
 					var replaced := str(e.get("replaced", ""))
-					hud.feed((Data.PW[replaced].name + " → " if not replaced.is_empty() else "+ ") + Data.PW[e.type].name, Color.html(Data.PW[e.type].col), 2.6)
+					hud.feed((Data.pw_name(replaced) + " → " if not replaced.is_empty() else "+ ") + Data.pw_name(e.type), Color.html(Data.PW[e.type].col), 2.6)
 					if not Settings.seen_pw(e.type):
-						hud.feed(Data.PW[e.type].desc, Color.html(Data.PW[e.type].col), 4.5)
+						hud.feed(Data.pw_desc(e.type), Color.html(Data.PW[e.type].col), 4.5)
 						Settings.mark_pw(e.type)
 				else:
 					Sfx.play_at("pickup", _wpos(c.s, c.d, 1.0), "Pickups", -10.0)
@@ -598,7 +597,7 @@ func _events() -> void:
 						cam.add_shake(0.12 if softened else (1.2 if e.kind == "eagle" else 0.6))
 						Sfx.haptic(15 if softened else 60)
 					if not softened or _limited("chain_hit", 0.8):
-						hud.feed("Goditje e zbutur · rimarrje" if softened else "%s → %s" % [e.by.name if e.by else "?", player.name], col)
+						hud.feed(Data.t("race.hit_softened") if softened else "%s → %s" % [e.by.name if e.by else "?", player.name], col)
 				elif e.by == player:
 					var pts := int(Race.FANS.get(e.kind, 0))
 					hud.feed("%s → %s  +%d" % [player.name, c.name, pts], col)
@@ -606,39 +605,39 @@ func _events() -> void:
 			"blocked":
 				Sfx.play_at("shield", _wpos(c.s, c.d, 0.8), "Pickups", _vol_db(_near_vol(c.s) * 0.6))
 				if c == player:
-					hud.feed("Mburoja e priti!" if str(e.get("why", "shield")) == "shield" else "Mbrojtja e rikthimit e priti!", Color.html(Data.PW.shield.col))
+					hud.feed(Data.t("race.blocked.shield") if str(e.get("why", "shield")) == "shield" else Data.t("race.blocked.recovery"), Color.html(Data.PW.shield.col))
 				elif e.by == player:
-					hud.feed("%s ishte i mbrojtur" % c.name, Color.html(Data.PW.shield.col))
+					hud.feed(Data.t("race.rival_protected", c.name), Color.html(Data.PW.shield.col))
 			"recovery":
 				if c == player:
-					hud.feed("Rimarrje: goditjet e tjera nuk të bllokojnë timonin", UiTheme.CYAN, 3.0)
+					hud.feed(Data.t("race.recovery"), UiTheme.CYAN, 3.0)
 			"discard":
 				if c == player:
-					hud.feed("Lëshove " + Data.PW[e.type].name, UiTheme.MUTED, 2.0)
+					hud.feed(Data.t("race.discarded", Data.pw_name(e.type)), UiTheme.MUTED, 2.0)
 					Sfx.ui_click()
 			"drift_ready":
 				if c == player:
-					hud.pop("TURBO DRIFT GATI!")
+					hud.pop(Data.t("race.drift_ready"))
 					Sfx.play("pickup", "Pickups", -8.0)
 			"drift_boost":
 				effects.powerup_used(c, "nitro", false)
 				Sfx.play_at("nitro", _wpos(c.s, c.d, 0.8), "Pickups", _vol_db(_near_vol(c.s)))
 				if c == player:
-					hud.pop("TURBO DRIFT!")
+					hud.pop(Data.t("race.drift_boost"))
 			"wreck":
 				Sfx.play_at("wreck", _wpos(c.s, c.d, 0.6), "Impacts", _vol_db(_near_vol(c.s)))
 				if c == player:
-					hud.center("U bëre copë!", "Rikthehesh pas dy sekondash", 2.2)
+					hud.center(Data.t("race.wrecked.title"), Data.t("race.wrecked.sub"), 2.2)
 					hud.flash(Color(1.0, 0.47, 0.12), 1.0)
 					cam.add_shake(1.6)
 					Sfx.haptic(120)
 				elif e.by == player:
-					hud.feed("%s u bë copë!  +%d" % [c.name, int(Race.FANS.wreck)], UiTheme.AMBER)
-					hud.pop("KO +%d" % int(Race.FANS.wreck))
+					hud.feed(Data.t("race.wrecked_by_you", [c.name, int(Race.FANS.wreck)]), UiTheme.AMBER)
+					hud.pop(Data.t("race.ko", int(Race.FANS.wreck)))
 				elif _near_vol(c.s) > 0.6:
-					hud.feed("%s u bë copë" % c.name, UiTheme.MUTED, 1.8)
+					hud.feed(Data.t("race.wrecked_other", c.name), UiTheme.MUTED, 1.8)
 			"assist_brake":
-				hud.feed("Ndihma frenon vetë para kthesave të forta", UiTheme.CYAN, 3.5)
+				hud.feed(Data.t("race.assist_brake"), UiTheme.CYAN, 3.5)
 			"respawn":
 				if c == player:
 					Sfx.play("respawn", "Pickups", -6.0)
@@ -661,16 +660,16 @@ func _events() -> void:
 					cam.add_shake(0.5)
 			"shock":
 				if e.target == player:
-					hud.center("Stuhia!", "Kupola elektrike përpara", 1.6)
-					hud.feed("%s lëshoi Stuhinë" % c.name, Color.html(Data.PW.shock.col))
+					hud.center(Data.t("race.storm.title"), Data.t("race.storm.sub"), 1.6)
+					hud.feed(Data.t("race.storm.by", c.name), Color.html(Data.PW.shock.col))
 				elif c == player:
-					hud.feed("Stuhia për %s" % e.target.name, Color.html(Data.PW.shock.col))
+					hud.feed(Data.t("race.storm.for", e.target.name), Color.html(Data.PW.shock.col))
 			"nitro":
 				if c == player and not e.back:
 					hud.flash(Color(0.22, 1.0, 0.42), 0.5)
 			"repair":
 				if c == player:
-					hud.feed("Usta Ramizi e rregulloi", Color.html(Data.PW.repair.col))
+					hud.feed(Data.t("race.repaired"), Color.html(Data.PW.repair.col))
 			"denied":
 				if c == player:
 					_action_denied(str(e.why))
@@ -680,7 +679,7 @@ func _events() -> void:
 			"lap":
 				if c == player:
 					Sfx.play("lap", "UI", -4.0)
-					hud.center("Xhiro e fundit!" if e.lap == race.laps else "Xhiro %d/%d" % [e.lap, race.laps], "", 1.6)
+					hud.center(Data.t("race.final_lap") if e.lap == race.laps else Data.t("race.lap", [e.lap, race.laps]), "", 1.6)
 			"finish":
 				if c == player and state == "race":
 					state = "finish"
@@ -696,7 +695,7 @@ func _events() -> void:
 					views.view_button.disabled = true
 					Sfx.play("finish", "UI", -2.0)
 					hud.flash(Color(1.0, 0.71, 0.28), 0.7)
-					hud.finish_place(Data.ORD[clampi(player.place - 1, 0, Data.ORD.size() - 1)] + "!", Game.fmt_time(player.finish_time))
+					hud.finish_place(Data.ordinal(player.place) + "!", Game.fmt_time(player.finish_time))
 
 
 func _action_denied(reason: String) -> void:
@@ -729,7 +728,7 @@ func _show_results() -> void:
 	var rows := []
 	for c in race.order:
 		rows.append({
-			"name": c.name, "car": c.def.name, "color": c.color.to_html(false), "is_player": c.is_player,
+			"name": c.name, "car": c.def.id, "color": c.color.to_html(false), "is_player": c.is_player,
 			"finished": c.finished, "time": c.finish_time if c.finished else c.est,
 			"best_lap": c.best_lap, "fans": int(c.fans), "wrecks": c.wrecks, "hits": c.hits,
 		})
@@ -747,7 +746,7 @@ func _update_weather(dt: float) -> void:
 			var cycle := ["dusk", "rain", "night", "golden", "day"]
 			sky.transition_to(cycle[_weather_step % cycle.size()], 18.0)
 			_weather_step += 1
-			hud.feed("Moti po ndryshon: " + Data.ENV[sky.env_id].label, UiTheme.CYAN, 3.0)
+			hud.feed(Data.t("race.weather_changing", Data.env_label(sky.env_id)), UiTheme.CYAN, 3.0)
 	_light_clock += dt
 	if _light_clock >= 0.15:
 		_light_clock = 0.0

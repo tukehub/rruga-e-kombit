@@ -31,10 +31,11 @@ func _ready() -> void:
 	Game._last_fact = ""
 	var seen_facts := {}
 	var previous_fact := ""
-	for i in Game.LOADING_FACTS.size() * 2:
+	var facts := Data.t_list("loading.facts")
+	for i in facts.size() * 2:
 		var fact: String = Game._next_loading_fact()
 		check(fact != previous_fact, "loading facts should not repeat consecutively")
-		if i < Game.LOADING_FACTS.size():
+		if i < facts.size():
 			check(not seen_facts.has(fact), "loading facts should not repeat before a full cycle")
 			seen_facts[fact] = true
 		previous_fact = fact
@@ -44,7 +45,7 @@ func _ready() -> void:
 	var fact := preview.find_child("LoadingFact", true, false) as Label
 	check(title != null and title.text == "Gara po fillon", "loading transition displays the requested title")
 	check(heading != null and heading.text == "Fakt rastesor:", "loading transition displays the fact heading")
-	check(fact != null and fact.text in Game.LOADING_FACTS, "loading transition displays a random fact")
+	check(fact != null and fact.text in facts, "loading transition displays a random fact")
 	check(fact != null and fact.get_theme_font_size("font_size") > 23, "loading fact uses larger text")
 	preview.free()
 	var menu: Menu = Game._root.get_child(0)

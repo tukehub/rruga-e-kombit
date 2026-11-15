@@ -58,17 +58,17 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_desktop = OS.get_name() not in ["Android", "iOS"]
-	_fire_btn = _mk_button("PA FUQI", "fire", Color("ffbc57"))
-	_back_btn = _mk_button("GJUAJ PRAPA", "back", Color("8edbff"))
-	_gas_btn = _mk_button("GAZ", "gas", Color("77e8b0"))
-	_brake_btn = _mk_button("FRENA", "brake", Color("ff9c94"))
-	_steer_btn = _mk_button("‹   TIMONI   ›", "steer", Color("b8d9ef"))
-	_boost_btn = _mk_button("DRIFT 0%", "boost", UiTheme.GREEN)
+	_fire_btn = _mk_button(Data.t("input.no_power"), "fire", Color("ffbc57"))
+	_back_btn = _mk_button(Data.t("input.back"), "back", Color("8edbff"))
+	_gas_btn = _mk_button(Data.t("input.gas"), "gas", Color("77e8b0"))
+	_brake_btn = _mk_button(Data.t("input.brake"), "brake", Color("ff9c94"))
+	_steer_btn = _mk_button(Data.t("input.steer"), "steer", Color("b8d9ef"))
+	_boost_btn = _mk_button(Data.t("input.drift", 0), "boost", UiTheme.GREEN)
 	_boost_fill = ColorRect.new()
 	_boost_fill.color = UiTheme.GREEN
 	_boost_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boost_btn.add_child(_boost_fill)
-	_auto_label = UiTheme.label("GAZ AUTO", 15, Color("77e8b0"), false, HORIZONTAL_ALIGNMENT_CENTER)
+	_auto_label = UiTheme.label(Data.t("input.auto_gas"), 15, Color("77e8b0"), false, HORIZONTAL_ALIGNMENT_CENTER)
 	_auto_label.add_theme_font_override("font", UiTheme.body_bold())
 	_auto_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_auto_label.add_theme_constant_override("outline_size", 2)
@@ -271,15 +271,14 @@ func sync_actions() -> void:
 	if _fire_btn == null:
 		return
 	var type := _car.slot_type() if _car != null else ""
-	var names := {"eagle": "GJUAJ PARA", "bolt": "GJUAJ PARA", "mine": "HIDH PARA", "nitro": "NITRO", "barge": "TËRMETI", "shock": "STUHIA", "shield": "MBUROJË", "repair": "RREGULLO"}
-	_fire_btn.text = names.get(type, "PA FUQI")
+	_fire_btn.text = Data.t("input.fire.%s" % type) if Data.has_text("input.fire.%s" % type) else Data.t("input.no_power")
 	if type == "repair" and _car.health >= _car.max_hp * 0.97:
-		_fire_btn.text = "E PLOTË"
+		_fire_btn.text = Data.t("input.full")
 	elif type == "shock" and _race != null and _race.leader() == _car:
-		_fire_btn.text = "JE I PARI"
+		_fire_btn.text = Data.t("hint.deny.first")
 	_fire_btn.icon = PowerupIcons.texture(type) if Data.PW.has(type) else null
 	_back_btn.icon = _fire_btn.icon
-	_back_btn.text = "FRENO NITRO" if type == "nitro" else ("LËR PRAPA" if type == "mine" else "GJUAJ PRAPA")
+	_back_btn.text = Data.t("input.back.%s" % type) if Data.has_text("input.back.%s" % type) else Data.t("input.back")
 	_back_btn.visible = type in ["eagle", "bolt", "mine", "nitro"]
 	_back_btn.add_theme_color_override("font_color", UiTheme.AMBER if type == "nitro" else Color.WHITE)
 	_fire_btn.disabled = not action_available(false)
@@ -287,10 +286,10 @@ func sync_actions() -> void:
 	if _car != null:
 		var why: String = _race.item_status(_car).reason
 		if why in ["no_target", "too_far"]:
-			_fire_btn.text = "PA RIVAL" if why == "no_target" else "AFROHU · 15 m"
+			_fire_btn.text = Data.t("input.no_rival") if why == "no_target" else Data.t("hint.deny.too_far")
 		if type == "eagle" and not bool(_race.item_status(_car, true).ready):
-			_back_btn.text = "PA RIVAL"
-		_boost_btn.text = "TURBO" if _car.skill_charge >= 1.0 else "DRIFT %d%%" % floori(_car.skill_charge * 100.0)
+			_back_btn.text = Data.t("input.no_rival")
+		_boost_btn.text = Data.t("input.turbo") if _car.skill_charge >= 1.0 else Data.t("input.drift", floori(_car.skill_charge * 100.0))
 		_boost_btn.disabled = not _can_act() or not Rules.boost_status(_race, _car).is_empty()
 		_boost_fill.position = Vector2(8, _boost_btn.size.y - 7)
 		_boost_fill.size = Vector2((_boost_btn.size.x - 16) * _car.skill_charge, 3)
@@ -459,7 +458,7 @@ func _recount(kb_gas := false, kb_brake := false) -> void:
 		if button != null:
 			button.set_pressed_no_signal(_held(pair[1]))
 	if _auto_label != null:
-		_auto_label.text = "GAZI NDALUR" if brake or not gas else "GAZ AUTO"
+		_auto_label.text = Data.t("input.gas_cut") if brake or not gas else Data.t("input.auto_gas")
 	_update_marker()
 
 

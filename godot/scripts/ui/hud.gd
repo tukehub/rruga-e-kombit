@@ -119,7 +119,7 @@ func _build() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
 	h.add_child(v)
-	_lap = UiTheme.label("XHIRO 1/2", 23, UiTheme.CYAN)
+	_lap = UiTheme.label(Data.t("hud.lap", [1, 2]), 23, UiTheme.CYAN)
 	v.add_child(_lap)
 	_time = UiTheme.label("0:00.000", 23, UiTheme.TEXT)
 	v.add_child(_time)
@@ -132,7 +132,7 @@ func _build() -> void:
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 3)
 	standings.add_child(bv)
-	bv.add_child(UiTheme.label("RENDITJA · ±m NGA TI", 18, UiTheme.CYAN))
+	bv.add_child(UiTheme.label(Data.t("hud.standings"), 18, UiTheme.CYAN))
 	_board = VBoxContainer.new()
 	_board.add_theme_constant_override("separation", 0)
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -168,7 +168,7 @@ func _build() -> void:
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_flash.color = Color(1, 1, 1, 0)
 	add_child(_flash)
-	_pause = UiTheme.button("II")
+	_pause = UiTheme.button(Data.t("hud.pause"))
 	_pause.add_theme_font_override("font", UiTheme.body_bold())
 	_pause.add_theme_font_size_override("font_size", 30)
 	_pause.add_theme_stylebox_override("normal", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.8), Color(1, 1, 1, 0.65), 12))
@@ -229,7 +229,7 @@ func _build() -> void:
 	_speed.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_speed.offset_bottom = -28
 	_gauge.add_child(_speed)
-	_speed_unit = UiTheme.label("KM/H", 18, UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_CENTER)
+	_speed_unit = UiTheme.label(Data.t("hud.speed_unit"), 18, UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_CENTER)
 	_speed_unit.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	_speed_unit.offset_top = -34
 	_speed_unit.offset_bottom = -10
@@ -472,7 +472,7 @@ func _process(dt: float) -> void:
 	_pos.text = str(player.place)
 	_pos_n.text = "/%d" % race.cars.size()
 	var lap := clampi(player.lap + 1, 1, race.laps)
-	_lap.text = "MBËRRITE" if player.finished else "XHIRO %d/%d" % [lap, race.laps]
+	_lap.text = Data.t("hud.finished") if player.finished else Data.t("hud.lap", [lap, race.laps])
 	_time.text = Game.fmt_time(player.finish_time if player.finished else race.time)
 	_update_corner_caption()
 	_speed.text = str(roundi(absf(player.v) * 3.6))
@@ -515,7 +515,7 @@ func _process(dt: float) -> void:
 	for i in mini(race.order.size(), _board_gaps.size()):
 		var c: CarState = race.order[i]
 		var metres := roundi(c.progress - player.progress)
-		_board_gaps[i].text = "TI" if c == player else ("+%dm" % metres if metres > 0 else "%dm" % metres)
+		_board_gaps[i].text = Data.t("hud.you") if c == player else ("+%dm" % metres if metres > 0 else "%dm" % metres)
 	# slots
 	var sk := ""
 	for s in player.slots:
@@ -529,7 +529,7 @@ func _process(dt: float) -> void:
 				var pw: Dictionary = Data.PW[s.type]
 				b.icon = PowerupIcons.texture(s.type)
 				b.text = str(s.ammo) if s.type == "bolt" else ""
-				b.tooltip_text = str(pw.name)
+				b.tooltip_text = Data.pw_name(s.type)
 				b.add_theme_color_override("font_color", Color.html(pw.col).lightened(0.25))
 				b.visible = true
 			else:
@@ -537,9 +537,9 @@ func _process(dt: float) -> void:
 				b.icon = null
 				b.tooltip_text = ""
 				b.visible = false
-		_slot_name.text = Data.PW[player.slots[0].type].name.to_upper() if not player.slots.is_empty() else ""
+		_slot_name.text = Data.pw_name(player.slots[0].type).to_upper() if not player.slots.is_empty() else ""
 	if _hold_index >= 0:
-		_target_hint.text = "MBAJ PËR TA LËSHUAR · %d%%" % roundi(_hold_fraction * 100.0)
+		_target_hint.text = Data.t("hud.hold_to_drop", roundi(_hold_fraction * 100.0))
 		_target_hint.modulate = UiTheme.CYAN
 	else:
 		var status := race.item_status(player)
@@ -548,7 +548,7 @@ func _process(dt: float) -> void:
 	_mm_dots.queue_redraw()
 	_gauge.queue_redraw()
 	if Settings.show_fps or diagnostic_fps:
-		_fps.text = "%.1f ms  (max %.1f)  %d fps" % [Game.frame_ms_avg, Game.frame_ms_max, Engine.get_frames_per_second()]
+		_fps.text = Data.t("hud.fps", [Game.frame_ms_avg, Game.frame_ms_max, Engine.get_frames_per_second()])
 	else:
 		_fps.text = ""
 
@@ -559,12 +559,12 @@ func _update_corner_caption() -> void:
 		return
 	var corner := _route_guide.next(player.s, clampf(absf(player.v) * 3.0 + 40.0, 90.0, 200.0))
 	if corner.is_empty():
-		_corner_caption.text = "VIJO DREJT"
+		_corner_caption.text = Data.t("hud.corner.straight")
 		_corner_caption.modulate = UiTheme.MUTED
 		return
 	if player.progress + float(corner.distance) > race.laps * race.L:
-		_corner_caption.text = "FUND %dm" % maxi(0, roundi(race.laps * race.L - player.progress))
+		_corner_caption.text = Data.t("hud.corner.finish", maxi(0, roundi(race.laps * race.L - player.progress)))
 		_corner_caption.modulate = UiTheme.AMBER
 		return
-	_corner_caption.text = "%s %s" % ["→" if corner.direction == "right" else "←", "%dm" % roundi(corner.distance) if float(corner.distance) > 5.0 else "TANI"]
+	_corner_caption.text = "%s %s" % ["→" if corner.direction == "right" else "←", "%dm" % roundi(corner.distance) if float(corner.distance) > 5.0 else Data.t("hud.corner.now")]
 	_corner_caption.modulate = UiTheme.AMBER if int(corner.severity) >= 2 else Color.WHITE

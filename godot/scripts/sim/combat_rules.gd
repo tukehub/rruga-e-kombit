@@ -174,10 +174,12 @@ static func incoming(race, c: CarState) -> Dictionary:
 		count += 1
 		if eta <= soonest:
 			soonest = eta
-			var side := "PRAPA" if signed_gap >= 0.0 else "PARA"
+			# Where it comes from, as data; the HUD puts it into words.
+			# side: the driver's right (+1), left (-1) or the same lane (0).
+			var side := 0
 			if absf(float(p.d) - c.d) > 2.5:
-				side += " · " + ("DJATHTAS" if float(p.d) > c.d else "MAJTAS")
-			result = {"id": p.id, "eta": eta, "direction": side, "urgent": eta <= 1.25, "shielded": c.shield_t > eta}
+				side = 1 if float(p.d) > c.d else -1
+			result = {"id": p.id, "eta": eta, "behind": signed_gap >= 0.0, "side": side, "urgent": eta <= 1.25, "shielded": c.shield_t > eta}
 	if not result.is_empty():
 		result["count"] = count
 	return result

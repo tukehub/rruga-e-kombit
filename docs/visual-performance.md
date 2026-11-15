@@ -94,7 +94,7 @@ Small GDScript arrays/dictionaries still update during racing.
 
 ## Verification and device review
 
-`tools/run_tests.py` includes 18 scenes. `renderer_truth` and a one-second
+`tools/run_tests.py` includes 19 scenes. `renderer_truth` and a one-second
 benchmark launch run once as Mobile and once as Forward+, checking the shipped
 renderer settings, every preset/pressure budget, the sky, a weather
 transition, the garage and the `PROFILE:` report. The other checks cover controller

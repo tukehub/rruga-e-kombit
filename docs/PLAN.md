@@ -12,7 +12,7 @@ Original architecture decisions (retained; see STATUS.md for current verificatio
 godot/                         Godot 4.4 project (res://)
   project.godot                Forward+ (desktop) / Mobile (Android), landscape sensor, keep screen on, 60 fps physics
   export_presets.cfg           Android arm64, al.tukehub.rruga, immersive, keystore from env
-  scripts/data/                cars.gd · powerups.gd · cities.gd · strings_sq.gd  (data only)
+  scripts/data/                data.gd (cities, cars, power-ups, drivers) · strings_sq.gd (every text the player reads)
   scripts/sim/                 track.gd · race.gd · car_state.gd  (pure logic, port of 02_track/03_sim)
   scripts/game/                game.gd (state machine) · settings.gd · input_ctl.gd · quality.gd · sfx.gd
   scripts/world/               terrain.gd · road_mesh.gd · city_loader.gd · sky_weather.gd · landmarks.gd

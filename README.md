@@ -35,7 +35,8 @@ Tests exercise all available city simulations on three difficulties, load every
 city through the production race scene, and check the shared
 car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
-menu → race → results → retry → menu loop. The runner rejects script errors even
+menu → race → results → retry → menu loop, and reject UI text written into a
+script instead of the string table. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.
 The renderer checks and a one-second benchmark launch run once as Mobile and
 once as Forward+: headless Godot keeps the requested renderer's name, so the
@@ -97,7 +98,8 @@ ground intersects the road. No data is fabricated if access fails.
 Pipeline regression test: `python3 tools/pipeline/test_terrain.py`.
 
 Car source: Car Concept © 2024 Darmstadt Graphics Group GmbH and Eric Chadwick, CC BY 4.0; conversion instructions are in `tools/import_carconcept.py`. SFX: `python3 tools/gen_sfx.py`.
-The central lists and model paths live in `godot/scripts/data/data.gd`.
+The central lists and model paths live in `godot/scripts/data/data.gd`; every
+text the player reads lives in `godot/scripts/data/strings_sq.gd`.
 Original landmark interpretations use the geographic anchors in `props.json`.
 Credits include the CC BY 4.0 car, OSM ODbL, Copernicus DEM, Poly Haven CC0, Godot MIT and the font
 OFL texts. [Architecture and source/licence table](docs/PLAN.md).
@@ -159,7 +161,10 @@ Rules for every change:
   `PRESENTATION_VERSION` in `scripts/game/settings.gd`.
 - Every change adds or updates a test under `godot/tests/` run by
   `tools/run_tests.py`.
-- UI strings go through one table, not literals.
+- UI strings go through one table, not literals: add a key to
+  `scripts/data/strings_sq.gd` and read it with `Data.t(key)`, `Data.t(key,
+  args)` or `Data.t_list(key)`. `tests/string_table` fails on a literal left
+  in a script, an unknown key and an unused key.
 - The name is always "Vortex".
 
 ### 1. Foundations (critical)
@@ -173,9 +178,12 @@ Rules for every change:
     ([Profiling on the target phones](#profiling-on-the-target-phones)).
     Switch the override only if Forward+ holds p95 under 16 ms on the A56 at
     medium; until then Section 3 assumes the Mobile renderer.
-1.2 **String table.** Move all UI literals (`scripts/ui/*.gd`,
-    `scripts/game/race_input.gd`, `scripts/data/data.gd`) into
-    `scripts/data/strings_sq.gd`, accessed via `Data.t(key)`.
+1.2 **String table — done.** Menus, HUD, touch controls, race feed, pause,
+    results, the loading screen with its facts, and the copy that was in
+    `data.gd` are in `scripts/data/strings_sq.gd`, read through `Data.t(key)`.
+    The simulation returns data, not words (incoming-threat side). Driver
+    names and `Data.GAME_NAME` stay in `data.gd`: proper names, the same in
+    every language.
 1.3 **`Progress` autoload** (`scripts/game/progress.gd`, `user://progress.cfg`):
     version, fans, unlocked paints/cities, cup stars. Load/save/migrate + test.
 1.4 **`Music` autoload** (`scripts/game/music.gd`): "Music" bus added to

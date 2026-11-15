@@ -1,9 +1,10 @@
 # Loading facts
 
-The offline pool in `godot/scripts/game/game.gd` contains 128 short Albanian
-facts, expanded from 64 on 2026-11-12. The existing shuffled bag shows every
-entry before repeating and avoids immediate repeats across bags. Adding facts
-does not require a network connection at runtime.
+The offline pool, the `loading.facts` list in
+`godot/scripts/data/strings_sq.gd`, contains 128 short Albanian facts,
+expanded from 64 on 2026-11-12. The existing shuffled bag shows every entry
+before repeating and avoids immediate repeats across bags. Adding facts does
+not require a network connection at runtime.
 
 Keep new entries short, independently understandable and distinct from existing
 entries. State the year or month for changing discoveries and milestones rather

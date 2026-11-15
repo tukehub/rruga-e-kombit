@@ -120,16 +120,16 @@ func incoming_warnings() -> void:
 		equip(shooter, "eagle")
 		race.use_item(shooter, false)
 		var threat := race.incoming_threat(c)
-		check(not threat.is_empty() and str(threat.direction).begins_with("PRAPA") and not threat.urgent, "real incoming homing shot warns early on either track direction")
+		check(not threat.is_empty() and bool(threat.behind) and not threat.urgent, "real incoming homing shot warns early on either track direction")
 		if threat.is_empty():
 			continue
 		c.shield_t = 8.0
 		check(race.incoming_threat(c).shielded, "warning recognizes a shield lasting through estimated arrival")
 		c.shield_t = 0.0
 		race.projs[0].d = c.d + 4.0
-		check(str(race.incoming_threat(c).direction).ends_with("DJATHTAS"), "incoming side uses the driver's right track frame")
+		check(int(race.incoming_threat(c).side) == 1, "incoming side uses the driver's right track frame")
 		race.projs[0].d = c.d - 4.0
-		check(str(race.incoming_threat(c).direction).ends_with("MAJTAS"), "incoming side reverses consistently with the track frame")
+		check(int(race.incoming_threat(c).side) == -1, "incoming side reverses consistently with the track frame")
 		race.projs[0].s = race.track.mod_s(c.s - 25)
 		check(race.incoming_threat(c).urgent, "near impact escalates urgency")
 		race.projs[0].life = 0.01
@@ -147,7 +147,7 @@ func incoming_warnings() -> void:
 		move(race, shooter, c.progress + 65)
 		equip(shooter, "eagle")
 		race.use_item(shooter, true)
-		check(str(race.incoming_threat(c).get("direction", "")).begins_with("PARA"), "reverse-fired homing approach is reported from ahead")
+		check(race.incoming_threat(c).get("behind", true) == false, "reverse-fired homing approach is reported from ahead")
 		c.finished = true
 		check(race.incoming_threat(c).is_empty(), "finished racers have no incoming alarms")
 

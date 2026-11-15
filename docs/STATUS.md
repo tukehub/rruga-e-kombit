@@ -51,6 +51,10 @@ Profile builds now pass the benchmark options where the game reads them
 neither build has been run on a phone yet.
 [Renderer budgets](visual-performance.md#renderer).
 
+Every text the player reads now comes from one string table
+(`godot/scripts/data/strings_sq.gd`); scripts hold keys, and a test rejects
+text written into a script, unknown keys and unused keys.
+
 Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.

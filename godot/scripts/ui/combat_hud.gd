@@ -107,13 +107,13 @@ func _state(key: String, seconds: float, duration: float, title: String) -> void
 func _process(dt: float) -> void:
 	if race == null or player == null:
 		return
-	_state("shield", player.shield_t, Rules.SHIELD_DURATION, "MBUROJË")
-	_state("nitro", player.nitro_t, player.nitro_duration, "DRIFT" if player.nitro_from_drift else "NITRO")
-	_state("recovery", maxf(player.recovery_t, player.invuln_t), Rules.RECOVERY_DURATION if player.recovery_t > 0.0 else 2.5, "RIMARRJE" if player.recovery_t > 0.0 else "MBROJTJE")
+	_state("shield", player.shield_t, Rules.SHIELD_DURATION, Data.t("combat.shield"))
+	_state("nitro", player.nitro_t, player.nitro_duration, Data.t("combat.drift") if player.nitro_from_drift else Data.t("combat.nitro"))
+	_state("recovery", maxf(player.recovery_t, player.invuln_t), Rules.RECOVERY_DURATION if player.recovery_t > 0.0 else 2.5, Data.t("combat.recovery") if player.recovery_t > 0.0 else Data.t("combat.protected"))
 	var hp := clampf(player.health / player.max_hp, 0.0, 1.0)
 	var active := race.started and not player.finished and player.wreck_t <= 0.0
 	var critical := active and hp <= 0.25
-	_health.text = ("KRITIK " if critical else "SHËNDET ") + "%d%%" % roundi(hp * 100.0)
+	_health.text = Data.t("combat.critical", roundi(hp * 100.0)) if critical else Data.t("combat.health", roundi(hp * 100.0))
 	_health.modulate = UiTheme.RED if critical else UiTheme.MUTED
 	_critical_clock = maxf(0.0, _critical_clock - dt)
 	if critical and (not _critical or _critical_clock <= 0.0):
@@ -134,7 +134,10 @@ func _process(dt: float) -> void:
 	var guarded := bool(threat.shielded)
 	var color := UiTheme.CYAN if guarded else (UiTheme.RED if bool(threat.urgent) else UiTheme.AMBER)
 	_warning_text.modulate = color
-	_warning_text.text = "%s · %s · %.1f s" % ["MBROJTUR" if guarded else "SHQIPONJË", threat.direction, float(threat.eta)]
+	var direction := Data.t("dir.behind") if bool(threat.behind) else Data.t("dir.ahead")
+	if int(threat.side) != 0:
+		direction += " · " + (Data.t("dir.right") if int(threat.side) > 0 else Data.t("dir.left"))
+	_warning_text.text = "%s · %s · %.1f s" % [Data.t("combat.guarded") if guarded else Data.t("combat.incoming"), direction, float(threat.eta)]
 	if int(threat.count) > 1:
 		_warning_text.text += " ×%d" % int(threat.count)
 	if not guarded and _warning_clock <= 0.0:
