@@ -33,6 +33,8 @@ var _light_clock := 0.0
 var _env_pushed := Vector2(-1.0, -1.0)
 var pickups: PickupVisual
 var pause_ui: Control
+var _pause_box: Control
+var _controls_ui: Control
 var _ui_layer: CanvasLayer
 
 var state := "intro"
@@ -47,6 +49,7 @@ var last500 := false
 var paused := false
 var _snd_t := {}
 var _seen_tip := false
+var _tilt_missing_t := 0.0
 
 
 func _ready() -> void:
@@ -88,6 +91,7 @@ func restart() -> void:
 	fin_t = 0.0
 	finish_speed_limit = 0.0
 	last500 = false
+	_tilt_missing_t = 0.0
 	_weather_clock = 0.0
 	_weather_step = 0
 	_light_clock = 0.0
@@ -226,13 +230,15 @@ func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_ui_layer = layer
+	var safe := UiTheme.safe_area(layer)
 	views = RaceViews.new()
 	add_child(views)
-	views.setup(cam, cars[race.cars.find(player)], layer)
+	views.setup(cam, cars[race.cars.find(player)], safe)
 	input = RaceInput.new()
-	layer.add_child(input)
+	safe.add_child(input)
+	input.bind(player, race)
 	hud = Hud.new()
-	layer.add_child(hud)
+	safe.add_child(hud)
 	hud.setup(race, player, track)
 	hud.slot_selected.connect(func(i: int):
 		if i > 0 and i < player.slots.size():
@@ -251,13 +257,15 @@ func _build_pause(layer: CanvasLayer) -> void:
 	pause_ui.process_mode = Node.PROCESS_MODE_ALWAYS
 	layer.add_child(pause_ui)
 	pause_ui.add_child(UiTheme.shade(0.7))
+	var safe := UiTheme.safe_area(pause_ui)
 	var box := UiTheme.panel(22)
+	_pause_box = box
 	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	box.offset_left = -220
 	box.offset_right = 220
-	box.offset_top = -205
-	box.offset_bottom = 205
-	pause_ui.add_child(box)
+	box.offset_top = -255
+	box.offset_bottom = 255
+	safe.add_child(box)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -267,6 +275,12 @@ func _build_pause(layer: CanvasLayer) -> void:
 	var b_resume := UiTheme.button("Vazhdo", UiTheme.CYAN.darkened(0.4))
 	b_resume.pressed.connect(func(): Sfx.ui_click(); toggle_pause())
 	v.add_child(b_resume)
+	var b_controls := UiTheme.button("Kontrollet")
+	b_controls.pressed.connect(func():
+		_pause_box.hide()
+		_controls_ui.show()
+		Sfx.ui_click())
+	v.add_child(b_controls)
 	var b_compare := UiTheme.button("Test: fshih peizazhin")
 	b_compare.pressed.connect(func():
 		set_scenery_visible(not scenery_visible)
@@ -279,6 +293,43 @@ func _build_pause(layer: CanvasLayer) -> void:
 	var b_quit := UiTheme.button("Dil")
 	b_quit.pressed.connect(func(): Sfx.ui_back(); get_tree().paused = false; Sfx.stop_loops(); Game.goto("menu"))
 	v.add_child(b_quit)
+	_build_control_settings(safe)
+
+
+func _build_control_settings(parent: Control) -> void:
+	_controls_ui = UiTheme.panel(22)
+	_controls_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_controls_ui.offset_left = 40
+	_controls_ui.offset_right = -40
+	_controls_ui.offset_top = 20
+	_controls_ui.offset_bottom = -20
+	parent.add_child(_controls_ui)
+	var margins := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margins.add_theme_constant_override("margin_" + side, 16)
+	_controls_ui.add_child(margins)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	margins.add_child(column)
+	column.add_child(UiTheme.headline("Kontrollet", 40, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	var settings_panel := preload("res://scripts/ui/control_settings.gd").new()
+	settings_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(settings_panel)
+	var back_button := UiTheme.button("Kthehu te pauza")
+	back_button.pressed.connect(_close_control_settings)
+	column.add_child(back_button)
+	_controls_ui.hide()
+
+
+func _close_control_settings() -> void:
+	Settings.save()
+	_controls_ui.hide()
+	_pause_box.show()
+	Sfx.ui_back()
 
 
 func set_scenery_visible(enabled: bool) -> void:
@@ -300,15 +351,24 @@ func toggle_pause() -> void:
 	paused = not paused
 	get_tree().paused = paused
 	pause_ui.visible = paused
+	input.set_driving_enabled(false)
 	input.reset_controls()
 	_clear_pending_actions()
 	input.visible = not paused
+	_controls_ui.hide()
+	_pause_box.show()
 	if paused:
 		Sfx.stop_loops()
+	else:
+		input.resume_controls()
+		input.set_driving_enabled(state == "race")
 
 
 func _clear_pending_actions() -> void:
 	if player != null:
+		player.ctrl.steer = 0.0
+		player.ctrl.gas = false
+		player.ctrl.brake = false
 		player.ctrl.fire = false
 		player.ctrl.back = false
 		player.ctrl.cycle = false
@@ -317,13 +377,16 @@ func _clear_pending_actions() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		if not paused and state in ["race", "countdown"]:
+		if input != null and not paused and state in ["intro", "race", "countdown"]:
 			toggle_pause()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		toggle_pause()
+		if paused and _controls_ui.visible:
+			_close_control_settings()
+		else:
+			toggle_pause()
 		get_viewport().set_input_as_handled()
 
 
@@ -345,7 +408,9 @@ func _process(dt: float) -> void:
 	dt = minf(dt, 0.1)
 	# Children process after this node: poll here so steering and pedals reach
 	# the simulation in the same frame instead of the next one.
+	input.set_driving_enabled(state == "race")
 	input.poll(dt)
+	_recover_missing_tilt(dt)
 	_update_weather(dt)
 	match state:
 		"intro":
@@ -354,9 +419,11 @@ func _process(dt: float) -> void:
 				state = "countdown"
 				cd_t = 3.2
 				cd_n = 4
-				if not Settings.touch_steer and not _seen_tip:
+				if not _seen_tip:
 					_seen_tip = true
-					hud.feed("Anoje telefonin për të kthyer · djathtas GAZ · majtas FRENA", UiTheme.AMBER, 4.5)
+					var steering_tip := "Prek timonin dhe rrëshqit" if Settings.touch_steer else "Anoje telefonin për të kthyer"
+					var gas_tip := "gazi automatik · freno për drift" if Settings.auto_accel else "mbaj GAZ për të përshpejtuar"
+					hud.feed(steering_tip + " · " + gas_tip + " · Pauzë → Kontrollet", UiTheme.AMBER, 5.0)
 		"countdown":
 			cd_t -= dt
 			var n := int(ceil(cd_t))
@@ -371,7 +438,7 @@ func _process(dt: float) -> void:
 				Sfx.play("go", "UI", -2.0)
 				acc = 0.0
 				if not Settings.touch_steer and not input.tilt_ok and not input.is_desktop():
-					hud.feed("Animi nuk po lexohet. Cilësimet → Timoni: Prekje", UiTheme.RED, 6.0)
+					_recover_missing_tilt(1.0)
 			_engine_audio(0.12 + (0.25 if input.gas else 0.0), input.gas, true, 0.0, dt)
 			cam.follow(player, dt)
 		"race", "finish":
@@ -388,6 +455,7 @@ func _process(dt: float) -> void:
 					finish_speed_limit = maxf(6.0, finish_speed_limit - 8.0 * DT)
 					player.v = minf(player.v, finish_speed_limit)
 			_events()
+			input.sync_actions()
 			if state == "race" and not last500:
 				var left := race.laps * race.L - player.progress
 				if player.lap == race.laps - 1 and left > 0.0 and left < 500.0:
@@ -418,6 +486,19 @@ func _process(dt: float) -> void:
 	if sky.wet > 0.01:
 		sky.set_rain_ground(track.pos(player.s, player.d), track.tangent(player.s))
 	Sfx.listener_pos = cam.global_position
+
+
+func _recover_missing_tilt(dt: float) -> void:
+	if state != "race" or Settings.touch_steer or input.is_desktop() or input.tilt_ok:
+		_tilt_missing_t = 0.0
+		return
+	# Allow a brief sensor warm-up after resume or changing steering mode.
+	_tilt_missing_t += dt
+	if _tilt_missing_t >= 1.0:
+		Settings.touch_steer = true
+		Settings.save()
+		_tilt_missing_t = 0.0
+		hud.feed("Sensori nuk lexohet. Timoni me prekje u aktivizua.", UiTheme.AMBER, 6.0)
 
 
 func _near_vol(s: float) -> float:
@@ -549,6 +630,8 @@ func _events() -> void:
 			"finish":
 				if c == player and state == "race":
 					state = "finish"
+					input.set_driving_enabled(false)
+					input.hide()
 					fin_t = 0.0
 					finish_speed_limit = maxf(6.0, player.v)
 					player.autopilot = true

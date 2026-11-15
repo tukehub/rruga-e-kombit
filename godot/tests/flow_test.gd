@@ -48,6 +48,8 @@ func _ready() -> void:
 	check(fact != null and fact.get_theme_font_size("font_size") > 23, "loading fact uses larger text")
 	preview.free()
 	var menu: Menu = Game._root.get_child(0)
+	menu.show_page("settings")
+	check(button(menu, "Kalibro animin") != null, "main settings includes shared control configuration")
 	Game.race_opts.reverse = false
 	Game.race_opts.laps = 0
 	menu.show_page("title")
@@ -172,6 +174,7 @@ func _ready() -> void:
 	scene.race.emit({"t": "finish", "car": scene.player})
 	scene._events()
 	check(scene.state == "finish" and not scene.cam.cabin and scene.cam.get_cull_mask_value(2), "finish restores exterior view")
+	check(not scene.input.visible and not scene.input.gas, "finish hides and clears driving controls")
 	var finish_visual: CarVisual = scene.cars[scene.race.cars.find(scene.player)]
 	check(finish_visual.finish_driver.visible and finish_visual.finish_glass.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "finish reveals driver through windshield")
 	var finish_progress: float = scene.player.progress
@@ -203,7 +206,34 @@ func _ready() -> void:
 	scene.input.gas = true
 	scene.toggle_pause()
 	check(scene.paused and not scene.input.gas, "pause resets input")
+	button(scene, "Kontrollet").pressed.emit()
+	check(scene._controls_ui.visible and not scene._pause_box.visible and get_tree().paused, "control configuration opens over the preserved paused race")
+	var previous_input := Settings.input_config()
+	var control_settings: Node = scene._controls_ui.find_children("*", "OptionButton", true, false)[0].get_parent().get_parent()
+	var accel: OptionButton = control_settings._choices.auto_accel.node
+	accel.item_selected.emit(1)
+	var hand: OptionButton = control_settings._choices.left_handed.node
+	hand.item_selected.emit(1)
+	check(Settings.auto_accel and Settings.left_handed and not scene.input.gas and not scene.player.ctrl.gas, "paused control changes cannot accelerate the car")
+	button(scene, "Kthehu te pauza").pressed.emit()
+	check(not scene._controls_ui.visible and scene._pause_box.visible and scene.paused, "returning from controls keeps the race paused")
+	Settings.load_input_config(previous_input)
+	Settings.save()
 	scene.toggle_pause()
+	var previous_state: String = scene.state
+	var desktop_before: bool = scene.input.is_desktop()
+	scene.state = "race"
+	scene.input._desktop = false
+	scene.input.tilt_ok = false
+	Settings.touch_steer = false
+	scene._recover_missing_tilt(0.5)
+	check(not Settings.touch_steer, "tilt fallback allows sensors to warm up after resume")
+	scene._recover_missing_tilt(0.51)
+	check(Settings.touch_steer and scene.input._steer_btn.visible, "missing mobile tilt restores usable touch steering during the race")
+	scene.input._desktop = desktop_before
+	scene.state = previous_state
+	Settings.load_input_config(previous_input)
+	Settings.save()
 	# Exercise actual intro, countdown, race, finish and results hand-off.
 	for batch in 120:
 		for i in 600:

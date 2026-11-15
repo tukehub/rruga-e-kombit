@@ -30,7 +30,7 @@ class CabinOverlay extends Control:
 		draw_arc(Vector2(w * 0.34, h + 36), 80, PI, TAU, 40, Color(0.035, 0.045, 0.06, 0.9), 15, true)
 
 
-func setup(cam: ChaseCam, player_visual: CarVisual, layer: CanvasLayer) -> void:
+func setup(cam: ChaseCam, player_visual: CarVisual, layer: Node) -> void:
 	race_camera = cam
 	enabled = Settings.mirror
 	_set_player_layer(player_visual)
@@ -80,7 +80,7 @@ func setup(cam: ChaseCam, player_visual: CarVisual, layer: CanvasLayer) -> void:
 	mirror_button.pressed.connect(_toggle_mirror)
 
 
-func _button(layer: CanvasLayer, label: String, top: float) -> Button:
+func _button(layer: Node, label: String, top: float) -> Button:
 	var b := UiTheme.button(label)
 	b.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	b.offset_left = -180

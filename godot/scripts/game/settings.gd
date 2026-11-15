@@ -9,10 +9,20 @@ const PRESENTATION_VERSION := 1
 # tilt sensitivity: index into TILT_FULL (degrees for full steer)
 const TILT_FULL := [32.0, 23.0, 15.0]
 const TILT_LABELS := ["E ulët", "Normale", "E lartë"]
+const CONTROL_SCALES := [0.9, 1.0, 1.15]
+const TOUCH_TRAVEL := [125.0, 100.0, 75.0]
 
 var tilt_sens := 1
 var tilt_invert := false
 var touch_steer := true         # visible touch pad; tilt remains selectable
+var auto_accel := true
+var left_handed := false
+var touch_sens := 1
+var control_size := 1
+var control_opacity := 0.9
+var control_offset_x := 0.0
+var control_offset_y := 0.0
+var tilt_center := 0.0          # neutral sensor angle, before inversion
 var assist := true
 var difficulty := 1
 var dynamic_weather := false
@@ -64,9 +74,10 @@ func load_settings() -> void:
 	var cf := ConfigFile.new()
 	if cf.load(PATH) != OK:
 		return
-	tilt_sens = cf.get_value("input", "tilt_sens", tilt_sens)
-	tilt_invert = cf.get_value("input", "tilt_invert", tilt_invert)
-	touch_steer = cf.get_value("input", "touch_steer", touch_steer)
+	var input_values := {}
+	for key in input_config():
+		input_values[key] = cf.get_value("input", key, get(key))
+	load_input_config(input_values)
 	assist = cf.get_value("game", "assist", assist)
 	difficulty = cf.get_value("game", "difficulty", difficulty)
 	haptics = cf.get_value("game", "haptics", haptics)
@@ -94,9 +105,8 @@ func load_settings() -> void:
 
 func save() -> void:
 	var cf := ConfigFile.new()
-	cf.set_value("input", "tilt_sens", tilt_sens)
-	cf.set_value("input", "tilt_invert", tilt_invert)
-	cf.set_value("input", "touch_steer", touch_steer)
+	for key in input_config():
+		cf.set_value("input", key, get(key))
 	cf.set_value("game", "assist", assist)
 	cf.set_value("game", "difficulty", difficulty)
 	cf.set_value("game", "haptics", haptics)
@@ -122,6 +132,36 @@ func save() -> void:
 	cf.set_value("meta", "presentation_version", presentation_version)
 	cf.save(PATH)
 	changed.emit()
+
+
+## Shared by persistence, live layout changes and the pause settings panel.
+func input_config() -> Dictionary:
+	var values := {}
+	for key in ["tilt_sens", "tilt_invert", "touch_steer", "auto_accel", "left_handed", "touch_sens", "control_size", "control_opacity", "control_offset_x", "control_offset_y", "tilt_center"]:
+		values[key] = get(key)
+	return values
+
+
+func load_input_config(values: Dictionary) -> void:
+	for key in ["tilt_invert", "touch_steer", "auto_accel", "left_handed"]:
+		set(key, bool(values.get(key, get(key))))
+	for key in ["tilt_sens", "touch_sens", "control_size"]:
+		set(key, clampi(int(values.get(key, get(key))), 0, 2))
+	for key in ["control_opacity", "control_offset_x", "control_offset_y", "tilt_center"]:
+		var value := float(values.get(key, get(key)))
+		if not is_finite(value):
+			value = float(get(key))
+		var lower := 0.45 if key == "control_opacity" else (-PI * 0.5 if key == "tilt_center" else 0.0)
+		var upper := PI * 0.5 if key == "tilt_center" else 1.0
+		set(key, clampf(value, lower, upper))
+
+
+func reset_control_layout() -> void:
+	left_handed = false
+	control_size = 1
+	control_opacity = 0.9
+	control_offset_x = 0.0
+	control_offset_y = 0.0
 
 
 func record_result(city: String, place: int, best_lap: float) -> void:

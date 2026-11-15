@@ -20,7 +20,7 @@ func _ready() -> void:
 		mc.add_theme_constant_override("margin_" + side, 60)
 	mc.add_theme_constant_override("margin_top", 30)
 	mc.add_theme_constant_override("margin_bottom", 26)
-	add_child(mc)
+	UiTheme.safe_area(self).add_child(mc)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	mc.add_child(v)

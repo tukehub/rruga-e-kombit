@@ -32,8 +32,12 @@ func _ready() -> void:
 	race.player.ctrl.back = true
 	race.player.ctrl.cycle = true
 	race.player.ctrl.select = 2
+	race.player.ctrl.gas = true
+	race.player.ctrl.brake = true
+	race.player.ctrl.steer = 0.8
 	scene._clear_pending_actions()
 	assert(not race.player.ctrl.fire and not race.player.ctrl.back and not race.player.ctrl.cycle and race.player.ctrl.select == 0, "pause must clear pending one-shot controls")
+	assert(not race.player.ctrl.gas and not race.player.ctrl.brake and race.player.ctrl.steer == 0.0, "pause must clear continuous driving controls")
 	scene.free()
 
 	# A 5 FPS frame runs three ticks and sheds the rest: the race slows down

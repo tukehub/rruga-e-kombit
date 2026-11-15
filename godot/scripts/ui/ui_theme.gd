@@ -13,6 +13,7 @@ const GREEN := Color("2bff88")
 const RED := Color("ff3b4e")
 const TEXT := Color("f4f1f7")
 const MUTED := Color("c4d0dd")
+const SafeArea = preload("res://scripts/ui/safe_area.gd")
 
 static var _display: FontFile
 static var _body: FontFile
@@ -127,6 +128,19 @@ static func spacer(h := 12.0) -> Control:
 	c.custom_minimum_size.y = h
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return c
+
+
+static func safe_area(parent: Node) -> Control:
+	var margins := SafeArea.new()
+	margins.name = "SafeArea"
+	parent.add_child(margins)
+	var content := Control.new()
+	content.name = "SafeContent"
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margins.add_child(content)
+	return content
 
 
 ## Full-screen dim backdrop for menus drawn over the 3D garage / world.

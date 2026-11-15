@@ -110,10 +110,8 @@ func _process(dt: float) -> void:
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	ui = Control.new()
-	ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ui = UiTheme.safe_area(layer)
 	ui.theme = UiTheme.theme()
-	layer.add_child(ui)
 	pages.title = _page_title()
 	pages.car = _page_car()
 	pages.settings = _page_settings()
@@ -408,9 +406,8 @@ func _page_settings() -> Control:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 6)
 	sc.add_child(list)
-	_set_row(list, "steer", "Timoni", ["Anim", "Prekje"], func(i): Settings.touch_steer = (i == 1))
-	_set_row(list, "sens", "Ndjeshmëria e animit", Settings.TILT_LABELS, func(i): Settings.tilt_sens = i)
-	_set_row(list, "invert", "Anim i kundërt", ["Jo", "Po"], func(i): Settings.tilt_invert = (i == 1))
+	list.add_child(preload("res://scripts/ui/control_settings.gd").new())
+	list.add_child(UiTheme.spacer(12))
 	_set_row(list, "assist", "Ndihmë në kthesa", ["Jo", "Po"], func(i): Settings.assist = (i == 1))
 	_set_row(list, "weather", "Mot dhe dritë dinamike", ["Jo", "Po"], func(i): Settings.dynamic_weather = (i == 1))
 	_set_row(list, "haptics", "Dridhje", ["Jo", "Po"], func(i): Settings.haptics = (i == 1))
@@ -476,9 +473,6 @@ func _set_slider(list: VBoxContainer, key: String, title: String, on_change: Cal
 
 func _refresh_settings() -> void:
 	_seg_set(_set_rows.weather, 1 if Settings.dynamic_weather else 0)
-	_seg_set(_set_rows.steer, 1 if Settings.touch_steer else 0)
-	_seg_set(_set_rows.sens, int(Settings.tilt_sens))
-	_seg_set(_set_rows.invert, 1 if Settings.tilt_invert else 0)
 	_seg_set(_set_rows.assist, 1 if Settings.assist else 0)
 	_seg_set(_set_rows.haptics, 1 if Settings.haptics else 0)
 	_seg_set(_set_rows.quality, maxi(0, ["auto", "low", "medium", "high"].find(Settings.quality)))
@@ -518,9 +512,9 @@ func _page_help() -> Control:
 	rt.add_theme_font_size_override("bold_font_size", 25)
 	var cy := "#" + UiTheme.CYAN.to_html(false)
 	rt.text = ("[b]Qëllimi:[/b] mblidh fuqitë me simbole, godit rivalët dhe mbërri i pari.\n\n" +
-		"[b]Timoni:[/b] ano telefonin majtas ose djathtas. Për timon me prekje zgjidh [b]Cilësimet → Timoni → Prekje[/b].\n\n" +
-		"[b]Pedalet:[/b] [color=%s]GAZ[/color] poshtë djathtas, [color=%s]FRENA[/color] poshtë majtas. Frena + kthesë = drift.\n\n" % [cy, cy] +
-		"[b]Fuqitë:[/b] [color=%s]GJUAJ PARA[/color] mbi gazin; [color=%s]GJUAJ PRAPA[/color] mbi frenën. Prek fuqinë në inventar për ta zgjedhur.\n\n" % [cy, cy] +
+		"[b]Timoni:[/b] prek bllokun majtas dhe rrëshqit nga pika ku vendose gishtin. Gazi është automatik; [color=%s]FRENA[/color] djathtas e ndal gazin. Frena + kthesë = drift.\n\n" % cy +
+		"[b]Përshtatja:[/b] te Cilësimet ose Pauzë → Kontrollet zgjidh pedale manuale, timon me anim, anën e timonit, madhësinë, dukshmërinë dhe vendosjen. Për anim, mbaje telefonin si gjatë lojës dhe prek Kalibro animin.\n\n" +
+		"[b]Fuqitë:[/b] butonat mbi frenën tregojnë veprimin e fuqisë së zgjedhur. Prek fuqinë në inventar për ta zgjedhur. [color=%s]NITRO[/color] përshpejton; [color=%s]FRENO NITRO[/color] e harxhon për frenim të menjëhershëm.\n\n" % [cy, cy] +
 		"[b]Tastiera:[/b] A/D ose shigjetat për timon, W gaz, S frena, Hapësirë gjuaj para, Shift/X prapa, Q/E ndërro fuqinë, Esc pauzë.")
 	inner.add_child(rt)
 	inner.add_child(_eyebrow("Fuqitë"))

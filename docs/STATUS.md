@@ -8,9 +8,13 @@ photorealistic surveys. The most detailed trees are limited to the opening stret
 The shared sports car is credited in `godot/assets/CREDITS.txt` and retains six
 paint choices with identical handling.
 
-The chase camera and car poses interpolate between simulation steps. Controls
-include side pedals, forward/back fire, an optional cabin view and a toggleable
-rear-view mirror. Menu transitions show loading feedback while the city is built.
+The chase camera and car poses interpolate between simulation steps. Automatic
+gas, relative touch steering and a brake/item group support two-thumb racing;
+manual pedals, mirrored placement, reach/size/opacity and calibrated tilt are
+available in the menu and during pause. Item actions show context and readiness;
+native safe areas protect the UI. [Control behavior and checks](mobile-controls.md).
+An optional cabin view and rear-view mirror remain available. Menu transitions
+show loading feedback while the city is built.
 
 Daylight and daytime rain use lower ambient fill and preset exposure, with
 restrained bloom and saturation. Wet asphalt stays darker and textured between

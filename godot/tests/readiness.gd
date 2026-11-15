@@ -189,66 +189,49 @@ func _ready() -> void:
 	effects._process(0.016)
 	check(effects._nodes.is_empty(), "expired combat visuals reclaimed")
 	effects.queue_free()
+	var previous_input := Settings.input_config()
+	Settings.auto_accel = false
+	Settings.touch_steer = true
+	Settings.left_handed = false
 	var controls := RaceInput.new()
 	add_child(controls)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	controls.size = Vector2(1280, 720)
-	check(controls.control_rect("gas").size.x > 96.0 and controls.control_rect("gas").size.y > 112.0, "larger pedals")
+	var test_car := combat.player
+	test_car.wreck_t = 0.0
+	test_car.spin_t = 0.0
+	test_car.slots = [{"type": "bolt", "ammo": 3}]
+	controls.bind(test_car, combat)
+	controls.set_driving_enabled(true)
 	check(not controls.control_rect("gas").intersects(controls.control_rect("fire")), "gas and fire do not overlap")
-	check(not controls.control_rect("brake").intersects(controls.control_rect("back")), "brake and rear fire do not overlap")
+	check(not controls.control_rect("brake").intersects(controls.control_rect("gas")), "manual pedals do not overlap")
 	check(not controls.control_rect("brake").intersects(controls.control_rect("steer")), "brake and steering do not overlap")
-	for viewport_width in [640.0, 960.0, 1280.0, 1600.0]:
-		controls.size = Vector2(viewport_width, 720)
-		var steering_rect := controls.control_rect("steer")
-		var brake_rect := controls.control_rect("brake")
-		var gas_rect := controls.control_rect("gas")
-		var margin := RaceInput.EDGE + RaceInput.PEDAL_SIZE.x + RaceInput.STEER_BASE_GAP
-		var previous_width := minf(RaceInput.STEER_SIZE.x, maxf(0.0, viewport_width - 2.0 * margin))
-		var previous_left := clampf(viewport_width * RaceInput.STEER_LEFT_FRACTION, margin, maxf(margin, viewport_width - margin - previous_width))
-		var old_expansion := minf(48.0, maxf(0.0, previous_left - margin))
-		var old_right := previous_left + previous_width
-		check(steering_rect.end.x >= old_right and steering_rect.end.x <= old_right + RaceInput.STEER_RIGHT_EXPANSION, "steering grows right by a bounded amount only")
-		check(steering_rect.end.x <= maxf(old_right, viewport_width * 0.5 - 126.0), "steering never grows under the item slots")
-		if viewport_width >= 1600.0:
-			check(steering_rect.end.x > old_right, "wide phones get a wider steering pad")
-		check(steering_rect.size.y > 96.0, "steering pad is taller than the previous version")
-		check(steering_rect.position.x < previous_left - old_expansion, "steering grows left beyond previous version")
-		check(steering_rect.size.x > previous_width + old_expansion, "steering is wider than previous version")
-		if viewport_width >= 1600.0:
-			check(is_equal_approx(steering_rect.position.x, previous_left - RaceInput.STEER_LEFT_EXPANSION), "left steering area expands")
-		check(steering_rect.position.x - brake_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from brake")
-		check(gas_rect.position.x - steering_rect.end.x >= RaceInput.STEER_PEDAL_GAP, "steering separated from gas")
-	controls.size = Vector2(1280, 720)
 	var touch := InputEventScreenTouch.new()
 	touch.index = 1
 	touch.position = controls.control_rect("gas").get_center()
 	touch.pressed = true
 	controls._gui_input(touch)
-	check(controls.gas and not controls.brake, "accelerator pedal")
+	check(controls.gas and not controls.brake, "manual accelerator pedal")
 	touch = touch.duplicate()
 	touch.index = 2
 	touch.position = controls.control_rect("brake").get_center()
 	controls._gui_input(touch)
-	check(controls.gas and controls.brake, "simultaneous gas/brake")
+	check(controls.gas and controls.brake, "manual simultaneous gas/brake")
 	touch = touch.duplicate()
 	touch.index = 3
 	touch.position = controls.control_rect("fire").get_center()
 	controls._gui_input(touch)
-	check(controls.gas and controls.brake and controls.fire, "fire while both pedals held")
-	var previous_touch_steer := Settings.touch_steer
-	Settings.touch_steer = true
+	check(controls.gas and controls.brake and controls.fire, "manual item action preserves held pedals")
 	touch = touch.duplicate()
 	touch.index = 5
-	# This is inside the new left-hand section, beyond the old pad bounds.
-	touch.position = Vector2(1280.0 * 0.2 - 75.0, controls.control_rect("steer").get_center().y)
+	touch.position = controls.control_rect("steer").get_center()
 	controls._gui_input(touch)
-	check(controls.gas and controls.brake and controls._pad_steer < -0.5, "new left steering area works with pedals held")
+	check(controls._pad_steer == 0.0, "steering starts neutral under the thumb")
 	var steering_drag := InputEventScreenDrag.new()
 	steering_drag.index = 5
-	steering_drag.position = controls.control_rect("steer").get_center() + Vector2(80, 0)
+	steering_drag.position = touch.position + Vector2(90, 0)
 	controls._gui_input(steering_drag)
-	check(controls.gas and controls.brake and controls._pad_steer > 0.5, "steering drag works with pedals held")
-	Settings.touch_steer = previous_touch_steer
+	check(controls.gas and controls.brake and controls._pad_steer > 0.5, "relative steering preserves held pedals")
 	touch = touch.duplicate()
 	touch.index = 2
 	touch.pressed = false
@@ -258,7 +241,6 @@ func _ready() -> void:
 	check(not controls.gas and not controls.brake, "focus/pause clears held touches")
 	# Multiple render frames may pass without a simulation tick. Each one-shot
 	# action must survive those frames and then be consumed exactly once.
-	var test_car := combat.player
 	test_car.wreck_t = 0.0
 	test_car.spin_t = 0.0
 	test_car.slots = [{"type": "bolt", "ammo": 3}, {"type": "nitro", "ammo": 1}]
@@ -286,6 +268,8 @@ func _ready() -> void:
 	controls._gui_input(touch)
 	check(not controls.gas and not controls.brake, "clear road is not an invisible pedal")
 	controls.queue_free()
+	Settings.load_input_config(previous_input)
+	Settings.changed.emit()
 	var sky := SkyEnv.new()
 	add_child(sky)
 	sky.apply("day")
