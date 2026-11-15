@@ -266,7 +266,8 @@ func step(dt: float) -> void:
 				if li >= laps:
 					c.finished = true
 					c.finish_time = time
-					c.fans += (9 - c.place) * 60
+					# Last place earns one step; every place gained adds another.
+					c.fans += (cars.size() + 1 - c.place) * 60
 					emit({"t": "finish", "car": c})
 				else:
 					emit({"t": "lap", "car": c, "lap": li + 1})
@@ -627,6 +628,7 @@ func wreck(c: CarState, by: CarState, kind: String) -> void:
 	c.nitro_t = 0.0
 	c.shield_t = 0.0
 	c.recovery_t = 0.0
+	c.chain_hits = 0
 	if by != null and by != c:
 		by.fans += FANS.wreck
 	emit({"t": "wreck", "car": c, "by": by, "kind": kind})
@@ -647,6 +649,7 @@ func hit(o: CarState, by: CarState, kind: String, dmg: float, fx: Dictionary) ->
 		pickup_director.note_hit(o, time)
 	if not recovering and not fx.is_empty():
 		o.recovery_t = CombatRules.RECOVERY_DURATION
+		o.chain_hits = 0  # counts softened hits inside this window only
 		emit({"t": "recovery", "car": o})
 	if not recovering and fx.get("spin", false):
 		o.spin_t = 1.15
@@ -882,7 +885,8 @@ func update_projs(dt: float) -> void:
 		if not dead:
 			for j in range(projs.size() - 1, -1, -1):
 				var q: Dictionary = projs[j]
-				if q == p or q.dir == p.dir:
+				# Dictionary == compares contents; identity is what is meant here.
+				if is_same(q, p) or q.dir == p.dir:
 					continue
 				if absf(T.wrap_s(q.s - p.s)) < 3.5 and absf(q.d - p.d) < 2.6:
 					emit({"t": "boom", "kind": q.kind, "s": q.s, "d": q.d})
@@ -896,9 +900,10 @@ func update_projs(dt: float) -> void:
 			dead = true
 			emit({"t": "fizzle", "kind": p.kind, "s": p.s, "d": p.d})
 		if dead:
-			var k := projs.find(p)
-			if k >= 0:
-				projs.remove_at(k)
+			for k in range(projs.size() - 1, -1, -1):
+				if is_same(projs[k], p):
+					projs.remove_at(k)
+					break
 		i -= 1
 
 

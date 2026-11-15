@@ -39,6 +39,10 @@ A rendered smoke test (needs a Vulkan GPU or software Vulkan) is available as
 godot --path godot -- --scene=race --auto --city=tirane --quality=medium --env=rain --shots=3,10
 ```
 
+Every race prints one `RACE seed=… city=… env=… laps=… diff=…` line (on a phone,
+`adb logcat -s godot`). Pass `--seed=<n>` with the same city, direction, weather,
+laps and difficulty to replay it; `--laps=<n>` shortens a race.
+
 Controls: tilt, or the touch-pad fallback in **Cilësimet**; right half gas, left
 half brake/drift; **GJUAJ** forward, **PRAPA** backward. Desktop testing supports
 arrows/WASD, Space, Shift/X, Q/E and Esc. There is no music.

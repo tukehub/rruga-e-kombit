@@ -202,10 +202,17 @@ func _setup_pines() -> void:
 
 
 func _build_race() -> void:
+	var seed_value := int(Time.get_unix_time_from_system()) % 100000
+	var laps := Game.city_laps(city_id)
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--seed="):
+			seed_value = int(a.substr(7))  # debug: replay a logged race
+		elif a.begins_with("--laps="):
+			laps = maxi(1, int(a.substr(7)))  # debug: short races
 	var opts := {
-		"laps": Game.city_laps(city_id),
+		"laps": laps,
 		"diff": int(Game.race_opts.diff),
-		"seed": int(Time.get_unix_time_from_system()) % 100000,
+		"seed": seed_value,
 		"wet": sky.wet,
 		"assist": Settings.assist,
 		"brake_assist": Settings.assist,
@@ -217,9 +224,10 @@ func _build_race() -> void:
 	player = race.player
 	if "--auto" in OS.get_cmdline_user_args():
 		player.autopilot = true  # debug: let the AI drive the player car
-	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--laps="):
-			race.laps = maxi(1, int(a.substr(7)))  # debug: short races
+	# One line per race in the log (adb logcat -s godot) is enough to replay it.
+	print("RACE seed=%d city=%s reverse=%s env=%s laps=%d diff=%d assist=%s car=%s driver=%d" % [
+		seed_value, city_id, str(bool(Game.race_opts.reverse)), env_id, race.laps, int(Game.race_opts.diff),
+		str(Settings.assist), str(Game.race_opts.car), int(Game.race_opts.driver)])
 	for c in race.cars:
 		var cv := CarVisual.new()
 		add_child(cv)
@@ -717,11 +725,12 @@ func _engine_audio(ratio: float, gas_on: bool, alive: bool, scrape: float, dt: f
 func _show_results() -> void:
 	state = "results"
 	Sfx.stop_loops()
+	race.estimate()  # projected finishing times for cars still on track
 	var rows := []
 	for c in race.order:
 		rows.append({
 			"name": c.name, "car": c.def.name, "color": c.color.to_html(false), "is_player": c.is_player,
-			"finished": c.finished, "time": c.finish_time if c.finished else race.time + c.est,
+			"finished": c.finished, "time": c.finish_time if c.finished else c.est,
 			"best_lap": c.best_lap, "fans": int(c.fans), "wrecks": c.wrecks, "hits": c.hits,
 		})
 	Game.finish_race({

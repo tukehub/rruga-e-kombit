@@ -135,11 +135,21 @@ func _ready() -> void:
 		for difficulty in 3:
 			var race := Race.new(track, {"laps": 1, "diff": difficulty, "seed": 42, "no_player": true})
 			race.started = true
+			var estimated := false
 			for step in 36000:
 				race.step(1.0 / 60.0)
 				race.take_events()
+				if not estimated and race.order[0].finished:
+					# Results can appear while rivals are still racing. Their
+					# projected times are absolute race times past the clock.
+					estimated = true
+					race.estimate()
+					for c in race.cars:
+						var ok := is_equal_approx(c.est, c.finish_time) if c.finished else (is_finite(c.est) and c.est > race.time)
+						check(ok, "finishing estimate " + city.id + " difficulty " + str(difficulty))
 				if race.all_finished():
 					break
+			check(estimated, "estimate exercised " + city.id + " difficulty " + str(difficulty))
 			check(race.cars.size() == 6 and race.all_finished(), "full race " + city.id + " difficulty " + str(difficulty))
 			for c in race.cars:
 				check(is_finite(c.s) and is_finite(c.v), "finite simulation")
