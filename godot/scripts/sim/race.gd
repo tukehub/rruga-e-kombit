@@ -770,6 +770,11 @@ func item_status(c: CarState, back := false, kind := "") -> Dictionary:
 	return CombatRules.item_status(self, c, back, kind)
 
 
+## Whether an item can be used backwards (the lower fire button).
+func has_back(kind: String) -> bool:
+	return kind in CombatRules.DIRECTIONAL
+
+
 func boost_status(c: CarState) -> String:
 	return CombatRules.boost_status(self, c)
 

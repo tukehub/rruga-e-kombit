@@ -104,12 +104,37 @@ func _ready() -> void:
 	check(p.v > 12.0 and p.z > -50.0 + 10.0 and absf(p.x) < 0.01, "gas drives the car straight ahead")
 	p.ctrl.steer = 1.0
 	run(arena, 0.6)
-	check(Vector2(p.vx, p.vz).dot(Vector2(-1.0, 0.0)) < -1.0 and p.forward().x > 0.2, "steering right turns toward the driver's right")
-	check(is_equal_approx(p.right().dot(Vector2(1.0, 0.0)), cos(p.h)) and Vector2(0.0, 1.0).cross(Vector2(1.0, 0.0)) < 0.0, "right is clockwise seen from above")
+	# The chase camera looks along +z here, so the screen's right is world -x.
+	var camera := Camera3D.new()
+	add_child(camera)
+	camera.look_at_from_position(Vector3(0, 3, -10), Vector3(0, 0, 0), Vector3.UP)
+	var screen_right := Vector2(camera.global_transform.basis.x.x, camera.global_transform.basis.x.z)
+	camera.free()
+	check(screen_right.is_equal_approx(Vector2(-1.0, 0.0)), "facing +z, the screen's right is world -x")
+	check(Vector2(p.vx, p.vz).dot(screen_right) > 1.0 and p.forward().dot(screen_right) > 0.2, "steering right turns the car to the right of the screen")
+	var straight := ArenaCar.new(0, Data.CARS[0], "", false, Color.WHITE)
+	check(straight.right().is_equal_approx(screen_right), "right() is the screen's right")
 	place(p, Vector2(0.0, -50.0), 0.0, 20.0)
 	p.ctrl.steer = -1.0
 	run(arena, 0.6)
-	check(p.forward().x < -0.2, "steering left turns the other way")
+	check(p.forward().dot(screen_right) < -0.2, "steering left turns the other way")
+	# A bot heads for its target instead of circling away from it.
+	var chaser := new_arena()
+	var bot: ArenaCar = chaser.cars.filter(func(c: ArenaCar) -> bool: return not c.is_player)[0]
+	park(chaser, [bot, chaser.player])
+	bot.is_player = false
+	chaser.player.is_player = true
+	place(bot, Vector2(-60.0, -60.0), 0.0, 10.0)
+	place(chaser.player, Vector2(60.0, -60.0), 0.0, 0.0)
+	chaser.player.invuln_t = 0.0
+	bot.slots = [{"type": "repair", "ammo": 1}, {"type": "repair", "ammo": 1}]  # no detour for pickups
+	bot.bot.target_id = chaser.player.id
+	bot.bot.retarget_t = 99.0
+	var gap_before := bot.at().distance_to(chaser.player.at())
+	for i in 180:
+		chaser.ai_drive(bot, STEP)
+		chaser.physics(bot, STEP)
+	check(bot.at().distance_to(chaser.player.at()) < gap_before - 30.0, "a bot drives toward its target")
 	p.ctrl.steer = 0.0
 	p.ctrl.gas = false
 	p.ctrl.brake = true
@@ -181,8 +206,8 @@ func _ready() -> void:
 	for i in 16:
 		arena.time += 1.0
 		gains.append(arena.award(p, victim, 100))
-	check(gains.slice(0, 2) == [100, 100] and gains[2] == 200 and gains[5] == 300 and gains[8] == 400, "the multiplier rises every third hit")
-	check(gains[11] == 500 and gains[15] == 500 and p.combo == Arena.COMBO_MAX, "the multiplier stops at its cap")
+	check(gains.slice(0, 2) == [100, 100] and gains[2] == 200 and gains[5] == 300, "the multiplier rises every third hit")
+	check(gains[8] == 300 and gains[15] == 300 and p.combo == Arena.COMBO_MAX and Arena.COMBO_MAX == 3, "the multiplier stops at x3")
 	arena.time += Arena.COMBO_WINDOW + 0.1
 	check(arena.award(p, victim, 100) == 100 and p.combo == 1, "a pause longer than the window resets the combo")
 	# The same pair cannot score again within the cooldown.
@@ -225,7 +250,7 @@ func _ready() -> void:
 	place(p, Vector2(float(pad.x), float(pad.z) - 6.0), 0.0, 10.0)
 	events = run(arena, 0.8)
 	check(of(events, "pickup").size() == 1 and p.slots.size() == 1 and p.slot_type() == "ram" and not bool(pad.alive), "driving over a pad collects its pickup")
-	check(bool(arena.item_status(p).ready) and not bool(arena.item_status(p, true).ready), "a pickup is used forward only")
+	check(bool(arena.item_status(p).ready) and not bool(arena.item_status(p, true).ready), "the ram charge is used forward only")
 	events = run(arena, 2.2)
 	check(bool(pad.alive) and of(events, "pickup_back").size() == 1, "the pad refills")
 	p.ctrl.fire = true
@@ -287,6 +312,80 @@ func _ready() -> void:
 	check(arena.cars.all(func(c: ArenaCar) -> bool: return absf(c.v) < 0.5), "the cars come to rest after time is up")
 	check(not bool(arena.item_status(p, false, "ram").ready), "items are refused after time is up")
 
+	# Weapons.
+	check(Arena.PICKUPS.size() >= 10 and Arena.PICKUPS.keys().all(func(k: String) -> bool: return Data.has_pw(k) and PowerupIcons.texture(k) != null and Data.has_text("pw.%s.name" % k)), "ten and more pickups, each with an icon and a name")
+	check(Arena.BACKWARDS == ["eagle", "bolt", "mine", "oil"] and not Arena.BACKWARDS.has("nitro"), "only throwing weapons go backwards; nitro never does")
+	var duel := func() -> Arena:
+		var sim := new_arena()
+		park(sim, [sim.player, sim.cars[1]])
+		sim.cars[1].is_player = true
+		place(sim.player, Vector2(0.0, -60.0), 0.0, 0.0)
+		place(sim.cars[1], Vector2(0.0, -30.0), 0.0, 0.0)  # 30 m ahead
+		sim.take_events()
+		return sim
+	for weapon in ["bolt", "eagle", "cluster"]:
+		var sim: Arena = duel.call()
+		sim.player.slots = [{"type": weapon, "ammo": 1}]
+		sim.player.ctrl.fire = true
+		var flight := run(sim, 2.0)
+		var hits := of(flight, "hit")
+		check(hits.size() >= 1 and hits[0].car == sim.cars[1] and hits[0].by == sim.player, "%s fired forward hits the car ahead" % weapon)
+		check(int(hits[0].pts) == int(Arena.WEAPON_POINTS[weapon]) and sim.player.score >= int(Arena.WEAPON_POINTS[weapon]), "%s scores its few points" % weapon)
+		check(of(flight, "boom").size() >= 1 and sim.projs.is_empty(), "%s bursts and is gone" % weapon)
+	var back_shot: Arena = duel.call()
+	place(back_shot.cars[1], Vector2(0.0, -90.0), 0.0, 0.0)  # now behind
+	back_shot.player.slots = [{"type": "bolt", "ammo": 3}]
+	back_shot.player.ctrl.back = true
+	var back_hits := of(run(back_shot, 1.0), "hit")
+	check(back_hits.size() == 1 and back_hits[0].car == back_shot.cars[1] and int(back_shot.player.slots[0].ammo) == 2, "a bolt fired backwards hits the car behind, one shot of three")
+	var refused: Arena = duel.call()
+	refused.player.slots = [{"type": "nitro", "ammo": 1}]
+	refused.player.ctrl.back = true
+	run(refused, 0.1)
+	check(refused.player.slots.size() == 1 and refused.player.nitro_t == 0.0, "nitro cannot be used backwards")
+	var mined: Arena = duel.call()
+	mined.player.slots = [{"type": "mine", "ammo": 1}]
+	mined.player.ctrl.back = true
+	run(mined, 0.1)
+	check(mined.mines.size() == 1 and Vector2(mined.mines[0].x, mined.mines[0].z).distance_to(Vector2(0.0, -64.0)) < 0.5, "a mine is dropped behind")
+	mined.cars[1].x = mined.mines[0].x
+	mined.cars[1].z = mined.mines[0].z
+	var blast := run(mined, 0.6)
+	check(of(blast, "hit").size() == 1 and mined.cars[1].stun_t > 0.0 and mined.mines.is_empty(), "a mine goes off under a car")
+	var oiled: Arena = duel.call()
+	oiled.player.slots = [{"type": "oil", "ammo": 1}]
+	oiled.player.ctrl.back = true
+	run(oiled, 0.1)
+	oiled.cars[1].x = oiled.mines[0].x
+	oiled.cars[1].z = oiled.mines[0].z
+	var spun := run(oiled, 0.6)
+	check(of(spun, "slip").size() == 1 and oiled.cars[1].health == oiled.cars[1].max_hp and oiled.mines.size() == 1, "oil spins a car without damage and stays put")
+	var spun_again := run(oiled, 0.6)
+	check(of(spun_again, "slip").is_empty(), "the same car slips on one slick only once")
+	var waved: Arena = duel.call()
+	place(waved.cars[1], Vector2(0.0, -52.0), 0.0, 0.0)
+	waved.player.slots = [{"type": "barge", "ammo": 1}]
+	waved.player.ctrl.fire = true
+	run(waved, 0.05)
+	check(Vector2(waved.cars[1].vx, waved.cars[1].vz).y > 10.0, "the shockwave throws close cars away")
+	var stormy: Arena = duel.call()
+	stormy.cars[1].score = 500
+	stormy.compute_order()
+	stormy.player.slots = [{"type": "shock", "ammo": 1}]
+	stormy.player.ctrl.fire = true
+	run(stormy, 0.05)
+	check(stormy.domes.size() == 3, "the storm drops three domes by the leader")
+	stormy.player.slots = [{"type": "shock", "ammo": 1}]
+	stormy.player.score = 1000
+	stormy.compute_order()
+	check(stormy.item_status(stormy.player).reason == "first", "the leader cannot call a storm")
+	var guarded: Arena = duel.call()
+	guarded.cars[1].shield_t = 5.0
+	guarded.player.slots = [{"type": "bolt", "ammo": 1}]
+	guarded.player.ctrl.fire = true
+	var stopped := run(guarded, 1.0)
+	check(of(stopped, "blocked").size() == 1 and guarded.cars[1].health == guarded.cars[1].max_hp and guarded.player.score == 0, "a shield stops a weapon, for no points")
+
 	# A whole round with bots at every wheel.
 	var round := new_arena({"time": 120.0, "no_player": true})
 	var total_events := run(round, 121.0)
@@ -294,6 +393,9 @@ func _ready() -> void:
 	print("ARENA round: scores %s, %d hits, %d wrecks, %d pickups" % [scores, of(total_events, "score").size(), of(total_events, "wreck").size(), of(total_events, "pickup").size()])
 	check(round.over and round.cars.all(func(c: ArenaCar) -> bool: return inside(c) or c.wreck_t > 0.0), "every car ends the round inside the square")
 	check(round.cars.all(func(c: ArenaCar) -> bool: return c.score > 0), "every bot lands at least one hit")
+	var weapon_hits := of(total_events, "hit").size()
+	check(weapon_hits >= 10, "bots use the weapons (%d weapon hits)" % weapon_hits)
+	check(scores[0] < 2000 and scores[0] > 50, "scores stay modest: the winner has %d" % scores[0])
 	check(of(total_events, "score").size() >= 40 and of(total_events, "wreck").size() >= 2 and of(total_events, "pickup").size() >= 10, "a round is busy: hits, wrecks and pickups")
 	var sorted := scores.duplicate()
 	sorted.sort()

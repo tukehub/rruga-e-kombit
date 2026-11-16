@@ -1,8 +1,8 @@
 class_name ArenaCar
 extends CarState
 ## A car in the points mode: free on a flat square instead of on the (s, d)
-## road ribbon. Heading h has forward = (-sin h, cos h) in (x, z), the same
-## convention as the race view.
+## road ribbon. Heading h has forward = (-sin h, cos h) in (x, z); a higher
+## heading turns the car to the driver's right.
 
 const BODY_RADIUS := 1.02        # two circles along the body stand in for it
 const BODY_OFFSET := 1.2
@@ -30,8 +30,9 @@ func forward() -> Vector2:
 	return Vector2(-sin(h), cos(h))
 
 
+## The driver's right as the chase camera shows it.
 func right() -> Vector2:
-	return Vector2(cos(h), sin(h))
+	return Vector2(-cos(h), -sin(h))
 
 
 func at() -> Vector2:

@@ -6,22 +6,30 @@ extends RefCounted
 ## fixed 60 Hz steps, like Race. Port of the legacy src/035_arena.js, without
 ## its projectile weapons: the pickups here are the ones a car uses on itself.
 
-# The square is a rounded rectangle with a round island in the middle.
-const HALF_X := 120.0
-const HALF_Z := 84.0
-const CORNER := 26.0
-const ISLAND := 12.5
-const PADS := [[-92, -56], [0, -64], [92, -56], [-92, 56], [0, 64], [92, 56], [-60, 0], [60, 0],
-	[-96, 0], [96, 0], [-38, -36], [38, 36], [-38, 36], [38, -36], [0, -32], [0, 32]]
-const PICKUPS := {"ram": 14, "nitro": 12, "shield": 8, "repair": 8}
+# The square is a rounded rectangle with a round island in the middle. It is
+# half as large again in area as the legacy square (each side x1.225).
+const HALF_X := 147.0
+const HALF_Z := 103.0
+const CORNER := 32.0
+const ISLAND := 15.0
+const PADS := [[-113, -69], [0, -78], [113, -69], [-113, 69], [0, 78], [113, 69], [-73, 0], [73, 0],
+	[-118, 0], [118, 0], [-47, -44], [47, 44], [-47, 44], [47, -44], [0, -39], [0, 39],
+	[-80, -40], [80, 40], [-80, 40], [80, -40], [0, -92], [0, 92]]
+# Pickup weights. Ram, nitro, shield and repair act on the car itself; the
+# rest are weapons. Eagle, bolt, mine and oil can also go backwards.
+const PICKUPS := {"ram": 10, "nitro": 9, "shield": 7, "repair": 6, "eagle": 9, "bolt": 10,
+	"cluster": 8, "barge": 8, "mine": 8, "oil": 8, "shock": 5}
+const BACKWARDS := ["eagle", "bolt", "mine", "oil"]
 const SPEED := 0.74              # top speeds are scaled down for the square
 const HIT_SPEED := 4.0           # closing speed that counts as a hit
-const HIT_POINTS := 14           # points per m/s of closing speed
+const HIT_POINTS := 1            # points per m/s of closing speed
 const PAIR_COOLDOWN := 0.6       # the same two cars cannot score again at once
 const COMBO_WINDOW := 4.0
 const COMBO_STEP := 3            # hits per multiplier step
-const COMBO_MAX := 5
-const WRECK_POINTS := 300
+const COMBO_MAX := 3
+const WRECK_POINTS := 50
+# Points for landing a weapon, before the multiplier.
+const WEAPON_POINTS := {"eagle": 30, "bolt": 10, "cluster": 6, "barge": 15, "mine": 20, "oil": 10, "shock": 15}
 const RAM_TIME := 1.6
 const NITRO_TIME := 2.6
 const SHIELD_TIME := 8.0
@@ -39,6 +47,9 @@ var events: Array = []
 var cars: Array[ArenaCar] = []
 var order: Array[ArenaCar] = []
 var pickups: Array = []
+var projs: Array = []            # eagles, bolts, cluster darts in flight
+var mines: Array = []            # mines and oil slicks on the ground
+var domes: Array = []            # storm domes
 var player: ArenaCar = null
 var _pair_t := {}
 var _next_id := 1
@@ -177,12 +188,17 @@ func step(dt: float) -> void:
 			if held >= 0:
 				emit({"t": "discard", "car": c, "type": c.slots[held].type})
 				c.slots.remove_at(held)
-		if c.ctrl.fire or c.ctrl.back:
+		if c.ctrl.fire:
 			c.ctrl.fire = false
+			use_item(c, false)
+		if c.ctrl.back:
 			c.ctrl.back = false
-			use_item(c)
+			use_item(c, true)
 		c.ctrl.boost = false
 	update_pickups(dt)
+	update_projs(dt)
+	update_mines(dt)
+	update_domes(dt)
 	compute_order()
 
 
@@ -253,8 +269,9 @@ func physics(c: ArenaCar, dt: float) -> void:
 	c.steer += clampf(steer_in - c.steer, -rate * dt, rate * dt)
 	var speed := absf(vf)
 	var turn: float = clampf(speed / 4.5, 0.0, 1.0) * (2.9 - 1.2 * clampf(speed / vmax, 0.0, 1.0)) * float(def.grip) * (1.0 + c.drift * 0.45)
-	# +steer is the driver's right, as in a race; here that lowers the heading.
-	c.h += (-c.steer * turn * (-1.0 if vf < -0.3 else 1.0) + c.spin_rate) * dt
+	# +steer is the driver's right, as in a race. Seen from the chase camera a
+	# higher heading turns the car to the right of the screen.
+	c.h += (c.steer * turn * (-1.0 if vf < -0.3 else 1.0) + c.spin_rate) * dt
 	c.spin_rate *= exp(-3.2 * dt)
 	# Grip eats sideways speed; less of it while drifting.
 	vl *= exp(-(9.5 - 6.8 * c.drift) * float(def.grip) * dt)
@@ -474,13 +491,18 @@ func update_pickups(dt: float) -> void:
 			if c.at().distance_to(Vector2(p.x, p.z)) < 2.9:
 				p.alive = false
 				p.t = 2.0
-				c.slots.append({"type": p.type, "ammo": 1})
+				c.slots.append({"type": p.type, "ammo": int(Data.PW[p.type].ammo) if Data.PW.has(p.type) else 1})
 				emit({"t": "pickup", "car": c, "type": p.type, "p": p, "slot": c.slots.size() - 1})
 				break
 
 
 func has_pickup_room(c: CarState) -> bool:
 	return c.slots.size() < 3
+
+
+## Whether an item can be used backwards (the lower fire button).
+func has_back(kind: String) -> bool:
+	return kind in BACKWARDS
 
 
 ## The same answer shape as Race.item_status, so the touch controls and the
@@ -499,7 +521,7 @@ func item_status(c: CarState, backward := false, kind := "") -> Dictionary:
 		why = "spin"
 	elif kind.is_empty():
 		why = "empty"
-	elif backward:
+	elif backward and not has_back(kind):
 		why = "direction"
 	elif kind == "repair" and c.health >= c.max_hp * 0.97:
 		why = "full"
@@ -509,6 +531,8 @@ func item_status(c: CarState, backward := false, kind := "") -> Dictionary:
 		why = "nitro_active"
 	elif kind == "ram" and (c as ArenaCar).ram_t > 0.1:
 		why = "nitro_active"
+	elif kind == "shock" and leader() == c:
+		why = "first"
 	return {"ready": why.is_empty(), "reason": why, "target": null, "kind": kind, "back": backward}
 
 
@@ -517,13 +541,16 @@ func boost_status(_c: CarState) -> String:
 	return "charge"
 
 
-func use_item(c: ArenaCar) -> void:
-	var status := item_status(c)
+func use_item(c: ArenaCar, back := false) -> void:
+	var status := item_status(c, back)
 	if not bool(status.ready):
 		if str(status.reason) != "empty":
 			emit({"t": "denied", "car": c, "why": status.reason})
 		return
-	var kind: String = c.slots[0].type
+	var item: Dictionary = c.slots[0]
+	var kind: String = item.type
+	var f := c.forward() * (-1.0 if back else 1.0)
+	var used := true
 	match kind:
 		"ram":
 			c.ram_t = RAM_TIME
@@ -533,14 +560,211 @@ func use_item(c: ArenaCar) -> void:
 			c.shield_t = SHIELD_TIME
 		"repair":
 			c.health = c.max_hp
-	c.slots.pop_front()
-	emit({"t": "fire", "car": c, "type": kind, "back": false, "x": c.x, "z": c.z})
+		"eagle":
+			# Homes on the best victim that way, or anyone in front.
+			var target := aim_at(c, 90.0 if back else 220.0, 0.1, back)
+			if target == null and not back:
+				target = aim_at(c, 400.0, -1.0)
+			var speed := maxf(absf(c.v) + 22.0, 42.0)
+			_shoot(c, "eagle", f * 3.5, f * speed, target, 6.0)
+		"bolt":
+			_shoot(c, "bolt", f * 3.0, f * (maxf(c.v * (-1.0 if back else 1.0), 0.0) + 80.0), null, 1.3)
+			item.ammo = int(item.ammo) - 1
+			used = int(item.ammo) <= 0
+		"cluster":
+			var speed := maxf(c.v, 0.0) + 72.0
+			for i in range(-2, 3):
+				var dir := Vector2(-sin(c.h + i * 0.13), cos(c.h + i * 0.13))
+				_shoot(c, "cluster", dir * 3.0, dir * speed, null, 1.2)
+		"barge":
+			# A shockwave: everybody close is thrown away from you.
+			for o in cars:
+				if o == c or o.wreck_t > 0.0:
+					continue
+				var away := o.at() - c.at()
+				var distance := maxf(away.length(), 0.001)
+				if distance < 15.0:
+					var force := 1.0 - distance / 15.0
+					hit(o, c, "barge", 12.0 + 12.0 * force, {"slow": 0.9, "push": away / distance * (12.0 + 14.0 * force)})
+			emit({"t": "barge", "car": c, "x": c.x, "z": c.z})
+		"mine", "oil":
+			var drop := {"id": _nid(), "kind": kind, "owner_id": c.id, "x": c.x, "z": c.z, "vx": 0.0, "vz": 0.0,
+				"fly": 0.0, "life": 40.0 if kind == "mine" else 14.0, "arm": 0.4, "born": time, "hit": {}}
+			if back:
+				drop.x -= c.forward().x * 4.0
+				drop.z -= c.forward().y * 4.0
+			else:
+				# Thrown ahead, landing a moment later.
+				var throw := c.forward() * (maxf(c.v, 8.0) + 24.0)
+				drop.x += c.forward().x * 3.0
+				drop.z += c.forward().y * 3.0
+				drop.vx = throw.x
+				drop.vz = throw.y
+				drop.fly = 0.65
+			mines.append(drop)
+			if mines.size() > 20:
+				mines.pop_front()
+		"shock":
+			# Three electric domes where the leader is heading.
+			var lead := leader()
+			var aim := lead.at() + Vector2(lead.vx, lead.vz) * 1.1
+			for n in 3:
+				var angle := rng.randf() * TAU
+				var spread := 0.0 if n == 0 else 6.0 + rng.randf() * 5.0
+				var spot := aim + Vector2(cos(angle), sin(angle)) * spread
+				var room := wall(spot)
+				if float(room.d) < 5.0:
+					spot -= (room.n as Vector2) * (5.0 - float(room.d))
+				domes.append({"id": _nid(), "owner_id": c.id, "x": spot.x, "z": spot.y, "r": 4.8, "warn": 0.9, "life": 7.0, "hit": {}})
+			emit({"t": "shock", "car": c, "target": lead})
+	if used:
+		c.slots.pop_front()
+	emit({"t": "fire", "car": c, "type": kind, "back": back, "x": c.x, "z": c.z})
 
 
-## The best victim in front: close and well lined up.
-func aim_at(c: ArenaCar, reach: float, min_dot: float) -> ArenaCar:
+func _shoot(c: ArenaCar, kind: String, offset: Vector2, velocity: Vector2, target: ArenaCar, life: float) -> void:
+	projs.append({"id": _nid(), "kind": kind, "owner_id": c.id, "x": c.x + offset.x, "z": c.z + offset.y,
+		"vx": velocity.x, "vz": velocity.y, "target_id": target.id if target != null else -1, "life": life})
+
+
+## A weapon landing on `o`. Shields and the respawn grace block it; points go
+## to the car that used it.
+func hit(o: ArenaCar, by: ArenaCar, kind: String, dmg: float, fx: Dictionary) -> bool:
+	if o.wreck_t > 0.0:
+		return false
+	if o.shield_t > 0.0 or o.invuln_t > 0.0:
+		emit({"t": "blocked", "car": o, "by": by, "kind": kind, "x": o.x, "z": o.z})
+		return false
+	if fx.get("spin", false):
+		o.spin_t = 1.0
+		o.spin_rate += (-7.0 if rng.randf() < 0.5 else 7.0)
+		o.vx *= 0.35
+		o.vz *= 0.35
+		o.hop_v = maxf(o.hop_v, float(fx.get("hop", 0.0)))
+	if fx.has("slow"):
+		o.vx *= float(fx.slow)
+		o.vz *= float(fx.slow)
+	if fx.has("stun"):
+		o.stun_t = maxf(o.stun_t, float(fx.stun))
+	if fx.has("hop"):
+		o.hop_v = maxf(o.hop_v, float(fx.hop))
+	if fx.has("push"):
+		o.vx += (fx.push as Vector2).x
+		o.vz += (fx.push as Vector2).y
+	var points := 0
+	if by != null and by != o and not over:
+		points = award(by, o, int(WEAPON_POINTS.get(kind, 10)))
+	var from := (o.at() - by.at()).normalized() if by != null and by != o else Vector2.ZERO
+	emit({"t": "hit", "car": o, "by": by, "kind": kind, "dmg": dmg, "pts": points, "combo": by.combo if by != null else 1, "x": o.x, "z": o.z, "dir": from})
+	if dmg > 0.0:
+		damage(o, dmg)
+	return true
+
+
+func update_projs(dt: float) -> void:
+	for i in range(projs.size() - 1, -1, -1):
+		var p: Dictionary = projs[i]
+		p.life = float(p.life) - dt
+		var owner := car_by_id(int(p.owner_id))
+		var target := car_by_id(int(p.target_id))
+		if target != null and target.wreck_t > 0.0:
+			target = null
+		if p.kind == "eagle":
+			# Turns toward its target and keeps a little faster than it.
+			var velocity := Vector2(p.vx, p.vz)
+			var heading := velocity.angle()
+			if target != null:
+				var wanted := (target.at() - Vector2(p.x, p.z)).angle()
+				heading += clampf(wrapf(wanted - heading, -PI, PI), -3.4 * dt, 3.4 * dt)
+			var speed := minf(velocity.length() + 40.0 * dt, maxf(50.0, Vector2(target.vx, target.vz).length() + 18.0 if target != null else 50.0))
+			velocity = Vector2.from_angle(heading) * speed
+			p.vx = velocity.x
+			p.vz = velocity.y
+		p.x = float(p.x) + float(p.vx) * dt
+		p.z = float(p.z) + float(p.vz) * dt
+		var at := Vector2(p.x, p.z)
+		var done := false
+		for o in cars:
+			if o == owner or o.wreck_t > 0.0 or o.at().distance_to(at) > 2.5:
+				continue
+			if p.kind == "eagle":
+				hit(o, owner, "eagle", 34.0, {"spin": true, "hop": 7.0})
+			else:
+				var push := Vector2(p.vx, p.vz).normalized() * 4.0
+				hit(o, owner, str(p.kind), 9.0 if p.kind == "cluster" else 11.0, {"slow": 0.86, "push": push})
+			emit({"t": "boom", "kind": p.kind, "x": p.x, "z": p.z})
+			done = true
+			break
+		if not done and (float(wall(at).d) < 0.4 or at.length() < ISLAND):
+			emit({"t": "boom", "kind": p.kind, "x": p.x, "z": p.z})
+			done = true
+		if not done and float(p.life) <= 0.0:
+			emit({"t": "fizzle", "kind": p.kind, "x": p.x, "z": p.z})
+			done = true
+		if done:
+			projs.remove_at(i)
+
+
+func update_mines(dt: float) -> void:
+	for i in range(mines.size() - 1, -1, -1):
+		var m: Dictionary = mines[i]
+		if float(m.fly) > 0.0:
+			m.fly = float(m.fly) - dt
+			m.x = float(m.x) + float(m.vx) * dt
+			m.z = float(m.z) + float(m.vz) * dt
+			var room := wall(Vector2(m.x, m.z))
+			if float(room.d) < 1.5:
+				m.x = float(m.x) - (room.n as Vector2).x * (1.5 - float(room.d))
+				m.z = float(m.z) - (room.n as Vector2).y * (1.5 - float(room.d))
+				m.fly = 0.0
+			continue
+		m.life = float(m.life) - dt
+		m.arm = float(m.arm) - dt
+		if float(m.life) <= 0.0:
+			mines.remove_at(i)
+			continue
+		if float(m.arm) > 0.0:
+			continue
+		var owner := car_by_id(int(m.owner_id))
+		for o in cars:
+			if (o == owner and time - float(m.born) < 2.5) or o.wreck_t > 0.0 or m.hit.has(o.id):
+				continue
+			if o.at().distance_to(Vector2(m.x, m.z)) < (2.3 if m.kind == "mine" else 3.2):
+				if m.kind == "mine":
+					hit(o, owner, "mine", 26.0, {"hop": 7.5, "slow": 0.5, "stun": 1.0})
+					emit({"t": "boom", "kind": "mine", "x": m.x, "z": m.z})
+					mines.remove_at(i)
+					break
+				# Oil stays where it is and spins every car once.
+				m.hit[o.id] = true
+				hit(o, owner, "oil", 0.0, {"spin": true})
+				emit({"t": "slip", "car": o, "x": m.x, "z": m.z})
+
+
+func update_domes(dt: float) -> void:
+	for i in range(domes.size() - 1, -1, -1):
+		var dm: Dictionary = domes[i]
+		if float(dm.warn) > 0.0:
+			dm.warn = float(dm.warn) - dt
+			continue
+		dm.life = float(dm.life) - dt
+		if float(dm.life) <= 0.0:
+			domes.remove_at(i)
+			continue
+		for o in cars:
+			if dm.hit.has(o.id) or o.wreck_t > 0.0:
+				continue
+			if o.at().distance_to(Vector2(dm.x, dm.z)) < float(dm.r):
+				dm.hit[o.id] = true
+				hit(o, car_by_id(int(dm.owner_id)), "shock", 20.0, {"stun": 2.2, "slow": 0.6})
+				emit({"t": "zap", "car": o, "x": o.x, "z": o.z})
+
+
+## The best victim in front (or behind): close and well lined up.
+func aim_at(c: ArenaCar, reach: float, min_dot: float, back := false) -> ArenaCar:
 	var best: ArenaCar = null
 	var best_score := -INF
+	var ahead := c.forward() * (-1.0 if back else 1.0)
 	for o in cars:
 		if o == c or o.wreck_t > 0.0:
 			continue
@@ -548,7 +772,7 @@ func aim_at(c: ArenaCar, reach: float, min_dot: float) -> ArenaCar:
 		var distance := to.length()
 		if distance > reach:
 			continue
-		var lined := to.dot(c.forward()) / maxf(distance, 0.001)
+		var lined := to.dot(ahead) / maxf(distance, 0.001)
 		if lined < min_dot:
 			continue
 		var value := lined * 2.0 - distance / reach
@@ -630,8 +854,8 @@ func ai_drive(c: ArenaCar, dt: float) -> void:
 	var to_goal := goal - c.at()
 	var want := atan2(-to_goal.x, to_goal.y)
 	var off := wrapf(want - c.h, -PI, PI)
-	# A higher heading is to the driver's left, so steering is the negative.
-	c.ctrl.steer = clampf(-off * 2.4, -1.0, 1.0)
+	# A higher heading is to the driver's right, so steer toward it directly.
+	c.ctrl.steer = clampf(off * 2.4, -1.0, 1.0)
 	c.ctrl.gas = true
 	c.ctrl.brake = absf(off) > 1.9 and c.v > 12.0  # hard about-turn: brake into a drift
 	bot.item_t = float(bot.item_t) - dt
@@ -644,18 +868,50 @@ func ai_items(c: ArenaCar) -> void:
 	if c.slots.is_empty() or not started or over:
 		return
 	var roll := rng.randf()
+	var aim := float(diff.aim)
 	var target := car_by_id(int(c.bot.target_id))
 	var use := false
+	var back := false
 	match str(c.slots[0].type):
 		"ram":
 			use = target != null and target == aim_at(c, 45.0, 0.85) and roll < 0.9
 		"nitro":
 			use = target != null and target.at().distance_to(c.at()) > 22.0 and target == aim_at(c, 90.0, 0.9) and roll < 0.8
 		"shield":
-			use = (c.health < c.max_hp * 0.5 and roll < 0.25) or roll < 0.04
+			var threat := false
+			for p in projs:
+				if int(p.target_id) == c.id or (int(p.owner_id) != c.id and Vector2(p.x, p.z).distance_to(c.at()) < 25.0):
+					threat = true
+			use = threat or (c.health < c.max_hp * 0.5 and roll < 0.25) or roll < 0.04
 		"repair":
 			use = c.health < c.max_hp * 0.45
+		"eagle":
+			if aim_at(c, 180.0, 0.3) != null and roll < 0.8 * aim:
+				use = true
+			elif aim_at(c, 40.0, 0.5, true) != null and roll < 0.3:
+				use = true
+				back = true
+		"bolt":
+			use = aim_at(c, 55.0, 0.93) != null and roll < 0.9 * aim
+		"cluster":
+			use = aim_at(c, 60.0, 0.75) != null and roll < 0.85 * aim
+		"barge":
+			for o in cars:
+				if o != c and o.wreck_t <= 0.0 and o.at().distance_to(c.at()) < 10.0:
+					use = true
+		"mine":
+			if aim_at(c, 30.0, 0.5, true) != null and roll < 0.7:
+				use = true
+				back = true
+			elif aim_at(c, 35.0, 0.8) != null and roll < 0.4:
+				use = true
+		"oil":
+			if aim_at(c, 35.0, 0.5, true) != null and roll < 0.6:
+				use = true
+				back = true
+		"shock":
+			use = c.place > 1 and roll < 0.5
 	if use:
-		use_item(c)
+		use_item(c, back)
 	elif c.slots.size() >= 2 and roll > 0.9:
 		c.slots.push_back(c.slots.pop_front())

@@ -20,12 +20,16 @@ distance in metres. Only the six racers are on the street. The middle of the scr
 The main menu starts a Tirana race directly, or a **points round** on the
 walled Skanderbeg Square: the "Mënyra" button on the title page switches
 between a race and points for 2 or 3 minutes. Ram the others for points
-(closing speed × 14), three quick hits raise the multiplier up to ×5, a wreck
-you caused pays 300 × the multiplier, and the highest score when the clock
-runs out wins. Pickups on the square are ones a car uses on itself: the ram
-charge ("Dashi", double points and a hard shove), nitro, shield and repair.
-The simulation is `scripts/sim/arena.gd` (node-free, deterministic, a port of
-the legacy `src/035_arena.js` without its projectile weapons), drawn by
+(1 per m/s of closing speed), three quick hits raise the multiplier up to
+×3, a wreck you caused pays 50 × the multiplier, and the highest score when
+the clock runs out wins (a two-minute round of bots ends around 1,000).
+Eleven pickups: ram charge ("Dashi"), nitro, shield and repair act on the
+car; eagle, bolt, cluster ("Breshëria"), shockwave, mine, oil ("Vaji") and
+storm are weapons, worth 6–30 points a hit. Eagle, bolt, mine and oil can
+also go backwards, on the lower fire button. The square is half as large
+again in area as the legacy one, and Skanderbeg stands 2.4× life on a tall
+plinth in the middle. The simulation is `scripts/sim/arena.gd` (node-free,
+deterministic, a port of the legacy `src/035_arena.js` plus oil), drawn by
 `scripts/game/arena_scene.gd` with the race's touch controls; covered by
 `tests/arena_sim` and `tests/arena_flow`. Other city datasets remain in the
 repository for later review; they are not offered in this focused menu.

@@ -384,7 +384,7 @@ func sync_actions() -> void:
 	_fire_btn.icon = PowerupIcons.texture(type) if Data.has_pw(type) else null
 	_back_btn.icon = _fire_btn.icon
 	_back_btn.text = Data.t("input.back.%s" % type) if Data.has_text("input.back.%s" % type) else Data.t("input.back")
-	_back_btn.visible = type in Rules.DIRECTIONAL
+	_back_btn.visible = _race != null and _race.has_back(type)
 	_fire_btn.disabled = not action_available(false)
 	_back_btn.disabled = not action_available(true)
 	if _car != null:

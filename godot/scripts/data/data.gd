@@ -122,6 +122,8 @@ const PW := {
 # Points mode only: used on the car itself. Not in PW_KEYS, so no race offers it.
 const ARENA_PW := {
 	"ram": {"col": "#ff3d9a", "ammo": 1},
+	"cluster": {"col": "#00e0c6", "ammo": 1},
+	"oil": {"col": "#8b7cff", "ammo": 1},
 }
 const PW_KEYS := ["eagle", "bolt", "barge", "mine", "shock", "nitro", "shield", "repair"]
 
