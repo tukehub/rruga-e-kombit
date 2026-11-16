@@ -46,6 +46,9 @@ phone's quality budget is tested on any machine.
 
 A rendered smoke test (needs a Vulkan GPU or software Vulkan) is available as
 `godot --path godot res://tests/weather_visual.tscn`.
+Paint, driving particles and speed feedback have a separate rendered check:
+`godot --path godot --rendering-method mobile --fixed-fps 60 res://tests/graphics_visual.tscn`
+(repeat with `forward_plus`; captures go to `user://shots/`).
 
 ```sh
 godot --path godot -- --scene=race --auto --city=tirane --quality=medium --env=rain --shots=3,10
@@ -238,12 +241,14 @@ lights and 8 reflection probes. Baked lightmaps, reflection probes, decals,
 glow, MSAA/FXAA, depth of field, colour adjustments and screen/depth textures
 work. An item below that needs a Forward+-only feature is desktop-only.
 
-3.1 **Car paint** in `shaders/sport_car.gdshader`: `CLEARCOAT`,
+3.1 **Car paint — implemented** (see [checkpoints](docs/section-3-progress.md))
+    in `shaders/sport_car.gdshader`: `CLEARCOAT`,
     `CLEARCOAT_ROUGHNESS`, a procedural flake normal on the body mask,
     metallic ~0.6 / roughness ~0.25 on paint. Headlights for bots in
     `scripts/cars/car_visual.gd` (emissive always; real `SpotLight3D` only
     within `Quality.p.fx_light_limit`).
-3.2 **Speed feedback:** `GPUParticles3D` tyre smoke on drift, exhaust
+3.2 **Speed feedback — implemented** (see [checkpoints](docs/section-3-progress.md)):
+    `GPUParticles3D` tyre smoke on drift, exhaust
     puff/flame on nitro, wheel spray when wet, wall sparks on scrape (pooled in
     `scripts/game/fx_visual.gd` with caps in `POOL_CAPS`); fullscreen
     `shaders/speed_post.gdshader` (radial blur, vignette, slight chroma) driven

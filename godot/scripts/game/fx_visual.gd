@@ -17,7 +17,12 @@ var _skids: MultiMesh
 const MAX_SKIDS := 320
 const FLASH_POOL := 8
 const RING_POOL := 6
-const POOL_CAPS := {"bolt": 54, "eagle": 18, "mine": 24, "dome": 3}
+const POOL_CAPS := {"bolt": 54, "eagle": 18, "mine": 24, "dome": 3,
+	"smoke": 6, "exhaust": 3, "spray": 6, "scrape": 3}
+const COMBAT_KINDS := ["bolt", "eagle", "mine", "dome"]
+const DrivingParticles = preload("res://scripts/game/driving_particles.gd")
+var driving: DrivingParticles
+var _driving_visuals := {}
 const CORE_DISTANCE := 210.0
 # Sparks outlive the flash itself; the unit stays visible until they are gone.
 const FLASH_SPARK_TAIL := 0.35
@@ -120,10 +125,15 @@ static func _mat(key: String, col: Color, energy: float, alpha: float = 1.0) -> 
 	return m
 
 
-func setup(p_race: Race, p_track: RaceTrack, p_car: CarVisual = null) -> void:
+func setup(p_race: Race, p_track: RaceTrack, p_car: CarVisual = null, p_cars: Array[CarVisual] = []) -> void:
 	race = p_race
 	track = p_track
 	_skid_car = p_car
+	_driving_visuals.clear()
+	for i in mini(p_cars.size(), race.cars.size()):
+		_driving_visuals[race.cars[i]] = p_cars[i]
+	if p_car != null:
+		_driving_visuals[race.player] = p_car
 	if _pools_ready:
 		_reset_visuals()
 		return
@@ -145,6 +155,14 @@ func setup(p_race: Race, p_track: RaceTrack, p_car: CarVisual = null) -> void:
 	marks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(marks)
 	_build_pools()
+	driving = DrivingParticles.new(self, POOL_CAPS, _glow_texture())
+	_allocated_units += driving.allocated
+	Quality.budget_changed.connect(_apply_driving_budget)
+
+
+func _apply_driving_budget() -> void:
+	# Hide existing tails immediately, including when quality drops mid-drift.
+	driving.reset()
 
 
 ## Everything combat spawns is created once here, hidden, and reused, so no
@@ -222,7 +240,7 @@ func _build_pools() -> void:
 			"active": false, "elapsed": 0.0, "duration": 0.4, "stretch": Vector3.ONE,
 			"from": Vector3.ZERO, "to": Vector3.ZERO, "index": i})
 		_allocated_units += 1
-	for kind in POOL_CAPS:
+	for kind in COMBAT_KINDS:
 		for i in int(POOL_CAPS[kind]):
 			var unit: Node3D
 			if kind == "dome":
@@ -533,6 +551,7 @@ func _update_skids(dt: float) -> void:
 
 
 func _reset_visuals() -> void:
+	driving.reset()
 	for id in _nodes:
 		_release(_node_key[id], _nodes[id])
 	_nodes.clear()
@@ -552,6 +571,7 @@ func _reset_visuals() -> void:
 
 func snapshot() -> Dictionary:
 	return {"capacities": POOL_CAPS.duplicate(), "allocated_units": _allocated_units,
+		"driving_emitters": driving.snapshot(),
 		"active_units": _nodes.size(), "peak_active": _peak_active,
 		"saturated_frames": _saturated_frames, "overflow_samples": _overflow_samples,
 		"flash_limit": Quality.p.fx_flash_limit, "light_limit": Quality.p.fx_light_limit}
@@ -584,6 +604,7 @@ func _process(dt: float) -> void:
 	_update_skids(dt)
 	var cam := get_viewport().get_camera_3d()
 	_focus = cam.global_position if cam != null else (track.pos(race.player.s, race.player.d) if race.player != null else Vector3.ZERO)
+	driving.update(race, _driving_visuals, _focus, dt)
 	_lights_left = int(Quality.p.fx_light_limit)
 	for i in range(_flashes.size() - 1, -1, -1):
 		var f: Dictionary = _flashes[i]
@@ -606,7 +627,7 @@ func _process(dt: float) -> void:
 	grouped.dome = race.domes.duplicate()
 	var wanted := {}
 	var saturated := false
-	for key in POOL_CAPS:
+	for key in COMBAT_KINDS:
 		var rows: Array = grouped[key]
 		if rows.size() > int(POOL_CAPS[key]):
 			saturated = true

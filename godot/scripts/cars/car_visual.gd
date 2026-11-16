@@ -8,6 +8,7 @@ extends Node3D
 static var shared: Dictionary = {}
 static var _sport_checked := false
 static var _sport_scene: PackedScene
+static var _flake_normal: NoiseTexture2D
 const CONTACT_SHADER := preload("res://shaders/car_contact.gdshader")
 const SPORT_SHADER := preload("res://shaders/sport_car.gdshader")
 
@@ -41,6 +42,7 @@ var _last_damage := -1.0
 var _healthy_paint := Color.WHITE
 var _healthy_roughness := 0.48
 var _nitro_flares: Array[MeshInstance3D] = []
+var _bot_beams := false
 
 
 func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
@@ -70,7 +72,7 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 	_make_shield()
 	if is_player:
 		_make_finish_driver()
-		_make_headlights()
+	_make_headlights()
 	_apply_car_shadows()
 	if not Quality.preset_changed.is_connected(_apply_car_shadows):
 		Quality.preset_changed.connect(_apply_car_shadows)
@@ -83,6 +85,13 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 
 func _apply_render_budget() -> void:
 	_apply_car_shadows()
+	if sport_paint != null:
+		sport_paint.set_shader_parameter("paint_flakes", bool(Quality.p.paint_flakes))
+	if mat_paint != null:
+		mat_paint.normal_enabled = bool(Quality.p.paint_flakes)
+	# A race grants nearby bots a share after every budget/pose update.
+	_bot_beams = false
+	_apply_headlights()
 	for flare in _nitro_flares:
 		flare.visible = bool(Quality.p.fx_extras)
 
@@ -97,6 +106,8 @@ func _apply_damage(c: CarState) -> void:
 	if mat_paint != null:
 		mat_paint.albedo_color = _healthy_paint.darkened(damage_amount * 0.22)
 		mat_paint.roughness = lerpf(_healthy_roughness, 0.82, damage_amount)
+		mat_paint.clearcoat = lerpf(0.65, 0.2, damage_amount)
+		mat_paint.clearcoat_roughness = lerpf(0.18, 0.65, damage_amount)
 
 
 func _apply_car_shadows(_preset: String = "") -> void:
@@ -281,18 +292,33 @@ static func _mk_glass() -> StandardMaterial3D:
 
 func _paint(source: Material = null) -> StandardMaterial3D:
 	if mat_paint == null:
-		# Each car retains its own tint with a softer satin-clearcoat finish.
+		# Public GLBs use separate paint surfaces; the atlas variant uses the
+		# same finish through SPORT_SHADER's body mask.
 		mat_paint = source.duplicate() as StandardMaterial3D if source is StandardMaterial3D else StandardMaterial3D.new()
 		# Daylight and ACES compress bright paint toward pastel; use a richer
 		# base coat and restrained neutral reflections. Preserve white paint.
 		var white_paint := color.s < 0.15 and color.v > 0.8
 		mat_paint.albedo_color = color.darkened(0.05 if white_paint else 0.30)
-		mat_paint.metallic = 0.16
-		mat_paint.metallic_specular = 0.22
-		mat_paint.roughness = 0.48
+		mat_paint.metallic = 0.6
+		mat_paint.metallic_specular = 0.5
+		mat_paint.roughness = 0.25
 		mat_paint.clearcoat_enabled = true
-		mat_paint.clearcoat = 0.16
-		mat_paint.clearcoat_roughness = 0.38
+		mat_paint.clearcoat = 0.65
+		mat_paint.clearcoat_roughness = 0.18
+		if _flake_normal == null:
+			var noise := FastNoiseLite.new()
+			noise.seed = 31
+			noise.frequency = 0.7
+			noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+			_flake_normal = NoiseTexture2D.new()
+			_flake_normal.width = 256
+			_flake_normal.height = 256
+			_flake_normal.noise = noise
+			_flake_normal.seamless = true
+			_flake_normal.as_normal_map = true
+			_flake_normal.bump_strength = 0.15
+		mat_paint.normal_texture = _flake_normal
+		mat_paint.normal_scale = 0.12
 	return mat_paint
 
 
@@ -358,6 +384,7 @@ func _make_headlights() -> void:
 		l.spot_attenuation = 0.8
 		l.light_color = Color(0.9, 0.95, 1.0)
 		l.light_energy = 0.0
+		l.visible = false
 		l.shadow_enabled = false
 		l.light_specular = 0.3
 		add_child(l)
@@ -365,18 +392,51 @@ func _make_headlights() -> void:
 			head_l = l
 		else:
 			head_r = l
+		# Atlas models have no separate lamp material. Keep small luminous
+		# lenses even when the optional road-lighting spots are budgeted out.
+		if sport_paint != null and mat_front == null:
+			_front()
+		if sport_paint != null:
+			var lens := MeshInstance3D.new()
+			var mesh := BoxMesh.new()
+			mesh.size = Vector3(0.28, 0.065, 0.025)
+			lens.mesh = mesh
+			lens.material_override = mat_front
+			lens.position = l.position
+			lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(lens)
 
 
 func set_night(n: float) -> void:
 	night = n
-	var on := n > 0.3
+	_apply_headlights()
+	if mat_front:
+		mat_front.emission_energy_multiplier = 3.0 if n > 0.3 else 1.1
+
+
+func _apply_headlights() -> void:
+	var on := night > 0.3 and (is_player or _bot_beams)
 	if head_l:
 		head_l.light_energy = 6.0 if on else 0.0
 		head_r.light_energy = 6.0 if on else 0.0
 		head_l.visible = on
 		head_r.visible = on
-	if mat_front:
-		mat_front.emission_energy_multiplier = 3.0 if on else 1.1
+
+
+static func update_headlight_budget(visuals: Array[CarVisual], focus: Vector3) -> void:
+	# Two functional player spots are reserved even on low. Bots share a
+	# separate spot budget (omni combat/street lights have their own limit).
+	var candidates: Array[CarVisual] = []
+	for visual in visuals:
+		visual._bot_beams = false
+		if not visual.is_player and visual.night > 0.3 and visual.is_visible_in_tree() and visual.global_position.distance_squared_to(focus) < 70.0 * 70.0:
+			candidates.append(visual)
+	candidates.sort_custom(func(a: CarVisual, b: CarVisual): return a.global_position.distance_squared_to(focus) < b.global_position.distance_squared_to(focus))
+	var slots := mini(int(Quality.p.fx_light_limit), Quality.SPOT_LIGHTS_PER_MESH - 2) / 2
+	for i in mini(slots, candidates.size()):
+		candidates[i]._bot_beams = true
+	for visual in visuals:
+		visual._apply_headlights()
 
 
 ## Place and animate from the sim state. Call once per rendered frame.
