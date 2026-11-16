@@ -23,6 +23,7 @@ config/icon="res://assets/icon.png"
 
 Data="*res://scripts/data/data.gd"
 Settings="*res://scripts/game/settings.gd"
+Progress="*res://scripts/game/progress.gd"
 Quality="*res://scripts/game/quality.gd"
 Sfx="*res://scripts/game/sfx.gd"
 Game="*res://scripts/game/game.gd"

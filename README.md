@@ -184,8 +184,13 @@ Rules for every change:
     The simulation returns data, not words (incoming-threat side). Driver
     names and `Data.GAME_NAME` stay in `data.gd`: proper names, the same in
     every language.
-1.3 **`Progress` autoload** (`scripts/game/progress.gd`, `user://progress.cfg`):
-    version, fans, unlocked paints/cities, cup stars. Load/save/migrate + test.
+1.3 **`Progress` autoload — done.** `scripts/game/progress.gd` keeps
+    `user://progress.cfg`: version, fans, unlocked paints and cities, cup
+    stars (`add_fans`, `spend_fans`, `unlock_paint`, `unlock_city`,
+    `set_stars`). Older files are upgraded in `_upgrade`, bad values repaired,
+    a damaged file set aside, and a newer build's keys kept. Nothing feeds it
+    yet: 6.1 adds race fans, 6.2 stars, 6.3 purchases, 8.3 cities. Every
+    paint offered today is owned from the start; 6.3 decides what gets locked.
 1.4 **`Music` autoload** (`scripts/game/music.gd`): "Music" bus added to
     `Sfx.BUSES`, two players for crossfade, duck API, `vol_music` in settings.
     No tracks yet.
