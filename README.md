@@ -218,7 +218,8 @@ lights and 8 reflection probes. Baked lightmaps, reflection probes, decals,
 glow, MSAA/FXAA, depth of field, colour adjustments and screen/depth textures
 work. An item below that needs a Forward+-only feature is desktop-only.
 
-3.1 **Car paint** in `shaders/sport_car.gdshader`: `CLEARCOAT`,
+3.1 **Car paint — implemented** (see [checkpoints](docs/section-3-progress.md))
+    in `shaders/sport_car.gdshader`: `CLEARCOAT`,
     `CLEARCOAT_ROUGHNESS`, a procedural flake normal on the body mask,
     metallic ~0.6 / roughness ~0.25 on paint. Headlights for bots in
     `scripts/cars/car_visual.gd` (emissive always; real `SpotLight3D` only

@@ -69,6 +69,7 @@ func _ready() -> void:
 
 func _apply_render_budget() -> void:
 	Quality.apply_viewport(get_viewport())
+	CarVisual.update_headlight_budget(cars, cam.global_position)
 
 
 func _begin() -> void:
@@ -511,6 +512,7 @@ func _process(dt: float) -> void:
 		if state in ["race", "finish"]:
 			pose = RenderPose.sample(_previous_poses[i], race.cars[i], acc / DT, track.L)
 		cars[i].apply_state(race.cars[i], track, dt, pose)
+	CarVisual.update_headlight_budget(cars, cam.global_position)
 	var view_pose := {}
 	if state in ["race", "finish"]:
 		view_pose = RenderPose.sample(_previous_poses[race.cars.find(player)], player, acc / DT, track.L)

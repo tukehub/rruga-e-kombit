@@ -20,6 +20,7 @@ const FORWARD_PLUS_ONLY: Array[String] = ["ssao", "sdfgi", "ssr", "vol_fog", "su
 ## The road is one mesh, so street lamps and combat lights share those eight.
 ## Forward+ clusters lights and has no such cap.
 const OMNI_LIGHTS_PER_MESH := 8
+const SPOT_LIGHTS_PER_MESH := 8
 const MESH_OMNI_SHARE := {"lamp_lights": 6, "fx_light_limit": 2}
 
 const PRESETS := {
@@ -100,6 +101,7 @@ func _derive_budget() -> void:
 	p.mirror_interval = 3 + stage
 	p.mirror_width = 256 if stage == 0 else (192 if stage == 1 else 128)
 	p.fx_extras = preset != "low" and stage < 2
+	p.paint_flakes = p.fx_extras
 	p.fx_flash_limit = maxi(2, {"low": 3, "medium": 5, "high": 8}[preset] - stage * 2)
 	p.fx_ring_limit = maxi(0, {"low": 2, "medium": 4, "high": 6}[preset] - stage * 2)
 	p.fx_light_limit = maxi(0, {"low": 0, "medium": 2, "high": 4}[preset] - stage)
