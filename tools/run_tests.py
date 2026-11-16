@@ -26,8 +26,11 @@ def godot(name, *arguments, expected_noise=()):
     return run.stdout
 
 
-for scene in ['readiness', 'city_worlds', 'flow_test', 'wall_contact', 'driving_dynamics', 'road_geometry', 'lana_river', 'simulation_timing', 'reverse_race', 'car_visual_regression', 'tirana_turns', 'adaptive_pickups', 'two_thumb_controls', 'combat_recovery', 'combat_ui', 'visual_performance', 'route_readability', 'string_table']:
-    godot(scene, 'res://tests/' + scene + '.tscn')
+# The progress test feeds a damaged save file on purpose; the engine reports it.
+EXPECTED_NOISE = {'progress': ['ConfigFile parse error at user://progress_test.cfg']}
+
+for scene in ['readiness', 'city_worlds', 'flow_test', 'wall_contact', 'driving_dynamics', 'road_geometry', 'lana_river', 'simulation_timing', 'reverse_race', 'car_visual_regression', 'tirana_turns', 'adaptive_pickups', 'two_thumb_controls', 'combat_recovery', 'combat_ui', 'visual_performance', 'route_readability', 'string_table', 'progress', 'music']:
+    godot(scene, 'res://tests/' + scene + '.tscn', expected_noise=EXPECTED_NOISE.get(scene, ()))
 
 # Phones run the Mobile renderer and desktop Forward+. Headless Godot keeps the
 # requested method's name, so both shipped paths are checked on any machine.

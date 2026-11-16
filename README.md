@@ -55,7 +55,7 @@ laps and difficulty to replay it; `--laps=<n>` shortens a race.
 
 Controls: tilt, or the touch-pad fallback in **Cilësimet**; right half gas, left
 half brake/drift; **GJUAJ** forward, **PRAPA** backward. Desktop testing supports
-arrows/WASD, Space, Shift/X, Q/E and Esc. There is no music.
+arrows/WASD, Space, Shift/X, Q/E and Esc. No music tracks ship yet.
 
 ## Android APK
 
@@ -184,11 +184,19 @@ Rules for every change:
     The simulation returns data, not words (incoming-threat side). Driver
     names and `Data.GAME_NAME` stay in `data.gd`: proper names, the same in
     every language.
-1.3 **`Progress` autoload** (`scripts/game/progress.gd`, `user://progress.cfg`):
-    version, fans, unlocked paints/cities, cup stars. Load/save/migrate + test.
-1.4 **`Music` autoload** (`scripts/game/music.gd`): "Music" bus added to
-    `Sfx.BUSES`, two players for crossfade, duck API, `vol_music` in settings.
-    No tracks yet.
+1.3 **`Progress` autoload — done.** `scripts/game/progress.gd` keeps
+    `user://progress.cfg`: version, fans, unlocked paints and cities, cup
+    stars (`add_fans`, `spend_fans`, `unlock_paint`, `unlock_city`,
+    `set_stars`). Older files are upgraded in `_upgrade`, bad values repaired,
+    a damaged file set aside, and a newer build's keys kept. Nothing feeds it
+    yet: 6.1 adds race fans, 6.2 stars, 6.3 purchases, 8.3 cities. Every
+    paint offered today is owned from the start; 6.3 decides what gets locked.
+1.4 **`Music` autoload — done.** `scripts/game/music.gd` plays on a "Music"
+    bus (in `Sfx.BUSES`, level from `Settings.vol_music`) with two players:
+    `Music.play(track)` crossfades to `assets/music/<track>.ogg`,
+    `Music.stop()` fades out, `Music.duck(amount, seconds)` pulls the music
+    down and lets it rise. No tracks, no callers and no volume slider yet;
+    all three come with 4.1.
 
 ### 2. Gameplay feel (Tirana)
 
@@ -258,7 +266,9 @@ work. An item below that needs a Forward+-only feature is desktop-only.
 
 4.1 **Music:** CC0/CC BY menu loop, 2–3 race loops (chosen by env), results
     sting, countdown hit; credits in `godot/assets/CREDITS.txt`. Hook via
-    `Game.scene_changed` and `RaceScene._begin()`; duck on wreck and finish.
+    `Game.scene_changed` and `RaceScene._begin()`; duck on wreck and finish
+    (`Music.duck`). Add the music slider to the settings page
+    (`Settings.vol_music` already persists).
 4.2 **Engine:** replace the two-loop crossfade in `RaceScene._engine_audio()`
     with idle/low/mid/high layers plus fake gears (pitch ramp, shift one-shot)
     and an off-throttle layer; the nearest two bots get 3D engine loops.

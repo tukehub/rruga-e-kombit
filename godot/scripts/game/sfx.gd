@@ -1,9 +1,10 @@
 extends Node
-## Sound effects mixer. Buses: Master > Engine / Tyres / Impacts / Pickups / UI.
-## No music by design.
+## Sound effects mixer. Buses: Master > Engine / Tyres / Impacts / Pickups / UI
+## / Music. This creates the buses and sets their levels; the Music autoload
+## plays on the last one.
 
 const DIR := "res://assets/sfx/"
-const BUSES := ["Engine", "Tyres", "Impacts", "Pickups", "UI"]
+const BUSES := ["Engine", "Tyres", "Impacts", "Pickups", "UI", "Music"]
 
 var _streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
@@ -50,6 +51,7 @@ func apply_volumes() -> void:
 	_set_vol("Impacts", Settings.vol_impacts)
 	_set_vol("Pickups", Settings.vol_pickups)
 	_set_vol("UI", Settings.vol_ui)
+	_set_vol("Music", Settings.vol_music)
 
 
 func _set_vol(bus: String, v: float) -> void:
