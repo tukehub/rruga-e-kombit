@@ -32,6 +32,8 @@ for scene in ['readiness', 'city_worlds', 'flow_test', 'wall_contact', 'driving_
 # Phones run the Mobile renderer and desktop Forward+. Headless Godot keeps the
 # requested method's name, so both shipped paths are checked on any machine.
 for renderer in RENDERERS:
+    godot(f'reflections on {renderer}', '--rendering-method', renderer,
+          'res://tests/reflections.tscn')
     godot(f'car_paint_lights on {renderer}', '--rendering-method', renderer,
           'res://tests/car_paint_lights.tscn')
     godot(f'speed_feedback on {renderer}', '--rendering-method', renderer,

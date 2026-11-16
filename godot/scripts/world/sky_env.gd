@@ -1,5 +1,6 @@
 class_name SkyEnv
 extends Node3D
+signal lighting_changed
 ## WorldEnvironment + sun + weather particles driven by Data.ENV presets.
 ## HDRI (CC0, Poly Haven) per preset; procedural sky as fallback.
 
@@ -81,8 +82,8 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	env.ambient_light_sky_contribution = 0.25
 	# Preserve phone visibility at night, but let daytime presets retain shade
 	# and surface detail instead of lifting every surface toward white.
-	var ambient_floor := 0.48 if is_night else 0.45
-	env.ambient_light_energy = maxf(float(preset.ambient), ambient_floor)
+	var ambient_floor := 0.38 if is_night else 0.28
+	env.ambient_light_energy = maxf(float(preset.ambient) * (0.8 if is_night else 0.65), ambient_floor)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
 	# tonemap + exposure
@@ -151,6 +152,7 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	snow.emitting = bool(preset.snow)
 	rain.visible = rain.emitting
 	snow.visible = snow.emitting
+	lighting_changed.emit()
 
 
 func _sky_energy(id: String) -> float:
@@ -261,6 +263,7 @@ func transition_to(id: String, seconds: float = 18.0) -> void:
 func advance(dt: float) -> void:
 	if _transition >= 1.0:
 		return
+	var old_quarter := int(_transition * 4.0)
 	_transition = minf(1.0, _transition + dt / _duration)
 	var k := smoothstep(0.0, 1.0, _transition)
 	wet = lerpf(_from.wet, _to.wet, k)
@@ -282,3 +285,5 @@ func advance(dt: float) -> void:
 		rain.visible = true
 	if _transition >= 1.0:
 		apply(env_id)
+	elif int(_transition * 4.0) != old_quarter:
+		lighting_changed.emit()

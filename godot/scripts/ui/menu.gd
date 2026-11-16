@@ -21,11 +21,17 @@ var _lap_plus: Button
 var _drv_tag: Label
 var _car_desc: Label
 var _set_rows := {}
+const RaceReflections = preload("res://scripts/world/race_reflections.gd")
+var garage_env: Environment
+var garage_probe: ReflectionProbe
+var garage_floor: MeshInstance3D
 
 
 func _ready() -> void:
 	Quality.apply_viewport(get_viewport())
 	_build_garage()
+	Quality.budget_changed.connect(_apply_garage_budget)
+	_apply_garage_budget()
 	_build_ui()
 	show_page("title")
 
@@ -34,11 +40,19 @@ func _ready() -> void:
 func _build_garage() -> void:
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
-	e.background_mode = Environment.BG_COLOR
-	e.background_color = Color("273445")
+	garage_env = e
+	e.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var panorama := PanoramaSkyMaterial.new()
+	panorama.panorama = load(SkyEnv.HDRI.day)
+	panorama.energy_multiplier = 0.6
+	sky.sky_material = panorama
+	sky.radiance_size = Sky.RADIANCE_SIZE_128
+	e.sky = sky
+	e.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(0.78, 0.85, 1.0)
-	e.ambient_light_energy = 0.95
+	e.ambient_light_energy = 0.4
 	e.tonemap_mode = Environment.TONE_MAPPER_ACES
 	e.glow_enabled = true
 	e.glow_intensity = 0.5
@@ -66,15 +80,26 @@ func _build_garage() -> void:
 	fill.omni_range = 14.0
 	add_child(fill)
 	var ground := MeshInstance3D.new()
+	garage_floor = ground
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(40, 40)
 	ground.mesh = pm
 	var fm := StandardMaterial3D.new()
 	fm.albedo_color = Color(0.22, 0.27, 0.33)
-	fm.roughness = 0.25
-	fm.metallic = 0.3
+	fm.roughness = 0.18
+	fm.metallic = 0.5
 	ground.material_override = fm
 	add_child(ground)
+	RaceReflections.include_scenery(ground)
+	garage_probe = RaceReflections.make_probe()
+	garage_probe.name = "GarageReflection"
+	garage_probe.position = Vector3(4, 2, 0)
+	garage_probe.size = Vector3(24, 10, 24)
+	garage_probe.max_distance = 30.0
+	garage_probe.blend_distance = 3.0
+	# The floor/sky capture lights the rotating car without baking a ghost
+	# of that car into its own paint. A probe is not a planar floor mirror.
+	add_child(garage_probe)
 	garage_pivot = Node3D.new()
 	garage_pivot.position.x = 4.0
 	add_child(garage_pivot)
@@ -85,6 +110,15 @@ func _build_garage() -> void:
 	cam.fov = 38
 	cam.current = true
 	_set_garage_car(str(Game.race_opts.car))
+
+
+func _apply_garage_budget() -> void:
+	Quality.apply_viewport(get_viewport())
+	Quality.apply_env(garage_env, false)
+	# A small static garage needs no city GI or volumetric fog pass.
+	garage_env.sdfgi_enabled = false
+	garage_env.volumetric_fog_enabled = false
+	garage_probe.visible = bool(Quality.p.probe)
 
 
 func _set_garage_car(id: String) -> void:

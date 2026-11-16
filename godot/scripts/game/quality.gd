@@ -102,6 +102,9 @@ func _derive_budget() -> void:
 	p.mirror_width = 256 if stage == 0 else (192 if stage == 1 else 128)
 	p.fx_extras = preset != "low" and stage < 2
 	p.paint_flakes = p.fx_extras
+	p.probe = bool(p.probe) and stage < 2 and renderer != "gl_compatibility"
+	p.landmark_probes = 3 if preset == "high" and stage == 0 and p.probe else 0
+	p.probe_interval = 0.5 if stage == 0 else 1.0
 	p.speed_post = p.fx_extras
 	p.driving_cars = maxi(0, {"low": 0, "medium": 2, "high": 3}[preset] - stage) if stage < 2 else 0
 	p.fx_flash_limit = maxi(2, {"low": 3, "medium": 5, "high": 8}[preset] - stage * 2)
@@ -154,6 +157,7 @@ func snapshot() -> Dictionary:
 		"mirror_width": p.mirror_width, "fx_light_limit": p.fx_light_limit,
 		"lamp_lights": p.lamp_lights, "renderer": renderer}, true)
 	result.merge({"paint_flakes": p.paint_flakes, "speed_post": p.speed_post, "driving_cars": p.driving_cars})
+	result.merge({"probe": p.probe, "landmark_probes": p.landmark_probes, "probe_interval": p.probe_interval})
 	# What the renderer was really asked to draw, for PROFILE comparisons.
 	for key in FORWARD_PLUS_ONLY:
 		result[key] = bool(p[key])

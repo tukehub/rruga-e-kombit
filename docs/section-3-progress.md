@@ -14,7 +14,9 @@ Current status:
 - **3.2 — implemented and tested:** pooled GPU driving particles and a
   quality-aware speed post effect, with regression coverage for state changes
   and bounded allocation.
-- **3.3–3.8 — pending:** reflections, OSM dressing, road decals, facade depth,
+- **3.3 — implemented, validation in progress:** player/landmark reflections,
+  HDRI garage and reduced ambient fill.
+- **3.4–3.8 — pending:** OSM dressing, road decals, facade depth,
   baked lighting/culling, and colour grading.
 
 Validation: `godot --headless --path godot --editor --import`, then
@@ -92,3 +94,32 @@ Do not merge to `main`; the user requested a separate branch.
   probes on high, HDRI/probe garage and ambient-floor adjustment. Read
   `sky_env.gd`, `menu.gd`, `race_scene.gd` and the renderer-budget tests first.
   Items 3.3–3.8 remain pending; no phone performance claim or release was made.
+
+## Checkpoint: 3.3 implementation (2026-11-16)
+
+- Added `race_reflections.gd`: one medium+ player probe follows in spaced
+  UPDATE_ONCE captures (18 m movement threshold, 0.5 s interval; 1 s under
+  stage-1 pressure). Teleports/large gaps recenter immediately. High adds
+  three static probes on the streets by the National Museum, Pyramid and
+  Polytechnic. Low and pressure stages 2/3 disable probes; stage 1 removes
+  landmark probes. Compatibility requests none.
+- Static scenery has a dedicated capture layer. Cars, pickups, combat and
+  weather do not enter the city captures. Cubemaps have no shadows, use
+  coarser mesh LOD, and share a 128 px atlas with eight slots. At most four
+  city probes can affect the road, below Mobile's eight-per-mesh limit.
+- Weather changes and transition milestones invalidate captures; landmark
+  refresh requests are staggered. Retry preserves world probes and resets
+  the player anchor. Quality snapshots report the effective probe budgets.
+- Garage uses the existing CC0 daylight HDRI, a static probe and a glossier
+  floor. Its rotating car is excluded from capture to avoid self-reflections.
+  The glossy floor reflects its environment; it is not a planar car mirror.
+  Garage viewport/environment/probe budgets now respond to live changes.
+- Reduced daytime flat ambient fill (day: 0.5 → 0.325); night retains a 0.38
+  minimum. Weather interpolation uses the same adjusted endpoints.
+- **Passed so far:** new Mobile `reflections` regression (budget, layer mask,
+  reuse, movement, weather, retry, garage). Full runner and software Vulkan
+  captures are in progress. Logs: `work/section-3.3-tests.log` and
+  `work/reflections-{mobile,forward}.log`.
+- Optional rendered check: `godot --path godot --rendering-method mobile
+  --fixed-fps 60 res://tests/reflections_visual.tscn` (repeat Forward+).
+  Captures garage, day without/with probes, high landmark, night and low.

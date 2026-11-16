@@ -11,6 +11,8 @@ const CombatFeedback = preload("res://scripts/ui/combat_feedback.gd")
 const RouteGuide = preload("res://scripts/sim/route_guide.gd")
 const RouteSigns = preload("res://scripts/world/route_signs.gd")
 const SpeedFeedback = preload("res://scripts/game/speed_feedback.gd")
+const RaceReflections = preload("res://scripts/world/race_reflections.gd")
+var reflections: RaceReflections
 var speed_feedback: SpeedFeedback
 
 var city_id := "tirane"
@@ -87,6 +89,7 @@ func _begin() -> void:
 ## the race, its cars, the camera and the UI are rebuilt.
 func restart() -> void:
 	Sfx.stop_loops()
+	reflections.reset()
 	if not scenery_visible:
 		set_scenery_visible(true)
 	for cv in cars:
@@ -158,6 +161,12 @@ func _build_world() -> void:
 	_setup_pines()
 	terrain.set_env(sky.wet, 0.0, sky.night)
 	road.set_wet(sky.wet)
+	for root: Node in [terrain, road, buildings, props, side_roads, pine_forest]:
+		RaceReflections.include_scenery(root)
+	reflections = RaceReflections.new()
+	add_child(reflections)
+	reflections.setup(track, props.landmarks)
+	sky.lighting_changed.connect(reflections.invalidate)
 
 
 func _setup_pines() -> void:
@@ -524,6 +533,7 @@ func _process(dt: float) -> void:
 	views.update_pose(player, view_pose, dt)
 	speed_feedback.update(player, state == "race", dt)
 	sky.follow(cam.global_position)
+	reflections.follow(cars[race.cars.find(player)].global_position, dt)
 	if sky.wet > 0.01:
 		sky.set_rain_ground(track.pos(player.s, player.d), track.tangent(player.s))
 	Sfx.listener_pos = cam.global_position
