@@ -10,6 +10,8 @@ const RenderPose = preload("res://scripts/game/render_pose.gd")
 const CombatFeedback = preload("res://scripts/ui/combat_feedback.gd")
 const RouteGuide = preload("res://scripts/sim/route_guide.gd")
 const RouteSigns = preload("res://scripts/world/route_signs.gd")
+const SpeedFeedback = preload("res://scripts/game/speed_feedback.gd")
+var speed_feedback: SpeedFeedback
 
 var city_id := "tirane"
 var env_id := "night"
@@ -91,7 +93,7 @@ func restart() -> void:
 		cv.queue_free()
 	cars.clear()
 	_previous_poses.clear()
-	for node: Node in [pickups, effects, cam, views, _ui_layer]:
+	for node: Node in [pickups, effects, cam, views, speed_feedback, _ui_layer]:
 		node.queue_free()
 	_snd_t.clear()
 	acc = 0.0
@@ -241,7 +243,7 @@ func _build_race() -> void:
 	pickups.setup(race, track)
 	effects = FxVisual.new()
 	add_child(effects)
-	effects.setup(race, track, cars[race.cars.find(player)])
+	effects.setup(race, track, cars[race.cars.find(player)], cars)
 	cam = ChaseCam.new()
 	add_child(cam)
 	cam.setup(track)
@@ -250,6 +252,8 @@ func _build_race() -> void:
 
 
 func _build_ui() -> void:
+	speed_feedback = SpeedFeedback.new()
+	add_child(speed_feedback)
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_ui_layer = layer
@@ -388,6 +392,7 @@ func toggle_pause() -> void:
 	_pause_box.show()
 	if paused:
 		Sfx.stop_loops()
+		speed_feedback.update(player, false, 0.0)
 	else:
 		Quality.reset_observation(2.0)
 		input.resume_controls()
@@ -517,6 +522,7 @@ func _process(dt: float) -> void:
 	if state in ["race", "finish"]:
 		view_pose = RenderPose.sample(_previous_poses[race.cars.find(player)], player, acc / DT, track.L)
 	views.update_pose(player, view_pose, dt)
+	speed_feedback.update(player, state == "race", dt)
 	sky.follow(cam.global_position)
 	if sky.wet > 0.01:
 		sky.set_rain_ground(track.pos(player.s, player.d), track.tangent(player.s))

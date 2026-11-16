@@ -10,7 +10,7 @@ deterministic. Commit and push each tested checkpoint to this branch.
 
 - **3.1 — implemented and tested:** masked clearcoat/metallic flakes and
   budgeted bot headlights, preserving player headlights and emissive lamps.
-- **3.2 — next:** pooled GPU driving particles and a quality-aware speed post
+- **3.2 — implemented, final validation in progress:** pooled GPU driving particles and a quality-aware speed post
   effect, with regression coverage for state changes and bounded allocation.
 - **3.3–3.8 — pending:** reflections, OSM dressing, road decals, facade depth,
   baked lighting/culling, and colour grading.
@@ -35,9 +35,37 @@ Do not merge to `main`; the user requested a separate branch.
   total spots stay below Mobile's eight-per-mesh ceiling. Existing omni-light
   shares are unchanged. Lights are allocated once and reassigned in place.
 - **Passed:** complete `tools/run_tests.py` suite on Godot 4.4.1, including the
-  new `car_paint_lights` scene on Mobile and Forward+. Rendered Vulkan check
-  is in progress; phone profiling remains pending.
+  new `car_paint_lights` scene on Mobile and Forward+. The Mobile software
+  Vulkan car-close render also passed and was visually inspected; phone
+  profiling remains pending.
 - Environment: `godot` on PATH is 4.6.3, so use
   `/workspace/godot441/Godot_v4.4.1-stable_linux.x86_64`. Scratch wrapper
   `work/godot` sets writable `XDG_CONFIG_HOME`, `XDG_DATA_HOME` and
   `XDG_CACHE_HOME` under `work/`. This is untracked machine-local setup.
+
+## Checkpoint: 3.2 implementation (2026-11-16)
+
+- `FxVisual.POOL_CAPS` now also bounds 6 smoke, 3 exhaust, 6 spray and 3 scrape
+  GPU emitters (438 particles maximum). `driving_particles.gd` builds them
+  once, using shared meshes/process materials. No runtime emitter creation.
+- Medium draws effects on up to two nearby cars; high on three, with the
+  player first. Low and pressure stages 2/3 disable them. World-space trails
+  follow rendered rear-wheel/exhaust/side positions; wet roads replace smoke
+  with spray. Stopping, jumping, wrecking, distance, teleport/reuse and finish
+  are handled without changing simulation state or its RNG.
+- A peripheral radial blur, vignette and slight chromatic offset use speed
+  ratio and nitro. The screen-texture pass sits below HUD, controls and the
+  mirror, ignores input, and disables on low/pressure, pause, wreck and finish.
+  Retry creates a fresh inactive pass.
+- **Passed so far:** dedicated Mobile `speed_feedback` regression and the
+  existing combined visual-performance stress test. Full runner and rendered
+  Mobile/Forward+ checks are running; inspect their results before marking
+  this checkpoint fully validated.
+- Render check: `godot --path godot --rendering-method mobile --fixed-fps 60
+  res://tests/graphics_visual.tscn` (repeat with `forward_plus`). It exercises
+  production race/HUD integration, the atlas paint shader, drift, wet boost
+  and low quality, and writes screenshots to `user://shots/`.
+- On this machine the test display is Xorg `:97`; software Vulkan uses
+  `VK_ICD_FILENAMES=/workspace/setup/lavapipe.json`. Scratch logs are in
+  `work/section-3.2-tests.log`, `work/graphics-mobile.log`, and
+  `work/graphics-forward.log`.

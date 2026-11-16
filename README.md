@@ -224,7 +224,8 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     metallic ~0.6 / roughness ~0.25 on paint. Headlights for bots in
     `scripts/cars/car_visual.gd` (emissive always; real `SpotLight3D` only
     within `Quality.p.fx_light_limit`).
-3.2 **Speed feedback:** `GPUParticles3D` tyre smoke on drift, exhaust
+3.2 **Speed feedback — implemented** (see [checkpoints](docs/section-3-progress.md)):
+    `GPUParticles3D` tyre smoke on drift, exhaust
     puff/flame on nitro, wheel spray when wet, wall sparks on scrape (pooled in
     `scripts/game/fx_visual.gd` with caps in `POOL_CAPS`); fullscreen
     `shaders/speed_post.gdshader` (radial blur, vignette, slight chroma) driven

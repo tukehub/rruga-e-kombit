@@ -71,7 +71,7 @@ func _ready() -> void:
 	var before := object_ids(fx)
 	var resources := resource_ids(fx)
 	fx._process(0.0)
-	check(fx._nodes.size() == 99 and int(fx.snapshot().allocated_units) == 113, "legal maximum inventory burst fits prewarmed hard pools")
+	check(fx._nodes.size() == 99 and int(fx.snapshot().allocated_units) == 131, "legal maximum inventory burst and driving emitters fit prewarmed hard pools")
 	for i in 100:
 		fx.powerup_used(c, Data.PW_KEYS[i % Data.PW_KEYS.size()], false)
 		fx.boom(race.track.pos(c.s, c.d), Color.ORANGE)
@@ -211,6 +211,11 @@ func resource_ids(root: Node) -> Dictionary:
 		if root.material_override != null: result[root.material_override.get_instance_id()] = true
 	elif root is CPUParticles3D:
 		if root.mesh != null: result[root.mesh.get_instance_id()] = true
+	elif root is GPUParticles3D:
+		if root.draw_pass_1 != null:
+			result[root.draw_pass_1.get_instance_id()] = true
+			result[root.draw_pass_1.material.get_instance_id()] = true
+		if root.process_material != null: result[root.process_material.get_instance_id()] = true
 	for child in root.get_children():
 		result.merge(resource_ids(child))
 	return result
