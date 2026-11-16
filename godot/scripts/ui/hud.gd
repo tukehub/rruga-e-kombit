@@ -24,6 +24,12 @@ var _time: Label
 var _board: VBoxContainer
 var _board_key := ""
 var _board_gaps: Array[Label] = []
+var _board_details: Array[Control] = []   # names and gaps: hidden while collapsed
+var _board_title: Label
+var _standings: PanelContainer
+## Collapsed, the standings are a slim column of places and car colours.
+var standings_open := false
+const STANDINGS_WIDTH := 270.0
 var _feed: VBoxContainer
 var _center: Label
 var _center_sub: Label
@@ -124,19 +130,26 @@ func _build() -> void:
 	_time = UiTheme.label("0:00.000", 23, UiTheme.TEXT)
 	v.add_child(_time)
 	var standings := UiTheme.panel(12)
+	standings.name = "Standings"
 	standings.position = Vector2(16, 102)
-	standings.custom_minimum_size.x = 270
-	standings.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Tapping the panel opens and closes the names and gaps.
+	standings.mouse_filter = Control.MOUSE_FILTER_STOP
+	standings.gui_input.connect(_standings_input)
 	standings.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.24), Color(1, 1, 1, 0.13), 12, 1))
 	add_child(standings)
+	_standings = standings
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 3)
+	bv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	standings.add_child(bv)
-	bv.add_child(UiTheme.label(Data.t("hud.standings"), 18, UiTheme.CYAN))
+	_board_title = UiTheme.label(Data.t("hud.standings"), 18, UiTheme.CYAN)
+	_board_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bv.add_child(_board_title)
 	_board = VBoxContainer.new()
 	_board.add_theme_constant_override("separation", 0)
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bv.add_child(_board)
+	set_standings_open(false)
 	_feed = VBoxContainer.new()
 	_feed.position = Vector2(20, 330)
 	_feed.size.x = 360
@@ -433,6 +446,31 @@ func inventory_hold(index: int, fraction: float) -> void:
 		_hold_bars[i].size = Vector2(maxf(0.0, _slots[i].size.x - 8) * (fraction if i == index else 0.0), 3)
 
 
+func _standings_input(event: InputEvent) -> void:
+	var tapped := false
+	if event is InputEventMouseButton:
+		tapped = event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+	elif event is InputEventScreenTouch:
+		tapped = event.pressed and not Input.is_emulating_mouse_from_touch()
+	if tapped:
+		set_standings_open(not standings_open)
+		Sfx.ui_click()
+		_standings.accept_event()
+
+
+func set_standings_open(open: bool) -> void:
+	standings_open = open
+	_board_title.visible = open
+	_standings.custom_minimum_size.x = STANDINGS_WIDTH if open else 0.0
+	for detail in _board_details:
+		detail.visible = open
+		if open:
+			detail.modulate.a = 0.0
+			UiTheme.fade(detail, 1.0)
+	# A container only grows on its own; shrink it back to its content.
+	_standings.reset_size()
+
+
 func _process(dt: float) -> void:
 	if race == null or player == null:
 		return
@@ -483,6 +521,7 @@ func _process(dt: float) -> void:
 	if key != _board_key:
 		_board_key = key
 		_board_gaps.clear()
+		_board_details.clear()
 		for ch in _board.get_children():
 			_board.remove_child(ch)
 			ch.queue_free()
@@ -511,6 +550,12 @@ func _process(dt: float) -> void:
 			gap.add_theme_constant_override("outline_size", 3)
 			row.add_child(gap)
 			_board_gaps.append(gap)
+			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			if c == player:
+				n.add_theme_color_override("font_color", UiTheme.CYAN)
+			for detail: Control in [nm, gap]:
+				detail.visible = standings_open
+				_board_details.append(detail)
 			_board.add_child(row)
 	for i in mini(race.order.size(), _board_gaps.size()):
 		var c: CarState = race.order[i]

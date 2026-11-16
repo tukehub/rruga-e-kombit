@@ -114,7 +114,76 @@ static func button(text: String, accent := Color(0, 0, 0, 0), min_w := 0.0) -> B
 		b.add_theme_stylebox_override("hover", flat(Color(accent, 0.9), accent.lightened(0.4), 12))
 		b.add_theme_stylebox_override("pressed", flat(accent.lightened(0.2), Color.WHITE, 12))
 		b.add_theme_color_override("font_color", Color.WHITE)
+	press(b)
 	return b
+
+
+# ------------------------------------------------------------------ motion
+const FADE_TIME := 0.18
+const SLIDE_TIME := 0.24
+const PRESS_TIME := 0.08
+const PRESS_SCALE := 0.96
+
+
+## Fade a node to `alpha`. Outside the tree there is no clock to animate on,
+## so the node simply takes the end value; the same holds for slide_in.
+static func fade(node: CanvasItem, alpha: float, seconds := FADE_TIME, delay := 0.0) -> Tween:
+	_stop(node, "fade_tween")
+	if not node.is_inside_tree() or seconds <= 0.0:
+		node.modulate.a = alpha
+		return null
+	var tween := node.create_tween()
+	tween.tween_property(node, "modulate:a", alpha, seconds).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	node.set_meta("fade_tween", tween)
+	return tween
+
+
+## Bring a control in from `offset` away, fading up, to where it rests now.
+static func slide_in(node: Control, offset := Vector2(48.0, 0.0), seconds := SLIDE_TIME, delay := 0.0) -> Tween:
+	_stop(node, "slide_tween")
+	_stop(node, "fade_tween")
+	if node.has_meta("slide_rest"):
+		node.position = node.get_meta("slide_rest")
+	if not node.is_inside_tree() or seconds <= 0.0:
+		node.modulate.a = 1.0
+		return null
+	var rest := node.position
+	node.set_meta("slide_rest", rest)
+	node.position = rest + offset
+	node.modulate.a = 0.0
+	var tween := node.create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "position", rest, seconds).set_delay(delay)
+	tween.tween_property(node, "modulate:a", 1.0, seconds).set_delay(delay)
+	node.set_meta("slide_tween", tween)
+	return tween
+
+
+## A button that gives a little under the finger and springs back.
+static func press(button: BaseButton) -> void:
+	if button.has_meta("press_motion"):
+		return
+	button.set_meta("press_motion", true)
+	button.button_down.connect(func() -> void: _press_to(button, PRESS_SCALE))
+	button.button_up.connect(func() -> void: _press_to(button, 1.0))
+
+
+static func _press_to(button: BaseButton, amount: float) -> void:
+	_stop(button, "press_tween")
+	button.pivot_offset = button.size * 0.5
+	if not button.is_inside_tree():
+		button.scale = Vector2.ONE * amount
+		return
+	var tween := button.create_tween()
+	tween.tween_property(button, "scale", Vector2.ONE * amount, PRESS_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	button.set_meta("press_tween", tween)
+
+
+static func _stop(node: Node, key: String) -> void:
+	if node.has_meta(key):
+		var running: Tween = node.get_meta(key)
+		if running != null and running.is_valid():
+			running.kill()
+		node.remove_meta(key)
 
 
 static func panel(radius := 16) -> PanelContainer:

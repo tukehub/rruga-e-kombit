@@ -125,9 +125,14 @@ func show_page(name: String) -> void:
 	if name == "city":
 		name = "title"
 	Game.race_opts.city = "tirane"
+	var changed := page != name
 	page = name
 	for k in pages:
 		pages[k].visible = (k == name)
+	# The page shown is right at once; only its arrival is animated. Going
+	# back to the title comes in from the left, everything else from the right.
+	if changed and pages.has(name):
+		UiTheme.slide_in(pages[name], Vector2(-56.0 if name == "title" else 56.0, 0.0))
 	if name == "settings":
 		_refresh_settings()
 	if name == "title":

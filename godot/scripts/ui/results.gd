@@ -1,6 +1,10 @@
 class_name Results
 extends Control
-## Post-race standings from Game.last_result.
+## Post-race standings from Game.last_result. The rows arrive one after
+## another, first place first.
+
+const ROW_STAGGER := 0.07
+var row_cells: Array = []      # one Array of the four cells per driver
 
 
 func _ready() -> void:
@@ -67,6 +71,12 @@ func _ready() -> void:
 		var finished := bool(row.get("finished", false))
 		grid.add_child(UiTheme.label(Game.fmt_time(float(row.time)) if finished else Data.t("results.unfinished"), 25, c))
 		grid.add_child(UiTheme.label(Game.fmt_time(float(row.get("best_lap", INF))), 25, c))
+		var cells: Array = []
+		for cell in 4:
+			var control: Control = grid.get_child(grid.get_child_count() - 4 + cell)
+			control.modulate.a = 0.0
+			cells.append(control)
+		row_cells.append(cells)
 	var best := float(r.get("best_lap", INF))
 	var record: Dictionary = Settings.stats.best_laps
 	var rec_t := float(record.get(city.id, INF))
@@ -90,6 +100,11 @@ func _ready() -> void:
 	hb.add_child(menu)
 	if place == 1:
 		Sfx.play("finish", "UI", -4.0)
+	# The grid has to lay its rows out before they can slide to their places.
+	await get_tree().process_frame
+	for i in row_cells.size():
+		for cell: Control in row_cells[i]:
+			UiTheme.slide_in(cell, Vector2(36.0, 0.0), UiTheme.SLIDE_TIME, 0.12 + i * ROW_STAGGER)
 
 
 func _unhandled_input(event: InputEvent) -> void:

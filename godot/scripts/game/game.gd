@@ -74,6 +74,10 @@ func set_root(root: Node) -> void:
 	_root = root
 
 
+const TRANSITION_FADE_IN := 0.14
+const TRANSITION_FADE_OUT := 0.3
+
+
 func goto(name: String) -> void:
 	if _loading or not SCENES.has(name):
 		return
@@ -82,6 +86,11 @@ func goto(name: String) -> void:
 	# transition first and give the renderer a frame to present it.
 	var overlay := _transition_overlay(name)
 	add_child(overlay)
+	var cover := overlay.get_child(0) as ColorRect
+	cover.modulate.a = 0.0
+	var fade_in := UiTheme.fade(cover, 1.0, TRANSITION_FADE_IN)
+	if fade_in != null:
+		await fade_in.finished
 	await get_tree().process_frame
 	await get_tree().process_frame
 	for c in _root.get_children():
@@ -92,7 +101,14 @@ func goto(name: String) -> void:
 	_root.add_child(inst)
 	current = name
 	await get_tree().process_frame
-	overlay.queue_free()
+	# The new scene is live from here; the cover fades off it without
+	# swallowing touches.
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fade_out := UiTheme.fade(cover, 0.0, TRANSITION_FADE_OUT)
+	if fade_out != null:
+		fade_out.finished.connect(overlay.queue_free)
+	else:
+		overlay.queue_free()
 	_loading = false
 	scene_changed.emit(name)
 

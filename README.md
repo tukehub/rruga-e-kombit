@@ -13,8 +13,8 @@ model first; other cities and online play follow (see
 [Changes to be made](#changes-to-be-made)). The current build has one shared sports car
 for all six drivers, six paint choices with identical performance,
 recognizable eagle/lightning/etc power-up badges, larger phone text, explicit
-corner pedals and forward/back shooting buttons, and always-visible translucent
-standings. The middle of the screen stays clear for the road and car.
+corner pedals and forward/back shooting buttons, and translucent standings
+that open on a tap. The middle of the screen stays clear for the road and car.
 
 The main menu starts a Tirana race directly. Other city datasets remain in the
 repository for later review; they are not offered in this focused menu.
@@ -332,10 +332,14 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     rear-fire and drift buttons keep their power-up icon and their line of
     text, because that text is state ("PA RIVAL", "E PLOTË", "DRIFT 40%").
     Checked in `tests/combat_ui`.
-5.2 **Motion:** `UiTheme` helpers `slide_in`/`fade`/`press`; animated page
-    changes in `menu.gd`, fade in `Game._transition_overlay()`, staggered rows
-    in `results.gd`, standings collapse to position-only until tapped in
-    `hud.gd`.
+5.2 **Motion — done.** `UiTheme.fade`, `slide_in` and `press` (every
+    `UiTheme.button` gives 4% under the finger). Menu pages slide in, the
+    title from the left, the rest from the right; the page shown switches at
+    once and only its arrival is animated. `Game.goto()` fades the loading
+    cover in (0.14 s) and off the new scene (0.3 s). Result rows arrive one
+    after another, first place first. The HUD standings start as a slim
+    column of places and car colours; a tap opens names and gaps, another
+    closes them (`Hud.set_standings_open`). Covered by `tests/ui_motion`.
 5.3 **Cinematics:** driver name cards during the intro sweep; brief slow motion
     on the finish line before results.
 
