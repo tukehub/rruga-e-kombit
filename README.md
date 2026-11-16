@@ -324,10 +324,14 @@ work. An item below that needs a Forward+-only feature is desktop-only.
 
 ### 5. Controls and UI
 
-5.1 **Icon controls:** replace text labels ("GAZ", "FRENA", "TIMONI", ...) in
-    `RaceInput._mk_button()` with SVG icons, a press scale tween and a glow
-    ring; keep the `control_rect()` geometry contract; the steering pad draws a
-    half-wheel. Update the text assertions in `tests/combat_ui.gd`.
+5.1 **Icon controls — done.** Gas and brake show SVG icons
+    (`assets/ui/controls/`) and the steering pad a half wheel that turns
+    with the thumb, drawn by `RaceInput.ControlFace`; the words are gone
+    from the string table. A held control shrinks to 93% and lights a ring.
+    `control_rect()` is unchanged and still the only hit geometry. The fire,
+    rear-fire and drift buttons keep their power-up icon and their line of
+    text, because that text is state ("PA RIVAL", "E PLOTË", "DRIFT 40%").
+    Checked in `tests/combat_ui`.
 5.2 **Motion:** `UiTheme` helpers `slide_in`/`fade`/`press`; animated page
     changes in `menu.gd`, fade in `Game._transition_overlay()`, staggered rows
     in `results.gd`, standings collapse to position-only until tapped in

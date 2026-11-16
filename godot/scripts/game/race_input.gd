@@ -17,6 +17,76 @@ const EDGE := 20.0
 const GAP := 12.0
 const STEER_SLOT_CLEARANCE := 206.0
 const HUD_CLEARANCE := 344.0
+const ICONS := {
+	"gas": preload("res://assets/ui/controls/gas.svg"),
+	"brake": preload("res://assets/ui/controls/brake.svg"),
+}
+const PRESS_SCALE := 0.93
+const PRESS_TIME := 0.09
+
+
+## What a control shows instead of a word: its icon, or for the steering pad a
+## half steering wheel that turns with the thumb, and a ring that lights up
+## while the control is held. Drawn inside the button, so the hit rectangle
+## from control_rect() is untouched.
+class ControlFace extends Control:
+	var icon: Texture2D
+	var color := Color.WHITE
+	var wheel := false
+	var steer := 0.0: set = set_steer
+	var glow := 0.0: set = set_glow
+
+	func set_steer(value: float) -> void:
+		if not is_equal_approx(steer, value):
+			steer = value
+			queue_redraw()
+
+	func set_glow(value: float) -> void:
+		glow = value
+		queue_redraw()
+
+	func icon_rect() -> Rect2:
+		var side := minf(size.x, size.y) * 0.58
+		return Rect2((size - Vector2(side, side)) * 0.5, Vector2(side, side))
+
+	func wheel_radius() -> float:
+		return minf(size.x * 0.24, size.y * 0.62)
+
+	func _draw() -> void:
+		var centre := size * 0.5
+		if wheel:
+			_draw_wheel()
+			return
+		var ring := minf(size.x, size.y) * 0.42
+		if glow > 0.01:
+			draw_arc(centre, ring + 3.0, 0.0, TAU, 48, Color(color, 0.22 * glow), 7.0, true)
+			draw_arc(centre, ring, 0.0, TAU, 48, Color(color.lightened(0.3), 0.95 * glow), 2.5, true)
+		if icon != null:
+			draw_texture_rect(icon, icon_rect(), false, Color.WHITE.lerp(color.lightened(0.5), glow))
+
+	func _draw_wheel() -> void:
+		# The hub sits on the pad's lower edge, so only the upper half shows.
+		var radius := wheel_radius()
+		var hub := Vector2(size.x * 0.5, size.y - 10.0)
+		var turn := steer * 0.75
+		var rim := Color.WHITE.lerp(color.lightened(0.4), glow)
+		if glow > 0.01:
+			draw_arc(hub, radius + 4.0, PI, TAU, 40, Color(color, 0.25 * glow), 9.0, true)
+		draw_arc(hub, radius, PI, TAU, 40, rim, 5.0, true)
+		for spoke in [-PI * 0.5, -PI * 0.5 - 1.05, -PI * 0.5 + 1.05]:
+			var direction := Vector2.from_angle(spoke + turn)
+			# A spoke turned below the pad's edge is behind the dashboard.
+			if direction.y < 0.05:
+				draw_line(hub + direction * radius * 0.24, hub + direction * (radius - 2.0), rim, 4.0, true)
+		draw_arc(hub, radius * 0.24, PI, TAU, 16, rim, 4.0, true)
+		# The top-centre mark shows how far the wheel is turned.
+		var mark := Vector2.from_angle(-PI * 0.5 + turn)
+		draw_line(hub + mark * (radius - 5.0), hub + mark * (radius + 6.0), color, 5.0, true)
+		for side in [-1.0, 1.0]:
+			var at := Vector2(size.x * 0.5 + side * (radius + 34.0), size.y * 0.5)
+			var lit := clampf(steer * side, 0.0, 1.0)
+			var arrow := Color(rim, 0.45 + 0.55 * lit)
+			draw_polyline(PackedVector2Array([at + Vector2(-side * 7.0, -11.0), at + Vector2(side * 6.0, 0.0), at + Vector2(-side * 7.0, 11.0)]), arrow, 4.0, true)
 
 var steer := 0.0
 var gas := false
@@ -34,7 +104,7 @@ var _steer_btn: Button
 var _boost_btn: Button
 var _boost_fill: ColorRect
 var _auto_label: Label
-var _steer_marker: ColorRect
+var _faces := {}                 # zone -> ControlFace
 var _touches := {}
 var _pad_steer := 0.0
 var _steer_finger := -1
@@ -60,9 +130,11 @@ func _ready() -> void:
 	_desktop = OS.get_name() not in ["Android", "iOS"]
 	_fire_btn = _mk_button(Data.t("input.no_power"), "fire", Color("ffbc57"))
 	_back_btn = _mk_button(Data.t("input.back"), "back", Color("8edbff"))
-	_gas_btn = _mk_button(Data.t("input.gas"), "gas", Color("77e8b0"))
-	_brake_btn = _mk_button(Data.t("input.brake"), "brake", Color("ff9c94"))
-	_steer_btn = _mk_button(Data.t("input.steer"), "steer", Color("b8d9ef"))
+	# Driving controls carry an icon, not a word; the item buttons keep the
+	# power-up's own icon and the line that says what a press will do.
+	_gas_btn = _mk_button("", "gas", Color("77e8b0"))
+	_brake_btn = _mk_button("", "brake", Color("ff9c94"))
+	_steer_btn = _mk_button("", "steer", Color("b8d9ef"))
 	_boost_btn = _mk_button(Data.t("input.drift", 0), "boost", UiTheme.GREEN)
 	_boost_fill = ColorRect.new()
 	_boost_fill.color = UiTheme.GREEN
@@ -74,10 +146,6 @@ func _ready() -> void:
 	_auto_label.add_theme_constant_override("outline_size", 2)
 	_auto_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_brake_btn.add_child(_auto_label)
-	_steer_marker = ColorRect.new()
-	_steer_marker.color = UiTheme.CYAN
-	_steer_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_steer_btn.add_child(_steer_marker)
 	_settings_signature = Settings.input_config()
 	Settings.changed.connect(_settings_changed)
 	resized.connect(_resized)
@@ -216,6 +284,7 @@ func _layout_buttons() -> void:
 		button.add_theme_font_size_override("font_size", roundi((16.0 if pair[1] == "boost" else 21.0) * float(Settings.CONTROL_SCALES[Settings.control_size])))
 		button.position = rect.position
 		button.size = rect.size
+		button.pivot_offset = rect.size * 0.5
 		button.modulate.a = Settings.control_opacity
 	if _steer_btn != null:
 		_steer_btn.visible = Settings.touch_steer
@@ -260,7 +329,37 @@ func _mk_button(text: String, zone: String, col: Color) -> Button:
 			style.content_margin_bottom = 7
 			button.add_theme_stylebox_override(state, style)
 	add_child(button)
+	var face := ControlFace.new()
+	face.name = "Face"
+	face.color = col
+	face.icon = ICONS.get(zone)
+	face.wheel = zone == "steer"
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	face.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	button.add_child(face)
+	_faces[zone] = face
 	return button
+
+
+## Held controls shrink a little and light their ring; both ease in and out.
+func _show_pressed(zone: String, button: Button, held: bool) -> void:
+	button.set_pressed_no_signal(held)
+	if bool(button.get_meta("shown_held", false)) == held:
+		return
+	button.set_meta("shown_held", held)
+	var face: ControlFace = _faces[zone]
+	if not is_inside_tree():
+		button.scale = Vector2.ONE * (PRESS_SCALE if held else 1.0)
+		face.glow = 1.0 if held else 0.0
+		return
+	if button.has_meta("press_tween"):
+		var running: Tween = button.get_meta("press_tween")
+		if running != null and running.is_valid():
+			running.kill()
+	var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", Vector2.ONE * (PRESS_SCALE if held else 1.0), PRESS_TIME)
+	tween.tween_property(face, "glow", 1.0 if held else 0.0, PRESS_TIME if held else PRESS_TIME * 2.0)
+	button.set_meta("press_tween", tween)
 
 
 func action_available(backward: bool) -> bool:
@@ -456,16 +555,15 @@ func _recount(kb_gas := false, kb_brake := false) -> void:
 	for pair in [[_gas_btn, "gas"], [_brake_btn, "brake"], [_fire_btn, "fire"], [_back_btn, "back"], [_steer_btn, "steer"], [_boost_btn, "boost"]]:
 		var button: Button = pair[0]
 		if button != null:
-			button.set_pressed_no_signal(_held(pair[1]))
+			_show_pressed(pair[1], button, _held(pair[1]))
 	if _auto_label != null:
 		_auto_label.text = Data.t("input.gas_cut") if brake or not gas else Data.t("input.auto_gas")
 	_update_marker()
 
 
 func _update_marker() -> void:
-	if _steer_marker != null:
-		_steer_marker.size = Vector2(16, 4)
-		_steer_marker.position = Vector2(_steer_btn.size.x * (0.5 + _pad_steer * 0.38) - 8, _steer_btn.size.y - 17)
+	if _faces.has("steer"):
+		(_faces["steer"] as ControlFace).steer = _pad_steer
 
 
 static func read_tilt_sensor() -> Vector3:
@@ -572,9 +670,9 @@ func reset_controls() -> void:
 		_car.ctrl.select = 0
 		_car.ctrl.boost = false
 		_car.ctrl.discard = {}
-	for button in [_gas_btn, _brake_btn, _fire_btn, _back_btn, _steer_btn, _boost_btn]:
-		if button != null:
-			button.set_pressed_no_signal(false)
+	for pair in [[_gas_btn, "gas"], [_brake_btn, "brake"], [_fire_btn, "fire"], [_back_btn, "back"], [_steer_btn, "steer"], [_boost_btn, "boost"]]:
+		if pair[0] != null:
+			_show_pressed(pair[1], pair[0], false)
 	_update_marker()
 
 

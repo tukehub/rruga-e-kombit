@@ -196,6 +196,49 @@ func _ready() -> void:
 		check(hud._feed.size.y >= 20.0 and hud._feed.get_child_count() > 0, "combat explanations remain visible after layout")
 		var explanation: Label = hud._feed.get_child(0)
 		check(explanation.get_line_count() >= 2 and explanation.get_visible_line_count() == 2, "full denial explanation wraps onto two visible lines")
+	# Driving controls show an icon instead of a word (README 5.1).
+	Settings.auto_accel = false
+	Settings.touch_steer = true
+	Settings.changed.emit()
+	await get_tree().process_frame
+	for zone in ["gas", "brake", "steer"]:
+		var button: Button = controls.get("_%s_btn" % zone)
+		var face: RaceInput.ControlFace = controls._faces[zone]
+		check(button.text.is_empty() and button.visible, "the %s control carries no word" % zone)
+		check(face.get_parent() == button and face.size.is_equal_approx(button.size), "the %s face fills its button" % zone)
+		check(button.position.is_equal_approx(controls.control_rect(zone).position) and button.size.is_equal_approx(controls.control_rect(zone).size), "the %s button still matches its hit rectangle" % zone)
+	for zone in ["gas", "brake"]:
+		var face: RaceInput.ControlFace = controls._faces[zone]
+		check(face.icon != null and not face.wheel, "the %s control shows an icon" % zone)
+		check(Rect2(Vector2.ZERO, face.size).encloses(face.icon_rect()) and face.icon_rect().size.x >= 40.0, "the %s icon is large and inside the button" % zone)
+	check(controls._faces.gas.icon != controls._faces.brake.icon, "gas and brake have different icons")
+	var wheel: RaceInput.ControlFace = controls._faces.steer
+	check(wheel.wheel and wheel.icon == null and wheel.wheel_radius() >= 50.0 and wheel.wheel_radius() * 2.0 < wheel.size.x, "the steering pad draws a half wheel that fits it")
+	controls._pad_steer = 0.6
+	controls._update_marker()
+	check(is_equal_approx(wheel.steer, 0.6), "the half wheel turns with the thumb")
+	controls._pad_steer = 0.0
+	controls._update_marker()
+	check(wheel.steer == 0.0, "the half wheel centres again")
+	for zone in ["fire", "back", "boost"]:
+		check(controls._faces.has(zone) and controls._faces[zone].icon == null, "the %s button keeps its own item icon and status line" % zone)
+	# A held control shrinks and lights its ring; the hit rectangle stays put.
+	var brake_face: RaceInput.ControlFace = controls._faces.brake
+	var brake_rect := controls.control_rect("brake")
+	controls._show_pressed("brake", controls._brake_btn, true)
+	check(controls._brake_btn.button_pressed, "a held control shows its pressed style at once")
+	await get_tree().create_timer(RaceInput.PRESS_TIME * 3.0).timeout
+	check(is_equal_approx(controls._brake_btn.scale.x, RaceInput.PRESS_SCALE) and RaceInput.PRESS_SCALE < 1.0 and RaceInput.PRESS_SCALE > 0.85, "a held control shrinks a little")
+	check(is_equal_approx(brake_face.glow, 1.0), "a held control lights its ring")
+	check(controls._brake_btn.pivot_offset.is_equal_approx(brake_rect.size * 0.5), "the press scales about the centre")
+	check(controls.control_rect("brake") == brake_rect and controls._brake_btn.size.is_equal_approx(brake_rect.size), "pressing does not move the hit rectangle")
+	controls._show_pressed("brake", controls._brake_btn, false)
+	await get_tree().create_timer(RaceInput.PRESS_TIME * 4.0).timeout
+	check(is_equal_approx(controls._brake_btn.scale.x, 1.0) and is_zero_approx(brake_face.glow) and not controls._brake_btn.button_pressed, "a released control returns to rest")
+	controls._show_pressed("brake", controls._brake_btn, true)
+	controls.reset_controls()
+	await get_tree().create_timer(RaceInput.PRESS_TIME * 4.0).timeout
+	check(is_equal_approx(controls._brake_btn.scale.x, 1.0) and is_zero_approx(brake_face.glow), "resetting the controls releases the press feedback")
 	Settings.load_input_config(old_input)
 	Settings.changed.emit()
 	layer.queue_free()

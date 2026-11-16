@@ -109,9 +109,6 @@ const T := {
 	"loading.title": "Gara po fillon",
 	"loading.fact_heading": "Fakt rastesor:",
 	# ------------ race: touch controls
-	"input.gas": "GAZ",
-	"input.brake": "FRENA",
-	"input.steer": "‹   TIMONI   ›",
 	"input.auto_gas": "GAZ AUTO",
 	"input.gas_cut": "GAZI NDALUR",
 	"input.no_power": "PA FUQI",
