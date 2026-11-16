@@ -195,6 +195,13 @@ func finish_race(result: Dictionary) -> void:
 	if str(result.get("mode", "race")) == "points":
 		goto("results")
 		return
+	# The fans a race earned are the player's to keep; the results page counts
+	# them up from what the player had before.
+	var earned := maxi(0, int(result.get("fans", 0)))
+	result["fans"] = earned
+	result["fans_before"] = Progress.fans
+	Progress.add_fans(earned)
+	result["fans_total"] = Progress.fans
 	Settings.record_result(result.get("city", ""), int(result.get("place", 6)), float(result.get("best_lap", INF)))
 	goto("results")
 

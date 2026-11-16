@@ -144,8 +144,7 @@ func _ready() -> void:
 	var texts := results.find_children("*", "Label", true, false).map(func(l: Label) -> String: return l.text)
 	check(texts.has("SHESHI SKËNDERBEJ · PIKË") and texts.has("PIKË") and texts.has("GODITJE") and not texts.has("KOHA"), "the results page shows points and hits, not lap times")
 	check(texts.has("Pikët e tua: %d" % final_score) and texts.has(str(final_score)), "the player's points are on the page")
-	var races_before := int(Settings.stats.races)
-	check(races_before == int(Settings.stats.races), "a points round does not touch the race records")
+	check(not result.has("fans_total") and results._fans_label == null, "a points round earns no fans and shows no tally")
 
 	# Again plays another round; the menu still has the mode chosen.
 	button(results, "Përsërit").pressed.emit()

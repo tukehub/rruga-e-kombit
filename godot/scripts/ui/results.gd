@@ -4,7 +4,16 @@ extends Control
 ## another, first place first.
 
 const ROW_STAGGER := 0.07
+const FAN_TALLY_TIME := 1.2
 var row_cells: Array = []      # one Array of the four cells per driver
+## The fan tally: what this race earned and the new total, counted up.
+var fans_earned := 0
+var fans_before := 0
+var fans_total := 0
+var fan_shown := 0.0: set = _show_fans
+var fan_tally_delay := 0.0
+var _fans_label: Label
+var _fans_total_label: Label
 
 
 func _ready() -> void:
@@ -98,6 +107,22 @@ func _ready() -> void:
 	elif rec_t < INF:
 		foot += "  ·  " + Data.t("results.record", Game.fmt_time(rec_t))
 	v.add_child(UiTheme.label(foot, 23, UiTheme.MUTED))
+	if not points:
+		fans_earned = maxi(0, int(r.get("fans", 0)))
+		fans_before = maxi(0, int(r.get("fans_before", 0)))
+		fans_total = maxi(fans_before, int(r.get("fans_total", fans_before + fans_earned)))
+		var fan_row := HBoxContainer.new()
+		fan_row.name = "FanTally"
+		fan_row.add_theme_constant_override("separation", 18)
+		_fans_label = UiTheme.headline("", 34, UiTheme.AMBER, HORIZONTAL_ALIGNMENT_LEFT)
+		_fans_label.name = "FansEarned"
+		fan_row.add_child(_fans_label)
+		_fans_total_label = UiTheme.label("", 23, UiTheme.MUTED)
+		_fans_total_label.name = "FansTotal"
+		_fans_total_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		fan_row.add_child(_fans_total_label)
+		v.add_child(fan_row)
+		_show_fans(0.0)
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 12)
 	v.add_child(hb)
@@ -117,6 +142,23 @@ func _ready() -> void:
 	for i in row_cells.size():
 		for cell: Control in row_cells[i]:
 			UiTheme.slide_in(cell, Vector2(36.0, 0.0), UiTheme.SLIDE_TIME, 0.12 + i * ROW_STAGGER)
+	# Once the standings are in, count the fans up.
+	if _fans_label != null:
+		fan_tally_delay = 0.12 + row_cells.size() * ROW_STAGGER + UiTheme.SLIDE_TIME
+		var tally := create_tween()
+		tally.tween_property(self, "fan_shown", float(fans_earned), FAN_TALLY_TIME).set_delay(fan_tally_delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		if fans_earned > 0:
+			tally.tween_callback(func() -> void: Sfx.play("pickup", "UI", -6.0))
+
+
+## Earned fans shown so far, and the total moving up with them.
+func _show_fans(value: float) -> void:
+	fan_shown = clampf(value, 0.0, float(fans_earned))
+	if _fans_label == null:
+		return
+	var shown := roundi(fan_shown)
+	_fans_label.text = Data.t("results.fans", shown)
+	_fans_total_label.text = Data.t("results.fans_total", fans_before + roundi(float(fans_total - fans_before) * (fan_shown / float(fans_earned)) if fans_earned > 0 else 0.0))
 
 
 func _unhandled_input(event: InputEvent) -> void:

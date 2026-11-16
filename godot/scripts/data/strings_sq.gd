@@ -252,6 +252,8 @@ const T := {
 	"results.column.driver": "Shoferi",
 	"results.column.time": "Koha",
 	"results.column.best_lap": "Xhiro më e mirë",
+	"results.fans": "+%d FANË",
+	"results.fans_total": "Gjithsej: %d fanë",
 	"results.column.points": "Pikë",
 	"results.column.hits": "Goditje",
 	"results.points": "Pikët e tua: %d",

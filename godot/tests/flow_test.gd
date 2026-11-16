@@ -20,8 +20,19 @@ func button(root: Node, label: String) -> Button:
 			return n
 	return null
 
+const PROGRESS_FILE := "user://progress_flow_test.cfg"
+
 func _ready() -> void:
 	Quality.set_preset("low")
+	# Earned fans go to a test file, never the player's own.
+	var real_progress: String = Progress.path
+	for suffix in ["", ".tmp"]:
+		if FileAccess.file_exists(PROGRESS_FILE + suffix):
+			DirAccess.remove_absolute(PROGRESS_FILE + suffix)
+	Progress.path = PROGRESS_FILE
+	Progress.load_progress()
+	Progress.fans = 500
+	Progress.save()
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	await wait_scene("menu")
@@ -294,9 +305,23 @@ func _ready() -> void:
 			break
 		await get_tree().process_frame
 	check(scene.player.finished, "player completes real race")
+	var earned_in_race := int(scene.player.fans)
 	await wait_scene("results")
 	check(Game.last_result.get("rows", []).size() == 6, "six result rows")
-	var results: Node = Game._root.get_child(0)
+	var results: Results = Game._root.get_child(0)
+	# 6.1: the race's fans are kept, and the results count them up.
+	check(earned_in_race > 0 and int(Game.last_result.fans) == earned_in_race, "the result carries the fans the race earned (%d)" % earned_in_race)
+	check(int(Game.last_result.fans_before) == 500 and Progress.fans == 500 + earned_in_race and int(Game.last_result.fans_total) == Progress.fans, "the fans are added to the player's total")
+	var fan_file := ConfigFile.new()
+	fan_file.load(PROGRESS_FILE)
+	check(int(fan_file.get_value("progress", "fans", 0)) == 500 + earned_in_race, "and saved at once")
+	check(results.fans_earned == earned_in_race and results.fans_total == 500 + earned_in_race, "the results page knows both numbers")
+	check(results._fans_label.text == "+0 FANË" and results._fans_total_label.text == "Gjithsej: 500 fanë", "the tally starts from what the player had")
+	await get_tree().create_timer(results.fan_tally_delay + Results.FAN_TALLY_TIME * 0.4).timeout
+	var midway := int(results._fans_label.text.trim_prefix("+").get_slice(" ", 0))
+	check(midway > 0 and midway < earned_in_race, "the tally counts up (%d of %d)" % [midway, earned_in_race])
+	await get_tree().create_timer(Results.FAN_TALLY_TIME).timeout
+	check(results._fans_label.text == "+%d FANË" % earned_in_race and results._fans_total_label.text == "Gjithsej: %d fanë" % (500 + earned_in_race), "the tally ends on the earned fans and the new total")
 	button(results, "Përsërit").pressed.emit()
 	await wait_scene("race")
 	scene = Game._root.get_child(0)
@@ -314,6 +339,12 @@ func _ready() -> void:
 	button(scene, "Dil").pressed.emit()
 	await wait_scene("menu")
 	check(not get_tree().paused, "return to menu unpauses")
+	check(Progress.fans == 500 + earned_in_race, "a race quit from pause earns nothing")
+	Progress.path = real_progress
+	Progress.load_progress()
+	for suffix in ["", ".tmp"]:
+		if FileAccess.file_exists(PROGRESS_FILE + suffix):
+			DirAccess.remove_absolute(PROGRESS_FILE + suffix)
 	print("FLOW: menu -> race -> results -> retry -> quit -> menu; failures=", failures)
 	Sfx.stop_all()
 	main.queue_free()

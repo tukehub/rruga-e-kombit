@@ -803,6 +803,7 @@ func _show_results() -> void:
 	Game.finish_race({
 		"city": city_id, "env": env_id, "place": player.place, "n": race.cars.size(),
 		"best_lap": player.best_lap, "time": player.finish_time, "rows": rows,
+		"fans": int(player.fans),
 	})
 
 

@@ -206,8 +206,8 @@ Rules for every change:
     `user://progress.cfg`: version, fans, unlocked paints and cities, cup
     stars (`add_fans`, `spend_fans`, `unlock_paint`, `unlock_city`,
     `set_stars`). Older files are upgraded in `_upgrade`, bad values repaired,
-    a damaged file set aside, and a newer build's keys kept. Nothing feeds it
-    yet: 6.1 adds race fans, 6.2 stars, 6.3 purchases, 8.3 cities. Every
+    a damaged file set aside, and a newer build's keys kept. Race fans feed
+    it since 6.1; 6.2 adds stars, 6.3 purchases, 8.3 cities. Every
     paint offered today is owned from the start; 6.3 decides what gets locked.
 1.4 **`Music` autoload — done.** `scripts/game/music.gd` plays on a "Music"
     bus (in `Sfx.BUSES`, level from `Settings.vol_music`) with two players:
@@ -360,7 +360,13 @@ work. An item below that needs a Forward+-only feature is desktop-only.
 
 ### 6. Progression
 
-6.1 **Fans persist** (`Race.FANS` → `Progress`), animated tally on results.
+6.1 **Fans persist — done.** A finished race passes the player's fans
+    (`Race.FANS`: hits, wrecks, places gained, finishing place) to
+    `Game.finish_race()`, which adds them to `Progress` and saves at once.
+    The results page counts the earned fans up from zero and the total from
+    what the player had, after the standings arrive. A race quit or
+    restarted from pause earns nothing, and a points round earns no fans.
+    Checked in `tests/flow_test`.
 6.2 **Tirana Cup** in `Data.CUPS`: 4–6 events (laps/env/diff/reverse/goal),
     0–3 stars each; a cup grid in the menu replaces the single "Nisu!" button.
 6.3 **Shop:** paints, rims and livery decals bought with fans;
