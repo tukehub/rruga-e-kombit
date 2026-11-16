@@ -5,9 +5,12 @@ extends Node
 
 const STEP := 1.0 / 60.0
 const KEYS := ["catch_up", "lead_drag", "band", "runaway_gap", "runaway_drag"]
-# Finish spread (last minus first), as a share of the winner's time.
-const SPREAD_LIMIT := 0.17
-const MEAN_SPREAD_LIMIT := 0.10
+# Finish spread (last minus first), as a share of the winner's time. Weapons
+# decide most of it, so races with combat only have to stay inside a window;
+# what the band itself does is measured in races without pickups.
+const SPREAD_LIMIT := 0.25
+const MEAN_SPREAD_LIMIT := 0.13
+const CLEAN_SPREAD_LIMIT := 0.12
 
 var failures := 0
 var track: RaceTrack
@@ -46,8 +49,11 @@ func bots(race: Race) -> Array:
 	return race.cars.filter(func(c: CarState) -> bool: return not c.is_player)
 
 ## A whole race with the AI driving the player's car at `pace` of its top speed.
-func spread(diff: int, seed_value: int, pace: float, band: bool) -> Dictionary:
-	var race := new_race({"diff": diff, "seed": seed_value})
+## Without `combat` there are no pickups, so nobody fires and only pace counts.
+func spread(diff: int, seed_value: int, pace: float, band: bool, combat := true) -> Dictionary:
+	var race := new_race({"diff": diff, "seed": seed_value, "adaptive_pickups": combat})
+	if not combat:
+		race.pickups.clear()
 	if not band:
 		without_band(race)
 	race.player.autopilot = true
@@ -125,24 +131,34 @@ func _ready() -> void:
 		check(race.rubber_band(race.player) == 1.0 and bots(race).all(func(c: CarState) -> bool: return race.rubber_band(c) >= 1.0 + float(d.catch_up) - 0.0001), "a runaway player is chased, not slowed (%d)" % diff)
 
 	# Whole races, fixed steps, a slow and a quick driver in the player's car.
+	# Without weapons the band's own effect shows: a closer field every time.
+	for diff in Data.DIFFS.size():
+		for pace in [0.9, 1.04]:
+			var on_sum := 0.0
+			var off_sum := 0.0
+			for seed_value in [3, 11]:
+				var on := spread(diff, seed_value, pace, true, false)
+				var off := spread(diff, seed_value, pace, false, false)
+				check(on.done and off.done, "every car finishes without weapons (diff %d seed %d pace %.2f)" % [diff, seed_value, pace])
+				check(on.spread / on.first < CLEAN_SPREAD_LIMIT, "weapon-free spread inside the window (diff %d seed %d pace %.2f)" % [diff, seed_value, pace])
+				on_sum += on.spread / on.first
+				off_sum += off.spread / off.first
+			print("RUBBER BAND no weapons diff=%d pace=%.2f spread %.1f%% with the band, %.1f%% without" % [diff, pace, on_sum * 50.0, off_sum * 50.0])
+			check(on_sum < off_sum, "the band brings the field closer (diff %d pace %.2f)" % [diff, pace])
+	# With weapons the spread is mostly who got hit; it must stay in the window.
 	var banded := 0.0
-	var loose := 0.0
 	var runs := 0
 	for diff in Data.DIFFS.size():
 		for seed_value in [3, 11]:
 			for pace in [0.9, 1.04]:
 				var on := spread(diff, seed_value, pace, true)
-				var off := spread(diff, seed_value, pace, false)
-				check(on.done and off.done, "every car finishes (diff %d seed %d pace %.2f)" % [diff, seed_value, pace])
+				check(on.done, "every car finishes (diff %d seed %d pace %.2f)" % [diff, seed_value, pace])
 				var share: float = on.spread / on.first
-				print("RUBBER BAND diff=%d seed=%d pace=%.2f spread %.1f s (%.1f%%), without %.1f s" % [diff, seed_value, pace, on.spread, share * 100.0, off.spread])
 				check(share < SPREAD_LIMIT, "finish spread inside the window (diff %d seed %d pace %.2f)" % [diff, seed_value, pace])
 				banded += share
-				loose += off.spread / off.first
 				runs += 1
-	print("RUBBER BAND mean spread %.1f%% with the band, %.1f%% without" % [banded / runs * 100.0, loose / runs * 100.0])
+	print("RUBBER BAND with weapons: mean spread %.1f%%" % (banded / runs * 100.0))
 	check(banded / runs < MEAN_SPREAD_LIMIT, "mean finish spread inside the target window")
-	check(banded < loose, "the band brings the field closer than no band")
 	var replay_a := spread(1, 3, 0.9, true)
 	var replay_b := spread(1, 3, 0.9, true)
 	check(replay_a.first == replay_b.first and replay_a.spread == replay_b.spread, "a banded race replays exactly")

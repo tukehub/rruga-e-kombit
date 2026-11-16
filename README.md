@@ -37,7 +37,7 @@ car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop, the chase camera's roll, hit kick,
 nitro pull-back and bumper view, the Arcade / Pro handling scales, traffic placement, contact and bot avoidance,
-the rubber band's finish spread, and reject
+the rubber band's finish spread, the bolt-against-eagle defence, and reject
 UI text written into a
 script instead of the string table. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.
@@ -242,11 +242,22 @@ Rules for every change:
     `runaway_drag` on a leading bot more than `runaway_gap` clear of second
     place. They replace the fixed +7.5% / -5% that saturated within 40 m; the
     player's car is never touched. `tests/rubber_band` runs one-lap Tirana
-    races on all three difficulties: finish spread under 17% of the winner's
-    time each, under 10% on average (9.2% measured, 12.0% with the band off).
-2.5 **Combat counterplay:** a defensive use for `bolt` fired backward (destroys
-    an incoming eagle) and last-place weighting in
-    `scripts/sim/pickup_director.gd`.
+    races on all three difficulties. Without pickups the band narrows the
+    finish spread in every case (for example 5.3% → 4.4% of the winner's
+    time on normal with a quick driver). With weapons on, combat decides
+    the spread and the band is not measurable (about 10.5% either way over
+    84 races each), so those
+    races only have to stay under 25% each and 13% on average. If the field
+    should bunch up more during combat, raise the numbers in `Data.DIFFS`.
+2.5 **Combat counterplay — done.** A bolt fired toward an eagle that hunts
+    its owner (backward for one from behind) leans across the road to meet
+    it and shoots it down: an "intercept" event, `Race.FANS.intercept` fans,
+    a feed line, and a "KUNDËRGJUAJ" hint on the eagle warning while a bolt
+    is selected. Bots fire that defence too, scaled by `aim`.
+    `PickupDirector.weights()` scales its offers by standing through
+    `RANK_WEIGHTS` ([first, last], interpolated): last place gets more
+    nitro, eagle, storm and bolt, the leader more mine and shield. Covered
+    by `tests/combat_counterplay`.
 
 ### 3. Graphics (Tirana, medium/high-end target)
 

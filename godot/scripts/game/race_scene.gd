@@ -652,6 +652,13 @@ func _events() -> void:
 					hud.feed(Data.t("race.blocked.shield") if str(e.get("why", "shield")) == "shield" else Data.t("race.blocked.recovery"), Color.html(Data.PW.shield.col))
 				elif e.by == player:
 					hud.feed(Data.t("race.rival_protected", c.name), Color.html(Data.PW.shield.col))
+			"intercept":
+				Sfx.play_at("shield", _wpos(float(e.s), float(e.d), 0.8), "Pickups", _vol_db(_near_vol(float(e.s))))
+				if c == player:
+					hud.feed(Data.t("race.intercept", int(Race.FANS.intercept)), Color.html(Data.PW.bolt.col))
+					hud.pop("+%d" % int(Race.FANS.intercept))
+				elif e.by == player:
+					hud.feed(Data.t("race.intercepted", c.name), Color.html(Data.PW.bolt.col))
 			"recovery":
 				if c == player:
 					hud.feed(Data.t("race.recovery"), UiTheme.CYAN, 3.0)

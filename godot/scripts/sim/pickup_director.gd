@@ -25,6 +25,11 @@ var counts := {"normal_plans": 0, "help_offers": 0, "help_collected": 0,
 	"player_help_collected": 0, "collected": {}, "used": {},
 	"player_collected": {}, "player_used": {}}
 var _sample_t := 0.0
+# Pickup weight by standing: [first place, last place], interpolated between.
+const RANK_WEIGHTS := {
+	"nitro": [0.7, 1.6], "eagle": [0.7, 1.5], "shock": [1.0, 1.5], "bolt": [1.0, 1.2],
+	"mine": [1.4, 0.5], "shield": [1.3, 0.8],
+}
 var _last_offer_time := -1000.0
 var _last_offer_progress := -INF
 var _shock_reserved_until := -1000.0
@@ -183,6 +188,11 @@ func weights(race, c: CarState, s: float, new_supply := true) -> Dictionary:
 		w.shock = 0.0
 	else:
 		w.shock *= 4.0 if bool(h.behind) else 0.35
+	# Standing: the car at the back is offered more to come back with, the
+	# leader more to defend with. Mid-field sits in between.
+	var rank := rank_share(race, c)
+	for kind in RANK_WEIGHTS:
+		w[kind] *= lerpf(float(RANK_WEIGHTS[kind][0]), float(RANK_WEIGHTS[kind][1]), rank)
 	for kind in held:
 		w[kind] *= 0.0 if kind in ["nitro", "repair", "shield", "shock"] else 0.12
 	# Keep a drought from becoming a repetitive stream of the same other item.
@@ -193,6 +203,13 @@ func weights(race, c: CarState, s: float, new_supply := true) -> Dictionary:
 			if race.pickup_slot(c, kind) < 0:
 				w[kind] = 0.0
 	return w
+
+
+## 0.0 for the car in first place, 1.0 for the one in last, among all racers.
+func rank_share(race, c: CarState) -> float:
+	if race.cars.size() < 2 or c.place <= 0:
+		return 0.5
+	return clampf(float(c.place - 1) / float(race.cars.size() - 1), 0.0, 1.0)
 
 
 func _opponent(race, c: CarState, range_m: float, behind := false) -> CarState:

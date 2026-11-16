@@ -140,6 +140,9 @@ func _process(dt: float) -> void:
 	_warning_text.text = "%s · %s · %.1f s" % [Data.t("combat.guarded") if guarded else Data.t("combat.incoming"), direction, float(threat.eta)]
 	if int(threat.count) > 1:
 		_warning_text.text += " ×%d" % int(threat.count)
+	# Holding a bolt: say that it can shoot the eagle down.
+	if not guarded and player.slot_type() == "bolt":
+		_warning_text.text += " · " + Data.t("combat.counter")
 	if not guarded and _warning_clock <= 0.0:
 		Sfx.play("beep", "UI", -13.0, 1.4 if bool(threat.urgent) else 1.15)
 		_warning_clock = 0.4 if bool(threat.urgent) else 1.0

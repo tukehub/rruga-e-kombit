@@ -4,7 +4,7 @@ extends RefCounted
 ## bot AI, laps and standings. Pure logic, no nodes. Port of src/03_sim.js.
 ## Events are dictionaries with key "t" consumed by the presentation layer.
 
-const FANS := {"eagle": 100, "bolt": 35, "barge": 50, "mine": 60, "shock": 70, "wreck": 150, "place": 15}
+const FANS := {"eagle": 100, "bolt": 35, "barge": 50, "mine": 60, "shock": 70, "wreck": 150, "place": 15, "intercept": 40}
 const BOT_ASSIST := 1.4
 const PickupDirector = preload("res://scripts/sim/pickup_director.gd")
 const CombatRules = preload("res://scripts/sim/combat_rules.gd")
@@ -973,7 +973,12 @@ func update_projs(dt: float) -> void:
 				if ds > 0.0 and ds < bd and absf(o.d - p.d) < 6.0:
 					bd = ds
 					best = o
-			if best != null:
+			# Counterplay: a bolt fired at an eagle hunting its owner leans
+			# hard toward it; shooting it down is the defence against one.
+			var prey := _eagle_to_intercept(p)
+			if not prey.is_empty():
+				p.d += clampf(float(prey.d) - p.d, -INTERCEPT_STEER * dt, INTERCEPT_STEER * dt)
+			elif best != null:
 				p.d += clampf(best.d - p.d, -5.0 * dt, 5.0 * dt)
 		p.d = clampf(p.d, -hw + 1.0, hw - 1.0)
 		for o in cars:
@@ -1009,6 +1014,12 @@ func update_projs(dt: float) -> void:
 				if absf(T.wrap_s(q.s - p.s)) < 3.5 and absf(q.d - p.d) < 2.6:
 					emit({"t": "boom", "kind": q.kind, "s": q.s, "d": q.d})
 					emit({"t": "boom", "kind": p.kind, "s": p.s, "d": p.d})
+					for pair in [[p, q], [q, p]]:
+						var shot: Dictionary = pair[0]
+						var eagle: Dictionary = pair[1]
+						if shot.kind == "bolt" and eagle.kind == "eagle" and eagle.target == shot.owner and eagle.owner != shot.owner:
+							shot.owner.fans += FANS.intercept
+							emit({"t": "intercept", "car": shot.owner, "by": eagle.owner, "s": eagle.s, "d": eagle.d})
 					projs.remove_at(j)
 					if j < i:
 						i -= 1
@@ -1023,6 +1034,24 @@ func update_projs(dt: float) -> void:
 					projs.remove_at(k)
 					break
 		i -= 1
+
+
+const INTERCEPT_STEER := 30.0   # m/s sideways: enough to cross a lane in time
+const INTERCEPT_RANGE := 90.0
+
+
+## The nearest eagle that hunts this bolt's owner and flies toward the bolt.
+func _eagle_to_intercept(bolt: Dictionary) -> Dictionary:
+	var found := {}
+	var nearest := INTERCEPT_RANGE
+	for q: Dictionary in projs:
+		if q.kind != "eagle" or q.target != bolt.owner or q.owner == bolt.owner or q.dir == bolt.dir:
+			continue
+		var ahead: float = track.wrap_s(float(q.s) - float(bolt.s)) * float(bolt.dir)
+		if ahead > -3.5 and ahead < nearest:
+			nearest = ahead
+			found = q
+	return found
 
 
 func update_mines(dt: float) -> void:
@@ -1178,6 +1207,11 @@ func ai_weapons(c: CarState) -> void:
 			elif behind != null and c.progress - behind.progress < 35.0 and absf(behind.d - c.d) < 3.0 and r < 0.4:
 				fire = true
 				back = true
+			# Shoot down an eagle that is about to arrive; better aim, more often.
+			var threat := incoming_threat(c)
+			if not fire and not threat.is_empty() and float(threat.eta) < 2.0 and not bool(threat.shielded) and r < 0.85 * aim:
+				fire = true
+				back = bool(threat.behind)
 		"barge":
 			var n := 0
 			for o in cars:
