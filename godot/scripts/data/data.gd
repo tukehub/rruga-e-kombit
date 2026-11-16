@@ -166,6 +166,61 @@ func has_pw(type: String) -> bool:
 	return PW.has(type) or ARENA_PW.has(type)
 
 
+# Cups: a run of fixed races. Every event can be played at any time; stars are
+# 1 for the top three, 2 for a win, 3 for a win that also meets the event's
+# goal. Goal kinds: "clean" (not wrecked), "hits", "wrecks" (rivals wrecked),
+# "fans" (fans earned in the race). Names and goal texts are in the string
+# table under cup.event.<id>.name and cup.goal.<kind>.
+const CUPS := {
+	"tirana": [
+		{"id": "tirana_1", "laps": 1, "env": "day", "diff": 0, "reverse": false, "goal": {"kind": "clean", "n": 0}},
+		{"id": "tirana_2", "laps": 1, "env": "rainy", "diff": 0, "reverse": false, "goal": {"kind": "hits", "n": 3}},
+		{"id": "tirana_3", "laps": 2, "env": "day", "diff": 1, "reverse": true, "goal": {"kind": "wrecks", "n": 1}},
+		{"id": "tirana_4", "laps": 2, "env": "golden", "diff": 1, "reverse": false, "goal": {"kind": "fans", "n": 700}},
+		{"id": "tirana_5", "laps": 3, "env": "dusk", "diff": 2, "reverse": false, "goal": {"kind": "clean", "n": 0}},
+	],
+}
+
+
+func cup_event(id: String) -> Dictionary:
+	for cup: String in CUPS:
+		for event: Dictionary in CUPS[cup]:
+			if event.id == id:
+				return event
+	return {}
+
+
+## `outcome`: finished, place, hits, takedowns, wrecks, fans.
+func cup_goal_met(event: Dictionary, outcome: Dictionary) -> bool:
+	var goal: Dictionary = event.get("goal", {})
+	var n := int(goal.get("n", 0))
+	match str(goal.get("kind", "")):
+		"clean":
+			return int(outcome.get("wrecks", 0)) == 0
+		"hits":
+			return int(outcome.get("hits", 0)) >= n
+		"wrecks":
+			return int(outcome.get("takedowns", 0)) >= n
+		"fans":
+			return int(outcome.get("fans", 0)) >= n
+	return false
+
+
+func cup_stars(event: Dictionary, outcome: Dictionary) -> int:
+	if event.is_empty() or not bool(outcome.get("finished", false)):
+		return 0
+	var place := int(outcome.get("place", 99))
+	if place == 1:
+		return 3 if cup_goal_met(event, outcome) else 2
+	return 1 if place <= 3 else 0
+
+
+func cup_goal_text(event: Dictionary) -> String:
+	var goal: Dictionary = event.get("goal", {})
+	var kind := str(goal.get("kind", ""))
+	return t("cup.goal.clean") if kind == "clean" else t("cup.goal.%s" % kind, int(goal.get("n", 0)))
+
+
 func handling_id(id: String) -> String:
 	return id if HANDLING.has(id) else HANDLING_DEFAULT
 

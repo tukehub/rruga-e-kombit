@@ -367,8 +367,18 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     what the player had, after the standings arrive. A race quit or
     restarted from pause earns nothing, and a points round earns no fans.
     Checked in `tests/flow_test`.
-6.2 **Tirana Cup** in `Data.CUPS`: 4–6 events (laps/env/diff/reverse/goal),
-    0–3 stars each; a cup grid in the menu replaces the single "Nisu!" button.
+6.2 **Tirana Cup — done.** Five events in `Data.CUPS.tirana`, each with
+    its own laps, weather, rival difficulty, direction and goal (`clean`,
+    `hits`, `wrecks`, `fans`). Stars (`Data.cup_stars`): 1 for the top
+    three, 2 for a win, 3 for a win that meets the goal; the best is kept in
+    `Progress`. The title page's main row is now "Kupa · n/15" beside
+    "Nisu!", and the cup page shows a card per event with its conditions,
+    goal and stars. Every event is open from the start. An event's settings
+    come through `Game.race_setting()` and never overwrite the player's
+    free-race choices; "Përsërit" replays the event and the menu returns to
+    the cup. Results show the stars and whether the goal was met. The free
+    race stays, since points mode and the race options live beside it.
+    Covered by `tests/cup`.
 6.3 **Shop:** paints, rims and livery decals bought with fans;
     `CarVisual.setup()` takes a cosmetics dictionary; livery as a second atlas
     in the car shader.

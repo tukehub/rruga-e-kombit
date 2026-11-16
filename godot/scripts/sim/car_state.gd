@@ -78,6 +78,7 @@ var drift := 0.0
 var drift_t := 0.0
 var scrape := 0.0
 var wrecks := 0
+var takedowns := 0           # rivals this car wrecked
 var hits := 0
 var vmax_mul := 1.0
 var brake_force := 0.0

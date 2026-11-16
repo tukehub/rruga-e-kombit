@@ -135,7 +135,7 @@ func _build_world() -> void:
 	terrain = Terrain.new()
 	add_child(terrain)
 	terrain.load_city(city_id, splat)
-	track = RaceTrack.load_city(city_id, bool(Game.race_opts.reverse))
+	track = RaceTrack.load_city(city_id, bool(Game.race_setting("reverse")))
 	route_guide = RouteGuide.new(track)
 	var tj: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/%s/track.json" % city_id))
 	sky = SkyEnv.new()
@@ -233,7 +233,7 @@ func _build_race() -> void:
 			traffic = {"parked": maxi(0, int(counts[0])), "moving": maxi(0, int(counts[1]) if counts.size() > 1 else 0)}
 	var opts := {
 		"laps": laps,
-		"diff": int(Game.race_opts.diff),
+		"diff": int(Game.race_setting("diff")),
 		"seed": seed_value,
 		"wet": sky.wet,
 		"assist": Settings.assist,
@@ -250,7 +250,7 @@ func _build_race() -> void:
 		player.autopilot = true  # debug: let the AI drive the player car
 	# One line per race in the log (adb logcat -s godot) is enough to replay it.
 	print("RACE seed=%d city=%s reverse=%s env=%s laps=%d diff=%d assist=%s handling=%s traffic=%d,%d car=%s driver=%d" % [
-		seed_value, city_id, str(bool(Game.race_opts.reverse)), env_id, race.laps, int(Game.race_opts.diff),
+		seed_value, city_id, str(bool(Game.race_setting("reverse"))), env_id, race.laps, int(Game.race_setting("diff")),
 		str(Settings.assist), handling, int(traffic.parked), int(traffic.moving), str(Game.race_opts.car), int(Game.race_opts.driver)])
 	for c in race.cars:
 		var cv := CarVisual.new()
@@ -803,7 +803,8 @@ func _show_results() -> void:
 	Game.finish_race({
 		"city": city_id, "env": env_id, "place": player.place, "n": race.cars.size(),
 		"best_lap": player.best_lap, "time": player.finish_time, "rows": rows,
-		"fans": int(player.fans),
+		"fans": int(player.fans), "event": str(Game.race_opts.event), "finished": player.finished,
+		"hits": player.hits, "takedowns": player.takedowns, "wrecks": player.wrecks,
 	})
 
 

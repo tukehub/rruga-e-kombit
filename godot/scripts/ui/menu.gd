@@ -18,6 +18,9 @@ var _lap_minus: Button
 var _direction: Button
 var _weather: Button
 var _mode: Button
+var _cup_button: Button
+var _cup_stars: Label
+var cup_cards: Array[Button] = []
 ## The choices the mode button steps through: a race, or points for 2 or 3 minutes.
 const MODES := [{"mode": "race", "minutes": 0}, {"mode": "points", "minutes": 2}, {"mode": "points", "minutes": 3}]
 var _lap_plus: Button
@@ -30,7 +33,8 @@ func _ready() -> void:
 	Quality.apply_viewport(get_viewport())
 	_build_garage()
 	_build_ui()
-	show_page("title")
+	# Back from a cup race, the cup is where the player was.
+	show_page("cup" if not str(Game.race_opts.event).is_empty() else "title")
 
 
 # ------------------------------------------------------------------ garage
@@ -117,6 +121,7 @@ func _build_ui() -> void:
 	ui.theme = UiTheme.theme()
 	pages.title = _page_title()
 	pages.car = _page_car()
+	pages.cup = _page_cup()
 	pages.settings = _page_settings()
 	pages.help = _page_help()
 	pages.credits = _page_credits()
@@ -138,6 +143,8 @@ func show_page(name: String) -> void:
 		UiTheme.slide_in(pages[name], Vector2(-56.0 if name == "title" else 56.0, 0.0))
 	if name == "settings":
 		_refresh_settings()
+	if name in ["cup", "title"]:
+		_refresh_cup()
 	if name == "title":
 		_refresh_city()
 	if name == "car":
@@ -288,11 +295,27 @@ func _page_title() -> Control:
 		b.custom_minimum_size = Vector2(150, 50)
 		_diff_btns.append(b)
 	v.add_child(difficulty)
+	# The cup and a free race share the main row.
+	var play_row := HBoxContainer.new()
+	play_row.add_theme_constant_override("separation", 10)
+	_cup_button = UiTheme.button(Data.t("menu.cup"), UiTheme.AMBER.darkened(0.5))
+	_cup_button.name = "CupButton"
+	_cup_button.custom_minimum_size.y = 70
+	_cup_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_cup_button.add_theme_font_size_override("font_size", 28)
+	_cup_button.pressed.connect(func(): Sfx.ui_click(); show_page("cup"))
+	play_row.add_child(_cup_button)
 	var play := UiTheme.button(Data.t("menu.start"), UiTheme.CYAN.darkened(0.45))
 	play.custom_minimum_size.y = 70
+	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	play.add_theme_font_size_override("font_size", 34)
-	play.pressed.connect(func(): Sfx.ui_click(); Game.race_opts.city = "tirane"; Game.start_race())
-	v.add_child(play)
+	play.pressed.connect(func():
+		Sfx.ui_click()
+		Game.race_opts.city = "tirane"
+		Game.race_opts.event = ""
+		Game.start_race())
+	play_row.add_child(play)
+	v.add_child(play_row)
 	var customize := UiTheme.button(Data.t("menu.customize"))
 	customize.custom_minimum_size.y = 52
 	customize.pressed.connect(func(): Sfx.ui_click(); show_page("car"))
@@ -309,6 +332,111 @@ func _page_title() -> Control:
 		b.pressed.connect(func(): Sfx.ui_click(); back_to = "title"; show_page(target))
 		row.add_child(b)
 	return c
+
+
+# ------------------------------------------------------------------ cup
+func _page_cup() -> Control:
+	var c := _page(0.55)
+	var mc := _margin(c, 32)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	mc.add_child(v)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 16)
+	v.add_child(head)
+	var titles := VBoxContainer.new()
+	titles.add_theme_constant_override("separation", 0)
+	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(titles)
+	titles.add_child(_eyebrow(Data.t("cup.eyebrow", Data.CUPS.tirana.size())))
+	titles.add_child(UiTheme.headline(Data.t("cup.tirana.name"), 56, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	_cup_stars = UiTheme.headline("", 34, UiTheme.AMBER, HORIZONTAL_ALIGNMENT_RIGHT)
+	_cup_stars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_cup_stars)
+	var rules := UiTheme.label(Data.t("cup.rules"), 20, UiTheme.MUTED)
+	rules.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(rules)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(grid)
+	cup_cards.clear()
+	var number := 0
+	for event: Dictionary in Data.CUPS.tirana:
+		number += 1
+		grid.add_child(_cup_card(number, event))
+	var back := UiTheme.button(Data.t("common.back"))
+	back.custom_minimum_size = Vector2(200, 52)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	back.pressed.connect(func(): Sfx.ui_back(); show_page("title"))
+	v.add_child(back)
+	return c
+
+
+func _cup_card(number: int, event: Dictionary) -> Button:
+	var card := UiTheme.button("")
+	card.name = "Cup_" + str(event.id)
+	card.set_meta("event", event.id)
+	card.custom_minimum_size = Vector2(380, 156)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("normal", UiTheme.flat(Color(0.03, 0.06, 0.1, 0.85), Color(1, 1, 1, 0.18), 14))
+	card.pressed.connect(func():
+		Sfx.ui_click()
+		Game.race_opts.city = "tirane"
+		Game.start_event(str(event.id)))
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 14 if side in ["left", "right"] else 10)
+	card.add_child(margin)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 4)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(column)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(top)
+	var name_label := UiTheme.label("%d · %s" % [number, Data.t("cup.event.%s.name" % event.id)], 26, UiTheme.TEXT)
+	name_label.name = "EventName"
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	top.add_child(name_label)
+	var stars := StarRow.new(0, 24.0)
+	stars.name = "Stars"
+	stars.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(stars)
+	var where := Data.t("cup.laps", int(event.laps)) + " · " + Data.env_label(str(event.env)) + " · " + Data.t("diff.%d" % int(event.diff))
+	if bool(event.reverse):
+		where += " · " + Data.t("cup.reverse")
+	var conditions := UiTheme.label(where, 19, UiTheme.MUTED)
+	conditions.name = "Conditions"
+	column.add_child(conditions)
+	var goal := UiTheme.label(Data.t("cup.goal", Data.cup_goal_text(event)), 19, UiTheme.AMBER)
+	goal.name = "Goal"
+	goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(goal)
+	for label: Label in [name_label, conditions, goal]:
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cup_cards.append(card)
+	return card
+
+
+func _refresh_cup() -> void:
+	var earned := 0
+	var possible := 0
+	for card in cup_cards:
+		var stars := Progress.stars(str(card.get_meta("event")))
+		(card.find_child("Stars", true, false) as StarRow).earned = stars
+		earned += stars
+		possible += Progress.MAX_STARS
+	if _cup_stars != null:
+		_cup_stars.text = "%d / %d" % [earned, possible]
+	if _cup_button != null:
+		_cup_button.text = Data.t("menu.cup_stars", [earned, possible])
 
 
 func mode_index() -> int:
@@ -636,5 +764,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		match page:
 			"city": show_page("title")
 			"car": show_page("title")
+			"cup": show_page("title")
 			_: show_page(back_to)
 		get_viewport().set_input_as_handled()

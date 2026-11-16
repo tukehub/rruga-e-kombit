@@ -32,6 +32,7 @@ var race_opts := {
 	"car": "benxi",
 	"driver": 0,
 	"mode": "race",        # "race", or "points": the square, by score
+	"event": "",           # a cup event id: its own laps, weather, rivals, direction
 	"points_minutes": 2,
 }
 var last_result: Dictionary = {}
@@ -178,7 +179,28 @@ func _next_loading_fact() -> String:
 	return _last_fact
 
 
+## Play a cup event. Its settings are the event's; the player's own race
+## choices are left as they were.
+func start_event(id: String) -> void:
+	if Data.cup_event(id).is_empty():
+		return
+	race_opts.event = id
+	race_opts.mode = "race"
+	goto("race")
+
+
+## A race setting, from the cup event being played or from the player's choice.
+func race_setting(key: String) -> Variant:
+	var event := Data.cup_event(str(race_opts.event))
+	if not event.is_empty() and event.has(key):
+		return event[key]
+	return race_opts[key]
+
+
 func start_race() -> void:
+	if not str(race_opts.event).is_empty():
+		start_event(str(race_opts.event))
+		return
 	Settings.city_id = race_opts.city
 	Settings.car_id = race_opts.car
 	Settings.driver = race_opts.driver
@@ -202,19 +224,25 @@ func finish_race(result: Dictionary) -> void:
 	result["fans_before"] = Progress.fans
 	Progress.add_fans(earned)
 	result["fans_total"] = Progress.fans
+	var event := Data.cup_event(str(result.get("event", "")))
+	if not event.is_empty():
+		result["stars"] = Data.cup_stars(event, result)
+		result["stars_before"] = Progress.stars(event.id)
+		result["goal_met"] = Data.cup_goal_met(event, result)
+		Progress.set_stars(event.id, int(result.stars))
 	Settings.record_result(result.get("city", ""), int(result.get("place", 6)), float(result.get("best_lap", INF)))
 	goto("results")
 
 
 func city_env(city_id: String) -> String:
-	if race_opts.env != "":
-		return race_opts.env
+	if str(race_setting("env")) != "":
+		return str(race_setting("env"))
 	return Data.city(city_id).env
 
 
 func city_laps(city_id: String) -> int:
-	if int(race_opts.laps) > 0:
-		return int(race_opts.laps)
+	if int(race_setting("laps")) > 0:
+		return int(race_setting("laps"))
 	return int(Data.city(city_id).laps)
 
 

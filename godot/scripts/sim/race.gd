@@ -747,6 +747,7 @@ func wreck(c: CarState, by: CarState, kind: String, dir := Vector2.ZERO) -> void
 	c.chain_hits = 0
 	if by != null and by != c:
 		by.fans += FANS.wreck
+		by.takedowns += 1
 	emit({"t": "wreck", "car": c, "by": by, "kind": kind, "dir": dir})
 
 

@@ -6,6 +6,7 @@ extends Control
 const ROW_STAGGER := 0.07
 const FAN_TALLY_TIME := 1.2
 var row_cells: Array = []      # one Array of the four cells per driver
+var star_row: StarRow          # the stars a cup event earned
 ## The fan tally: what this race earned and the new total, counted up.
 var fans_earned := 0
 var fans_before := 0
@@ -38,12 +39,31 @@ func _ready() -> void:
 	v.add_theme_constant_override("separation", 8)
 	mc.add_child(v)
 	var points := str(r.get("mode", "race")) == "points"
+	var event := Data.cup_event(str(r.get("event", "")))
 	if points:
 		v.add_child(UiTheme.label(Data.t("arena.title"), 23, UiTheme.CYAN))
+	elif not event.is_empty():
+		v.add_child(UiTheme.label(("%s · %s" % [Data.t("cup.tirana.name"), Data.t("cup.event.%s.name" % event.id)]).to_upper(), 23, UiTheme.CYAN))
 	else:
 		v.add_child(UiTheme.label(("%s · %s" % [Data.city_name(city.id), Data.env_label(str(r.get("env", city.env)))]).to_upper(), 23, UiTheme.CYAN))
 	var col := UiTheme.AMBER if place == 1 else (UiTheme.TEXT if place <= 3 else UiTheme.MUTED)
-	v.add_child(UiTheme.headline(Data.ordinal(place), 64, col, HORIZONTAL_ALIGNMENT_LEFT))
+	var place_row := HBoxContainer.new()
+	place_row.add_theme_constant_override("separation", 24)
+	place_row.add_child(UiTheme.headline(Data.ordinal(place), 64, col, HORIZONTAL_ALIGNMENT_LEFT))
+	v.add_child(place_row)
+	if not event.is_empty():
+		var earned := int(r.get("stars", 0))
+		star_row = StarRow.new(earned, 40.0)
+		star_row.name = "EventStars"
+		star_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		place_row.add_child(star_row)
+		var goal_text := Data.t("cup.goal", Data.cup_goal_text(event)) + " · " + (Data.t("cup.goal_met") if bool(r.get("goal_met", false)) else Data.t("cup.goal_missed"))
+		if earned > int(r.get("stars_before", 0)):
+			goal_text += " · " + Data.t("cup.new_best")
+		var goal := UiTheme.label(goal_text, 22, UiTheme.AMBER)
+		goal.name = "EventGoal"
+		goal.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		place_row.add_child(goal)
 	var msg := UiTheme.label(Data.place_msg(place, n), 25, UiTheme.MUTED)
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(msg)
