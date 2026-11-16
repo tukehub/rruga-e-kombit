@@ -24,6 +24,8 @@ var assist := 1.6
 var brake_assist := false
 # Entry from Data.HANDLING: scales the human driver's aids. Bots ignore it.
 var handling: Dictionary = Data.HANDLING[Data.HANDLING_DEFAULT]
+# Tutorial: bots never fire and every station carries a set pickup.
+var tutorial := false
 # 1.0 is what the tyres hold on the centreline; the wide road lets a driver
 # cut the bend, so a little more still clears the walls.
 const CORNER_ASSIST_GRIP := 1.15
@@ -59,7 +61,7 @@ var pickup_director: PickupDirector
 ## handling (id in Data.HANDLING, default "arcade"), driver (index),
 ## player_car (id), player_slot, no_player, bot_cars (optional Array of ids),
 ## adaptive_pickups (default true; false retains the original fixed stations),
-## traffic ({"parked": n, "moving": n}; default none).
+## traffic ({"parked": n, "moving": n}; default none), tutorial (bool).
 func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	track = p_track
 	L = track.L
@@ -72,6 +74,7 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	assist = UNASSISTED_STEERING_DAMPING if opt.get("assist", true) == false else 1.6
 	brake_assist = bool(opt.get("brake_assist", false))
 	handling = Data.HANDLING[Data.handling_id(str(opt.get("handling", Data.HANDLING_DEFAULT)))]
+	tutorial = bool(opt.get("tutorial", false))
 	var no_player := bool(opt.get("no_player", false))
 	var pi := -1 if no_player else int(opt.get("driver", 0))
 	var rivals := Data.rivals_of(pi, rng)
@@ -117,11 +120,12 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	for k in n_st:
 		var st := (k + 0.55) * L / n_st + (rng.randf() - 0.5) * 30.0
 		for lane in [-6.5, 0.0, 6.5]:
-			pickups.append({"id": _nid(), "s": track.mod_s(st), "d": lane, "type": _pick_type(wsum), "alive": true, "t": 0.0})
+			var kind: String = Data.TUTORIAL_PICKUPS[k % Data.TUTORIAL_PICKUPS.size()] if tutorial else _pick_type(wsum)
+			pickups.append({"id": _nid(), "s": track.mod_s(st), "d": lane, "type": kind, "alive": true, "t": 0.0})
 	compute_order()
 	var hazards: Dictionary = opt.get("traffic", {})
 	_place_traffic(int(hazards.get("parked", 0)), int(hazards.get("moving", 0)))
-	if bool(opt.get("adaptive_pickups", true)):
+	if bool(opt.get("adaptive_pickups", true)) and not tutorial:
 		pickup_director = PickupDirector.new(int(opt.get("seed", 1234)))
 		pickup_director.setup(self)
 
@@ -1175,7 +1179,7 @@ func ai_drive(c: CarState, dt: float) -> void:
 	c.ctrl.steer = clampf(c_need / c_max, -1.0, 1.0)
 	if ai.t <= 0.0:
 		ai.t = (0.35 + rng.randf() * 0.6) * diff.react * ai.react
-		if not c.finished:
+		if not c.finished and not tutorial:
 			ai_weapons(c)
 
 

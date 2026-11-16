@@ -33,6 +33,7 @@ var race_opts := {
 	"driver": 0,
 	"mode": "race",        # "race", or "points": the square, by score
 	"event": "",           # a cup event id: its own laps, weather, rivals, direction
+	"tutorial": false,     # set by the tutorial event only
 	"points_minutes": 2,
 }
 var last_result: Dictionary = {}

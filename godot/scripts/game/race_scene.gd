@@ -43,6 +43,12 @@ var _pause_box: Control
 var _controls_ui: Control
 var _ui_layer: CanvasLayer
 var intro_cards: IntroCards
+var tutorial_prompt: TutorialPrompt
+## The tutorial's instructions by lap position: [{"at": metres, "text": ...}].
+var tutorial_steps: Array = []
+var _tutorial_next := 0
+const TUTORIAL_GAP := 70.0     # metres between two instructions
+const TUTORIAL_LATE := 60.0    # the most an instruction may be put off
 # Crossing the line: the race runs at FINISH_SLOW_SCALE for FINISH_SLOW_HOLD
 # seconds, then eases back to full speed over FINISH_SLOW_EASE.
 const FINISH_SLOW_SCALE := 0.3
@@ -221,6 +227,8 @@ func _build_race() -> void:
 	var laps := Game.city_laps(city_id)
 	var handling := Data.handling_id(Settings.handling)
 	var traffic: Dictionary = Data.traffic(Quality.preset).duplicate()
+	if bool(Game.race_setting("tutorial")):
+		traffic = {"parked": 0, "moving": 0}  # the first race keeps the road clear
 	for a in Game.launch_options():
 		if a.begins_with("--seed="):
 			seed_value = int(a.substr(7))  # debug: replay a logged race
@@ -240,6 +248,7 @@ func _build_race() -> void:
 		"brake_assist": Settings.assist,
 		"handling": handling,
 		"traffic": traffic,
+		"tutorial": bool(Game.race_setting("tutorial")),
 		"driver": int(Game.race_opts.driver),
 		"player_car": str(Game.race_opts.car),
 	}
@@ -301,6 +310,13 @@ func _build_ui() -> void:
 	intro_cards = IntroCards.new()
 	safe.add_child(intro_cards)
 	intro_cards.setup(race)
+	if race.tutorial:
+		tutorial_prompt = TutorialPrompt.new()
+		safe.add_child(tutorial_prompt)
+		tutorial_prompt.skip_pressed.connect(skip_tutorial)
+		tutorial_steps = build_tutorial_steps()
+		_tutorial_next = 0
+		tutorial_prompt.say(Data.t("tutorial.welcome"))
 	hud.setup(race, player, track, route_guide)
 	input.bind_inventory(hud._slots)
 	input.inventory_selected.connect(func(i: int): hud.slot_selected.emit(i))
@@ -471,6 +487,74 @@ static func _timing_plan(accumulator: float, elapsed: float) -> Dictionary:
 	return {"steps": steps, "debt": maxf(0.0, total - whole * DT), "dropped": (whole - steps) * DT}
 
 
+## The tutorial's instructions, placed along the lap: steering and pedals at
+## the start, each pickup station before it is reached, the sharpest bend
+## before it comes, and the line at the end.
+func build_tutorial_steps() -> Array:
+	var steps: Array = []
+	steps.append({"at": 5.0, "text": Data.t("tutorial.steer.touch") if Settings.touch_steer else Data.t("tutorial.steer.tilt")})
+	steps.append({"at": 90.0, "text": Data.t("tutorial.pedals.auto") if Settings.auto_accel else Data.t("tutorial.pedals.manual")})
+	var stations := {}
+	for p in race.pickups:
+		stations[snappedf(float(p.s), 1.0)] = str(p.type)
+	for s in stations:
+		steps.append({"at": maxf(120.0, float(s) - 110.0), "text": Data.t("tutorial.pickup", Data.pw_name(stations[s]))})
+	var sharp_s := 0.0
+	var sharp_k := 0.0
+	var probe := 200.0
+	while probe < race.L - 300.0:
+		if absf(track.curv(probe)) > sharp_k:
+			sharp_k = absf(track.curv(probe))
+			sharp_s = probe
+		probe += 4.0
+	if sharp_k > 0.0:
+		steps.append({"at": maxf(130.0, sharp_s - 140.0), "text": Data.t("tutorial.drift")})
+	steps.append({"at": race.L - 260.0, "text": Data.t("tutorial.finish")})
+	steps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.at) < float(b.at))
+	# Leave a few seconds' driving between steps: a step that would come too
+	# soon waits, unless waiting would make it come too late to be useful.
+	var spaced: Array = []
+	for step in steps:
+		var at := float(step.at)
+		if not spaced.is_empty():
+			at = maxf(at, float(spaced[-1].at) + TUTORIAL_GAP)
+		if at - float(step.at) <= TUTORIAL_LATE:
+			spaced.append({"at": at, "text": step.text})
+	return spaced
+
+
+func _tutorial_update() -> void:
+	if tutorial_prompt == null or state != "race":
+		return
+	while _tutorial_next < tutorial_steps.size() and player.progress >= float(tutorial_steps[_tutorial_next].at):
+		tutorial_prompt.say(str(tutorial_steps[_tutorial_next].text))
+		_tutorial_next += 1
+
+
+func _tutorial_event(e: Dictionary) -> void:
+	if tutorial_prompt == null or e.get("car") != player:
+		return
+	match str(e.t):
+		"pickup":
+			var kind := str(e.type)
+			var line := Data.t("tutorial.use", Data.pw_name(kind))
+			if kind in ["eagle", "bolt", "mine"]:
+				line += " " + Data.t("tutorial.back")
+			tutorial_prompt.say(line)
+		"drift_ready":
+			tutorial_prompt.say(Data.t("tutorial.turbo"))
+
+
+## Leave the tutorial for the cup page; nothing is earned.
+func skip_tutorial() -> void:
+	if state == "results":
+		return
+	state = "results"
+	get_tree().paused = false
+	Sfx.stop_loops()
+	Game.goto("menu")
+
+
 ## How fast the race runs `since_finish` seconds after the player's finish.
 static func finish_time_scale(since_finish: float) -> float:
 	var back := clampf((since_finish - FINISH_SLOW_HOLD) / FINISH_SLOW_EASE, 0.0, 1.0)
@@ -539,6 +623,7 @@ func _process(dt: float) -> void:
 					finish_speed_limit = maxf(6.0, finish_speed_limit - 8.0 * DT)
 					player.v = minf(player.v, finish_speed_limit)
 			_events()
+			_tutorial_update()
 			input.sync_actions()
 			if state == "race" and not last500:
 				var left := race.laps * race.L - player.progress
@@ -622,6 +707,7 @@ func _wpos(s: float, d: float, dy := 0.0) -> Vector3:
 func _events() -> void:
 	for e in race.take_events():
 		var c: CarState = e.get("car")
+		_tutorial_event(e)
 		if e.t in ["boom", "zap", "barge", "repair"]:
 			var s_pos: float = float(e.get("s", c.s if c != null else 0.0))
 			var d_pos: float = float(e.get("d", c.d if c != null else 0.0))

@@ -198,6 +198,9 @@ func has_pw(type: String) -> bool:
 	return PW.has(type) or ARENA_PW.has(type)
 
 
+# The tutorial's pickups, station by station, so each one is met in turn.
+const TUTORIAL_PICKUPS := ["nitro", "bolt", "shield", "eagle", "mine", "repair", "barge", "nitro", "bolt", "nitro"]
+
 # Cups: a run of fixed races. Every event can be played at any time; stars are
 # 1 for the top three, 2 for a win, 3 for a win that also meets the event's
 # goal. Goal kinds: "clean" (not wrecked), "hits", "wrecks" (rivals wrecked),
@@ -205,6 +208,9 @@ func has_pw(type: String) -> bool:
 # table under cup.event.<id>.name and cup.goal.<kind>.
 const CUPS := {
 	"tirana": [
+		# The first event teaches the game: rivals that do not fire, fixed
+		# pickups and instructions along the lap. It can be left at any time.
+		{"id": "tirana_0", "laps": 1, "env": "day", "diff": 0, "reverse": false, "tutorial": true, "goal": {"kind": "clean", "n": 0}},
 		{"id": "tirana_1", "laps": 1, "env": "day", "diff": 0, "reverse": false, "goal": {"kind": "clean", "n": 0}},
 		{"id": "tirana_2", "laps": 1, "env": "rainy", "diff": 0, "reverse": false, "goal": {"kind": "hits", "n": 3}},
 		{"id": "tirana_3", "laps": 2, "env": "day", "diff": 1, "reverse": true, "goal": {"kind": "wrecks", "n": 1}},

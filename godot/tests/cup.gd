@@ -109,13 +109,14 @@ func _ready() -> void:
 	for card in menu.cup_cards:
 		check(cup_rect.encloses(card.get_global_rect()), "the cards fit on the screen")
 
-	# Play event 3: reversed, two laps, normal rivals.
-	var third: Dictionary = events[2]
+	# Play the reversed event: two laps, normal rivals.
+	var third_index := events.find(Data.cup_event("tirana_3"))
+	var third: Dictionary = events[third_index]
 	Game.race_opts.laps = 7
 	Game.race_opts.env = "day"
 	Game.race_opts.reverse = false
 	Game.race_opts.diff = 0
-	menu.cup_cards[2].pressed.emit()
+	menu.cup_cards[third_index].pressed.emit()
 	await wait_scene("race")
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
@@ -176,7 +177,7 @@ func _ready() -> void:
 	await wait_scene("menu")
 	menu = Game._root.get_child(0)
 	check(menu.page == "cup", "after a cup race the menu opens on the cup")
-	check((menu.cup_cards[2].find_child("Stars", true, false) as StarRow).earned == 3 and menu._cup_stars.text == "3 / %d" % (events.size() * 3), "the card and the total show the stars")
+	check((menu.cup_cards[third_index].find_child("Stars", true, false) as StarRow).earned == 3 and menu._cup_stars.text == "3 / %d" % (events.size() * 3), "the card and the total show the stars")
 	menu.show_page("title")
 	check(menu._cup_button.text == "Kupa · 3/%d" % (events.size() * 3), "the title page's cup button shows them too")
 	# A free race leaves the cup behind.

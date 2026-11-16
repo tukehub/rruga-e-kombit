@@ -395,8 +395,17 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     fans still missing. Bots keep plain cars. On the privately staged
     atlas car the rims are part of the texture, so only the livery changes
     there. Covered by `tests/shop`.
-6.4 **Tutorial** as the first cup event: one lap, bots do not fire, fixed
-    pickups, HUD prompts by track position; skippable.
+6.4 **Tutorial — done.** The cup's first event, "Mësimi" (`tutorial`
+    in `Data.CUPS`): one lap, easy rivals that never fire or boost, no
+    traffic, and every station carrying a set pickup in all three lanes
+    (`Data.TUTORIAL_PICKUPS`: nitro first, then bolts, shield, eagle...).
+    `TutorialPrompt` shows one instruction at a time at the top centre:
+    steering and pedals at the start (touch or tilt, auto or manual gas),
+    each pickup before its station, the sharpest bend before it comes, and
+    the finish; picking something up says how to use it, a charged drift
+    says how to boost. Instructions are at least 70 m apart. "Kalo" leaves
+    for the cup at any time, earning nothing; like every event it is never
+    required. Covered by `tests/tutorial`.
 
 ### 7. Online multiplayer (2+ friends from home, bots optional)
 
