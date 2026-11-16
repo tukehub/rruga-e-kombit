@@ -129,6 +129,7 @@ const T := {
 	"input.turbo": "TURBO",
 	"view.camera.chase": "KAMERA: JASHTË",
 	"view.camera.cabin": "KAMERA: KABINË",
+	"view.camera.bumper": "KAMERA: PARAKOLP",
 	"view.mirror.on": "PASQYRA: PO",
 	"view.mirror.off": "PASQYRA: JO",
 	# ------------ race: HUD

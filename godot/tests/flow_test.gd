@@ -98,9 +98,14 @@ func _ready() -> void:
 	for wheel in player_visual.wheels.values():
 		check(wheel.layers == 2, "player wheel isolated from rear mirror")
 	scene.views._toggle_view()
-	check(scene.cam.cabin and scene.views.cabin_overlay.visible and not scene.cam.get_cull_mask_value(2), "cabin view hides own car and shows dashboard")
+	check(scene.cam.view == ChaseCam.View.CABIN and scene.views.cabin_overlay.visible and not scene.cam.get_cull_mask_value(2), "cabin view hides own car and shows dashboard")
+	check(scene.views.view_button.text == Data.t("view.camera.cabin"), "view button names the cabin view")
 	scene.views._toggle_view()
-	check(not scene.cam.cabin and scene.cam.get_cull_mask_value(2), "exterior view restores own car")
+	check(scene.cam.view == ChaseCam.View.BUMPER and not scene.views.cabin_overlay.visible and not scene.cam.get_cull_mask_value(2), "bumper view hides own car and the dashboard")
+	check(scene.views.view_button.text == Data.t("view.camera.bumper"), "view button names the bumper view")
+	scene.views._toggle_view()
+	check(scene.cam.view == ChaseCam.View.CHASE and scene.cam.get_cull_mask_value(2), "exterior view restores own car")
+	check(scene.views.view_button.text == Data.t("view.camera.chase"), "view button names the chase view")
 	scene.views._toggle_mirror()
 	check(scene.views.mirror_panel.visible and Settings.mirror, "mirror can be enabled and the choice is saved")
 	scene.views._toggle_mirror()
@@ -171,10 +176,10 @@ func _ready() -> void:
 	scene.player.finished = true
 	scene.player.finish_time = 80.0
 	scene.player.v = 40.0
-	scene.cam.cabin = true
+	scene.views.set_view(ChaseCam.View.CABIN)
 	scene.race.emit({"t": "finish", "car": scene.player})
 	scene._events()
-	check(scene.state == "finish" and not scene.cam.cabin and scene.cam.get_cull_mask_value(2), "finish restores exterior view")
+	check(scene.state == "finish" and scene.cam.view == ChaseCam.View.CHASE and scene.cam.get_cull_mask_value(2) and not scene.views.cabin_overlay.visible, "finish restores exterior view")
 	check(not scene.input.visible and not scene.input.gas, "finish hides and clears driving controls")
 	var finish_visual: CarVisual = scene.cars[scene.race.cars.find(scene.player)]
 	check(finish_visual.finish_driver.visible and finish_visual.finish_glass.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "finish reveals driver through windshield")

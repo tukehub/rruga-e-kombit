@@ -107,12 +107,24 @@ func _set_player_layer(node: Node) -> void:
 		_set_player_layer(child)
 
 
-func _toggle_view() -> void:
-	race_camera.cabin = not race_camera.cabin
-	race_camera.set_cull_mask_value(PLAYER_LAYER, not race_camera.cabin)
-	cabin_overlay.visible = race_camera.cabin
-	view_button.text = Data.t("view.camera.cabin") if race_camera.cabin else Data.t("view.camera.chase")
+## Chase shows the car; cabin and bumper hide it from the race camera, and only
+## the cabin draws the dashboard.
+func set_view(view: ChaseCam.View) -> void:
+	race_camera.view = view
+	race_camera.set_cull_mask_value(PLAYER_LAYER, not race_camera.first_person())
+	cabin_overlay.visible = view == ChaseCam.View.CABIN
+	match view:
+		ChaseCam.View.CABIN:
+			view_button.text = Data.t("view.camera.cabin")
+		ChaseCam.View.BUMPER:
+			view_button.text = Data.t("view.camera.bumper")
+		_:
+			view_button.text = Data.t("view.camera.chase")
 	race_camera._snap = true
+
+
+func _toggle_view() -> void:
+	set_view(((race_camera.view + 1) % ChaseCam.View.size()) as ChaseCam.View)
 	Sfx.ui_click()
 
 

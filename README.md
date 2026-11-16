@@ -35,7 +35,8 @@ Tests exercise all available city simulations on three difficulties, load every
 city through the production race scene, and check the shared
 car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
-menu → race → results → retry → menu loop, and reject UI text written into a
+menu → race → results → retry → menu loop, the chase camera's roll, hit kick,
+nitro pull-back and bumper view, and reject UI text written into a
 script instead of the string table. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.
 The renderer checks and a one-second benchmark launch run once as Mobile and
@@ -200,10 +201,13 @@ Rules for every change:
 
 ### 2. Gameplay feel (Tirana)
 
-2.1 **Camera dynamics** in `scripts/game/chase_cam.gd`: roll from steer/drift,
-    lateral lag tightens while drifting, hit kick uses the hit direction from
-    the event (not random), nitro pulls the camera back; add a bumper view to
-    the chase/cabin selection.
+2.1 **Camera dynamics — done.** `scripts/game/chase_cam.gd` rolls into
+    bends and drifts, follows sideways faster while drifting, pulls back
+    while nitro burns, and replaces the random shake with a spring kick along
+    the blow: "hit" and "wreck" events carry `dir` (x to the driver's right,
+    y forward) from `Race.hit()`. The view button cycles chase → cabin →
+    bumper (`ChaseCam.View`, `RaceViews.set_view`). The chosen view is not
+    saved between races. Covered by `tests/camera_dynamics`.
 2.2 **Handling difficulty** separate from AI difficulty: an "Arcade / Pro"
     switch in settings that scales `assist`, `brake_assist` and drift grip in
     `scripts/sim/race.gd`.

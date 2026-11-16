@@ -488,7 +488,7 @@ func physics(c: CarState, dt: float) -> void:
 			if c.lat_v * sd > 0.0:
 				c.lat_v = move_toward(c.lat_v, 0.0, 12.0 * dt)
 			if into > 9.0 and c.scrape <= 0.05:
-				damage(c, (into - 9.0) * 0.9, null, "wall")
+				damage(c, (into - 9.0) * 0.9, null, "wall", Vector2(-sd, 0.0))
 			c.scrape = maxf(c.scrape, minf(1.0, into / 14.0 + 0.25))
 			if into > 5.0:
 				emit({"t": "wall", "car": c, "imp": into, "side": sd})
@@ -606,21 +606,24 @@ func collisions(dt: float = 1.0 / 60.0) -> void:
 					rear.v -= dv * (0.55 * front.def.mass / tot + 0.2)
 					front.v += dv * 0.45 * rear.def.mass / tot
 					if dv > 14.0:
-						damage(rear, (dv - 14.0) * 0.6, front, "bump")
-						damage(front, (dv - 14.0) * 0.4, rear, "bump")
+						damage(rear, (dv - 14.0) * 0.6, front, "bump", Vector2(0.0, -1.0))
+						damage(front, (dv - 14.0) * 0.4, rear, "bump", Vector2(0.0, 1.0))
 					if dv > 3.0:
 						emit({"t": "bump", "a": rear, "b": front, "dv": dv, "side": false})
 
 
-func damage(c: CarState, dmg: float, by: CarState, kind: String) -> void:
+func damage(c: CarState, dmg: float, by: CarState, kind: String, dir := Vector2.ZERO) -> void:
 	if c.wreck_t > 0.0 or c.finished or c.invuln_t > 0.0:
 		return
 	c.health -= dmg
 	if c.health <= 0.0:
-		wreck(c, by, kind)
+		wreck(c, by, kind, dir)
 
 
-func wreck(c: CarState, by: CarState, kind: String) -> void:
+## `dir` on "hit" and "wreck" events is the way the blow travelled in the
+## struck car's road frame: x to the driver's right, y forward. Unit length,
+## or zero when the blow has no direction.
+func wreck(c: CarState, by: CarState, kind: String, dir := Vector2.ZERO) -> void:
 	c.health = 0.0
 	c.wreck_t = 2.4
 	c.spin_t = 0.0
@@ -631,10 +634,10 @@ func wreck(c: CarState, by: CarState, kind: String) -> void:
 	c.chain_hits = 0
 	if by != null and by != c:
 		by.fans += FANS.wreck
-	emit({"t": "wreck", "car": c, "by": by, "kind": kind})
+	emit({"t": "wreck", "car": c, "by": by, "kind": kind, "dir": dir})
 
 
-func hit(o: CarState, by: CarState, kind: String, dmg: float, fx: Dictionary) -> bool:
+func hit(o: CarState, by: CarState, kind: String, dmg: float, fx: Dictionary, dir := Vector2.ZERO) -> bool:
 	if o.finished or o.wreck_t > 0.0:
 		return false
 	if o.shield_t > 0.0 or o.invuln_t > 0.0:
@@ -667,9 +670,9 @@ func hit(o: CarState, by: CarState, kind: String, dmg: float, fx: Dictionary) ->
 	if by != null and by != o:
 		by.fans += FANS.get(kind, 0)
 		by.hits += 1
-	emit({"t": "hit", "car": o, "by": by, "kind": kind, "dmg": dmg, "recovering": recovering})
+	emit({"t": "hit", "car": o, "by": by, "kind": kind, "dmg": dmg, "recovering": recovering, "dir": dir})
 	if o.health <= 0.0:
-		wreck(o, by, kind)
+		wreck(o, by, kind, dir)
 	return true
 
 
@@ -701,7 +704,7 @@ func use_item(c: CarState, back: bool) -> void:
 				var dist := sqrt(ds * ds + dd * dd)
 				if dist < 15.0:
 					var f := 1.0 - dist / 15.0
-					hit(o, c, "barge", 12.0 + 12.0 * f, {"slow": 0.85 - 0.2 * f, "push": (1.0 if dd >= 0.0 else -1.0) * (9.0 + 9.0 * f)})
+					hit(o, c, "barge", 12.0 + 12.0 * f, {"slow": 0.85 - 0.2 * f, "push": (1.0 if dd >= 0.0 else -1.0) * (9.0 + 9.0 * f)}, Vector2(dd, ds).normalized())
 			emit({"t": "barge", "car": c})
 		"mine":
 			if back:
@@ -864,10 +867,12 @@ func update_projs(dt: float) -> void:
 			if o == p.owner or o.finished or o.wreck_t > 0.0:
 				continue
 			if absf(T.wrap_s(o.s - p.s)) < 3.2 and absf(o.d - p.d) < 2.3:
+				# A shot arrives along its flight; the sideways part is where it struck.
+				var blow := Vector2(o.d - p.d, 3.2 * float(p.dir)).normalized()
 				if p.kind == "eagle":
-					hit(o, p.owner, "eagle", 34.0, {"spin": true})
+					hit(o, p.owner, "eagle", 34.0, {"spin": true}, blow)
 				else:
-					hit(o, p.owner, "bolt", 11.0, {"slow": 0.86, "push": (1.0 if o.d - p.d >= 0.0 else -1.0) * 3.0})
+					hit(o, p.owner, "bolt", 11.0, {"slow": 0.86, "push": (1.0 if o.d - p.d >= 0.0 else -1.0) * 3.0}, blow)
 				emit({"t": "boom", "kind": p.kind, "s": p.s, "d": p.d, "hit_car": o})
 				dead = true
 				break
@@ -926,7 +931,7 @@ func update_mines(dt: float) -> void:
 			if (o == m.owner and time - m.born < 2.5) or o.finished or o.wreck_t > 0.0:
 				continue
 			if absf(T.wrap_s(o.s - m.s)) < 2.5 and absf(o.d - m.d) < 2.1:
-				hit(o, m.owner, "mine", 26.0, {"hop": 7.5, "slow": 0.5, "stun": 1.0})
+				hit(o, m.owner, "mine", 26.0, {"hop": 7.5, "slow": 0.5, "stun": 1.0}, Vector2(o.d - m.d, -2.5).normalized())
 				emit({"t": "boom", "kind": "mine", "s": m.s, "d": m.d, "hit_car": o})
 				mines.remove_at(i)
 				break
@@ -952,7 +957,7 @@ func update_domes(dt: float) -> void:
 			var dd: float = o.d - dm.d
 			if ds * ds + dd * dd < dm.r * dm.r:
 				dm.hit_set[o.id] = true
-				hit(o, dm.owner, "shock", 20.0, {"stun": 2.2, "slow": 0.6})
+				hit(o, dm.owner, "shock", 20.0, {"stun": 2.2, "slow": 0.6}, Vector2(dd, ds).normalized())
 				emit({"t": "zap", "dome": dm, "car": o})
 
 

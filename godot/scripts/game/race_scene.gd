@@ -594,7 +594,7 @@ func _events() -> void:
 				if c == player:
 					if not softened or _limited("chain_feedback", 0.35):
 						hud.flash(Color(1.0, 0.88, 0.23, 1.0) if e.kind == "shock" else Color(0.9, 0.12, 0.12, 1.0), 0.16 if softened else 0.5)
-						cam.add_shake(0.12 if softened else (1.2 if e.kind == "eagle" else 0.6))
+						cam.add_kick(e.get("dir", Vector2.ZERO), 0.12 if softened else (1.2 if e.kind == "eagle" else 0.6))
 						Sfx.haptic(15 if softened else 60)
 					if not softened or _limited("chain_hit", 0.8):
 						hud.feed(Data.t("race.hit_softened") if softened else "%s → %s" % [e.by.name if e.by else "?", player.name], col)
@@ -629,7 +629,7 @@ func _events() -> void:
 				if c == player:
 					hud.center(Data.t("race.wrecked.title"), Data.t("race.wrecked.sub"), 2.2)
 					hud.flash(Color(1.0, 0.47, 0.12), 1.0)
-					cam.add_shake(1.6)
+					cam.add_kick(e.get("dir", Vector2.ZERO), 1.6)
 					Sfx.haptic(120)
 				elif e.by == player:
 					hud.feed(Data.t("race.wrecked_by_you", [c.name, int(Race.FANS.wreck)]), UiTheme.AMBER)
@@ -644,7 +644,7 @@ func _events() -> void:
 			"wall":
 				if c == player and _limited("wall", 0.45):
 					Sfx.play("wall_impact", "Impacts", _vol_db(clampf(float(e.imp) / 20.0, 0.3, 1.0)))
-					cam.add_shake(minf(0.15, float(e.imp) / 120.0))
+					cam.add_kick(Vector2(-float(e.side), 0.0), minf(0.15, float(e.imp) / 120.0))
 					Sfx.haptic(15)
 			"bump":
 				if (e.a == player or e.b == player) and _limited("bump", 0.22):
@@ -657,7 +657,7 @@ func _events() -> void:
 					Sfx.play_at("zap", _wpos(c.s, c.d, 0.8), "Impacts", _vol_db(_near_vol(c.s)))
 			"barge":
 				if c == player:
-					cam.add_shake(0.5)
+					cam.add_kick(Vector2(0.0, -1.0), 0.5)
 			"shock":
 				if e.target == player:
 					hud.center(Data.t("race.storm.title"), Data.t("race.storm.sub"), 1.6)
@@ -688,10 +688,8 @@ func _events() -> void:
 					fin_t = 0.0
 					finish_speed_limit = maxf(6.0, player.v)
 					player.autopilot = true
-					cam.cabin = false
-					cam.set_cull_mask_value(RaceViews.PLAYER_LAYER, true)
+					views.set_view(ChaseCam.View.CHASE)
 					cars[race.cars.find(player)].show_finish_driver()
-					views.cabin_overlay.visible = false
 					views.view_button.disabled = true
 					Sfx.play("finish", "UI", -2.0)
 					hud.flash(Color(1.0, 0.71, 0.28), 0.7)
