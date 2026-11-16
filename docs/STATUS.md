@@ -55,6 +55,14 @@ Every text the player reads now comes from one string table
 (`godot/scripts/data/strings_sq.gd`); scripts hold keys, and a test rejects
 text written into a script, unknown keys and unused keys.
 
+README graphics items 3.1 and 3.2 now add metallic clearcoat/flakes, budgeted
+nearby rival headlights, fixed GPU pools for drift smoke, wet-wheel spray,
+nitro exhaust and scrape sparks, and a peripheral speed post effect beneath
+the HUD. Low quality and sustained pressure remove optional effects. Both
+renderer paths have regression coverage; Mobile and Forward+ software Vulkan
+captures exercise the shaders and production race integration. Physical phone
+performance is still unmeasured. [Checkpoints and next work](section-3-progress.md).
+
 Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.

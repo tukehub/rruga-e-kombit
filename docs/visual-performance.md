@@ -2,8 +2,8 @@
 
 Cars retain health-driven paint wear between hits. Stable marks and higher
 roughness affect painted panels; glass, trim, lamps and each car's identity stay
-readable. Repair and respawn restore clean paint. Public fallback cars use darker,
-rougher paint. The existing contact patch follows road elevation and fades in
+readable. Repair and respawn restore clean paint. Public fallback cars share the
+metallic/clearcoat finish. The existing contact patch follows road elevation and fades in
 airtime at every quality level. These effects reuse each car's existing materials.
 
 Road shoulders now join the baked terrain height instead of dropping a fixed
@@ -80,7 +80,8 @@ For example, medium at the strongest reduction changes:
 ## Fixed combat pools
 
 Race setup preallocates 54 bolt, 18 eagle, 24 mine and 3 dome units, plus 8
-flashes and 6 activation rings: 113 units total. The projectile capacity covers
+flashes and 6 activation rings: 113 combat units. Section 3 adds 18 driving
+emitters, bringing the preallocated total to 131. The projectile capacity covers
 a six-racer, three-slot inventory burst; mines already have a simulation cap
 of 24 and the existing single-storm rule permits three domes. Dome radii scale
 unit geometry. Activation rings animate fixed slots without per-use Tweens.
@@ -117,3 +118,34 @@ and active `workload` alongside frame/process/physics/GPU times, hardware,
 pickup and combat data. Physical Android review still needs sustained laps at
 30/60 FPS on target devices, including mirror on/off, weather transitions,
 thermal load, memory/loading cost, battery use and corner visibility at speed.
+
+## Section 3 paint and speed feedback
+
+Paint now uses a metallic base coat and clearcoat, with subtle normal-map
+flakes on paint only. Flakes turn off on low or sustained pressure. Damage
+dulls the finish; repair restores it. All cars retain emissive lamps. Nearby
+bot headlight pairs share `Quality.p.fx_light_limit` spot slots; two player
+spots remain reserved at night. This respects Mobile's separate eight-spot
+limit without changing the existing omni-light shares.
+
+Driving particles live in fixed `FxVisual.POOL_CAPS`: six tyre-smoke emitters,
+six wet-wheel-spray emitters, three exhaust emitters and three wall-scrape
+emitters. Each emitter has a fixed particle count (438 total across all pools).
+The player gets priority among cars within 65 m; medium admits two cars per
+effect and high admits three. Low and pressure stages 2/3 disable these
+optional particles. Combat pools and readable combat cores remain unchanged.
+
+The speed post effect uses peripheral radial blur, a slight chromatic offset
+and a vignette, with a clear center. It runs below all HUD/control/mirror
+canvas items, is disabled on low or pressure stages 2/3, and clears on pause,
+wreck, finish and retry. `Quality.snapshot()` reports the effective particle,
+flake and post-effect budgets for profiling.
+
+Tests: `car_paint_lights` and `speed_feedback` run on both shipped renderer
+paths in `tools/run_tests.py`. The combined `visual_performance` test checks
+stable particle resource identities alongside the combat stress workload.
+`graphics_visual.tscn` is an optional Vulkan render check (use `--fixed-fps 60`)
+that captures drift, wet boost and low-quality screenshots. Software Vulkan
+checks appearance and shader compilation; physical phones are still required
+for frame-time validation.
+

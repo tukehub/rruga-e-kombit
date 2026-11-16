@@ -5,6 +5,7 @@ uniform sampler2D atlas : source_color, filter_linear_mipmap_anisotropic, repeat
 uniform vec4 paint_color : source_color = vec4(0.0, 0.55, 1.0, 1.0);
 uniform float brake_light : hint_range(0.0, 1.0) = 0.0;
 uniform float body_damage : hint_range(0.0, 1.0) = 0.0;
+uniform bool paint_flakes = true;
 
 float wear_hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -37,9 +38,22 @@ void fragment() {
 		col = mix(col, vec3(0.13, 0.14, 0.145), wear * 0.85);
 	}
 	ALBEDO = col;
-	METALLIC = mix(0.02, 0.14, blue);
-	ROUGHNESS = mix(0.72, 0.34, blue);
+	METALLIC = mix(0.02, 0.6, blue);
+	ROUGHNESS = mix(0.72, 0.25, blue);
 	ROUGHNESS = mix(ROUGHNESS, 0.86, clamp(wear + body_damage * blue * 0.35, 0.0, 1.0));
+	CLEARCOAT = blue * 0.65 * (1.0 - wear);
+	CLEARCOAT_ROUGHNESS = mix(0.18, 0.65, wear);
+	// Microflakes perturb only painted panels. Fade below a pixel to avoid
+	// shimmering at racing distance, and leave trim/glass/lamp normals intact.
+	NORMAL_MAP = vec3(0.5, 0.5, 1.0);
+	NORMAL_MAP_DEPTH = 0.0;
+	if (paint_flakes) {
+		vec2 flake_uv = UV * 900.0;
+		float resolved = 1.0 - smoothstep(0.35, 1.0, max(length(dFdx(flake_uv)), length(dFdy(flake_uv))));
+		vec2 tilt = vec2(wear_hash(floor(flake_uv)), wear_hash(floor(flake_uv) + vec2(37.0, 91.0))) - 0.5;
+		NORMAL_MAP = vec3(tilt * 0.12, 1.0) * 0.5 + 0.5;
+		NORMAL_MAP_DEPTH = blue * (1.0 - wear) * resolved;
+	}
 	// Rear-light UV island from the supplied atlas. Exclude red sponsor/livery
 	// pixels elsewhere so only the lamp brightens when braking.
 	float rear_island = step(0.55, UV.x) * step(0.41, UV.y) * step(UV.y, 0.52);
