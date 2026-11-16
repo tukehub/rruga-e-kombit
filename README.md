@@ -36,7 +36,8 @@ city through the production race scene, and check the shared
 car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop, the chase camera's roll, hit kick,
-nitro pull-back and bumper view, and reject UI text written into a
+nitro pull-back and bumper view, the Arcade / Pro handling scales, and reject
+UI text written into a
 script instead of the string table. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.
 The renderer checks and a one-second benchmark launch run once as Mobile and
@@ -50,9 +51,10 @@ A rendered smoke test (needs a Vulkan GPU or software Vulkan) is available as
 godot --path godot -- --scene=race --auto --city=tirane --quality=medium --env=rain --shots=3,10
 ```
 
-Every race prints one `RACE seed=… city=… env=… laps=… diff=…` line (on a phone,
+Every race prints one `RACE seed=… city=… env=… laps=… diff=… handling=…` line (on a phone,
 `adb logcat -s godot`). Pass `--seed=<n>` with the same city, direction, weather,
-laps and difficulty to replay it; `--laps=<n>` shortens a race.
+laps, difficulty and `--handling=<arcade|pro>` to replay it; `--laps=<n>`
+shortens a race.
 
 Controls: tilt, or the touch-pad fallback in **Cilësimet**; right half gas, left
 half brake/drift; **GJUAJ** forward, **PRAPA** backward. Desktop testing supports
@@ -208,9 +210,15 @@ Rules for every change:
     y forward) from `Race.hit()`. The view button cycles chase → cabin →
     bumper (`ChaseCam.View`, `RaceViews.set_view`). The chosen view is not
     saved between races. Covered by `tests/camera_dynamics`.
-2.2 **Handling difficulty** separate from AI difficulty: an "Arcade / Pro"
-    switch in settings that scales `assist`, `brake_assist` and drift grip in
-    `scripts/sim/race.gd`.
+2.2 **Handling difficulty — done.** `Settings.handling` ("arcade" | "pro",
+    the "Drejtimi i makinës" row in settings) picks an entry of
+    `Data.HANDLING`; `Race` takes it as the `handling` option and scales the
+    human driver's steering assist, corner brake trim and drift grip. Arcade
+    is 1.0 throughout, so it drives as before; bots and `Data.DIFFS` are
+    untouched. The settings file now records `VERSION`. The `RACE` log line
+    names the handling and `--handling=<id>` replays it. Covered by
+    `tests/handling`. The Pro numbers (0.7 / 0.5 / 0.5) are a first guess:
+    tune them on a phone.
 2.3 **Traffic and hazards:** static parked cars and a few slow traffic vehicles
     on the (s, d) ribbon as non-firing `CarState`s with `autopilot`; collision
     uses the existing footprint check. Count capped by quality preset.

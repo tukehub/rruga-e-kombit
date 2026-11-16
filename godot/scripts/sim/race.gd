@@ -22,6 +22,8 @@ var assist := 1.6
 # Leave most of the corner speed choice to the driver while both thumbs hold
 # gas and steering.
 var brake_assist := false
+# Entry from Data.HANDLING: scales the human driver's aids. Bots ignore it.
+var handling: Dictionary = Data.HANDLING[Data.HANDLING_DEFAULT]
 # 1.0 is what the tyres hold on the centreline; the wide road lets a driver
 # cut the bend, so a little more still clears the walls.
 const CORNER_ASSIST_GRIP := 1.15
@@ -45,7 +47,8 @@ var player: CarState = null
 var pickup_director: PickupDirector
 
 
-## opt keys: laps, diff (0..2), seed, wet, assist (bool), driver (index),
+## opt keys: laps, diff (0..2), seed, wet, assist (bool), brake_assist (bool),
+## handling (id in Data.HANDLING, default "arcade"), driver (index),
 ## player_car (id), player_slot, no_player, bot_cars (optional Array of ids),
 ## adaptive_pickups (default true; false retains the original fixed stations).
 func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
@@ -59,6 +62,7 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	wet = bool(opt.get("wet", false))
 	assist = UNASSISTED_STEERING_DAMPING if opt.get("assist", true) == false else 1.6
 	brake_assist = bool(opt.get("brake_assist", false))
+	handling = Data.HANDLING[Data.handling_id(str(opt.get("handling", Data.HANDLING_DEFAULT)))]
 	var no_player := bool(opt.get("no_player", false))
 	var pi := -1 if no_player else int(opt.get("driver", 0))
 	var rivals := Data.rivals_of(pi, rng)
@@ -380,7 +384,8 @@ func physics(c: CarState, dt: float) -> void:
 			c.v = maxf(-9.0, c.v - 10.0 * dt)
 	if c.v > vmax * 1.02 and c.nitro_t <= 0.0:
 		c.v -= (c.v - vmax) * 1.5 * dt
-	if brake_assist and not near_finish and started and c.is_player and not c.autopilot and c.v > 8.0:
+	var trim := CORNER_ASSIST_DECEL * float(handling.brake_assist)
+	if brake_assist and trim > 0.0 and not near_finish and started and c.is_player and not c.autopilot and c.v > 8.0:
 		var corner_grip: float = def.grip * (29.0 if tirana_driver else 22.0) * (0.93 if wet else 1.0) * CORNER_ASSIST_GRIP
 		var v_corner := maxf(CORNER_ASSIST_MIN_SPEED, corner_speed(c.s, corner_grip, CORNER_ASSIST_PLAN_DECEL, c.v * c.v / (2.0 * CORNER_ASSIST_PLAN_DECEL) + 12.0))
 		if c.v > v_corner:
@@ -392,7 +397,7 @@ func physics(c: CarState, dt: float) -> void:
 					emit({"t": "assist_brake", "car": c})
 			# Trim speed gently even with gas or nitro held; manual braking
 			# remains available when the driver wants a stronger slowdown.
-			c.v = maxf(v_corner, minf(c.v, v_before) - CORNER_ASSIST_DECEL * dt)
+			c.v = maxf(v_corner, minf(c.v, v_before) - trim * dt)
 	# steering
 	var rate := 12.0 if (c.is_player and not c.autopilot) else 8.0
 	c.steer += clampf(steer_in - c.steer, -rate * dt, rate * dt)
@@ -402,7 +407,9 @@ func physics(c: CarState, dt: float) -> void:
 	# the human driver a little more arcade cornering authority there while
 	# keeping the existing speed and lateral-displacement bounds intact.
 	var grip_accel := 29.0 if tirana_driver else 22.0
-	var a_lat: float = def.grip * grip_accel * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0) * (0.93 if wet else 1.0)
+	var human := c.is_player and not c.autopilot
+	var drift_grip := 0.5 * (float(handling.drift_grip) if human else 1.0)
+	var a_lat: float = def.grip * grip_accel * (1.0 + c.drift * drift_grip) * (1.8 if c.hbrake_t > 0.0 else 1.0) * (0.93 if wet else 1.0)
 	var c_max := minf(0.12, a_lat / (av * av))
 	var cc := c.steer * c_max
 	var k := T.curv(c.s)
@@ -410,8 +417,8 @@ func physics(c: CarState, dt: float) -> void:
 	# near-threefold burst of track progress and camera speed.
 	var dsdt := v * cos(c.yaw) / maxf(0.8, 1.0 - k * c.d)
 	var asst: float
-	if c.is_player and not c.autopilot:
-		asst = (UNASSISTED_STEERING_DAMPING if near_finish else assist) * (1.5 if absf(c.steer) < 0.05 else 1.0)
+	if human:
+		asst = (UNASSISTED_STEERING_DAMPING if near_finish else assist) * float(handling.assist) * (1.5 if absf(c.steer) < 0.05 else 1.0)
 	else:
 		asst = BOT_ASSIST
 	c.yaw += (cc * v - k * dsdt - asst * c.yaw * minf(1.0, av / 10.0)) * dt

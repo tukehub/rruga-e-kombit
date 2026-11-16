@@ -5,6 +5,9 @@ signal changed
 
 const PATH := "user://settings.cfg"
 const PRESENTATION_VERSION := 1
+# Version of the file layout. 1 added `handling`; an older file predates the
+# choice and keeps the arcade handling it always had.
+const VERSION := 1
 
 # tilt sensitivity: index into TILT_FULL (degrees for full steer)
 const TILT_FULL := [32.0, 23.0, 15.0]
@@ -23,6 +26,7 @@ var control_offset_x := 0.0
 var control_offset_y := 0.0
 var tilt_center := 0.0          # neutral sensor angle, before inversion
 var assist := true
+var handling := "arcade"        # id in Data.HANDLING: "arcade" | "pro"
 var difficulty := 1
 var dynamic_weather := false
 var haptics := true
@@ -72,15 +76,17 @@ func _ready() -> void:
 		save()
 
 
-func load_settings() -> void:
+func load_settings(path := PATH) -> void:
 	var cf := ConfigFile.new()
-	if cf.load(PATH) != OK:
+	if cf.load(path) != OK:
 		return
+	var file_version := int(cf.get_value("meta", "version", 0))
 	var input_values := {}
 	for key in input_config():
 		input_values[key] = cf.get_value("input", key, get(key))
 	load_input_config(input_values)
 	assist = cf.get_value("game", "assist", assist)
+	handling = Data.HANDLING_DEFAULT if file_version < 1 else Data.handling_id(str(cf.get_value("game", "handling", handling)))
 	difficulty = cf.get_value("game", "difficulty", difficulty)
 	haptics = cf.get_value("game", "haptics", haptics)
 	dynamic_weather = cf.get_value("game", "dynamic_weather", dynamic_weather)
@@ -108,11 +114,12 @@ func load_settings() -> void:
 	presentation_version = cf.get_value("meta", "presentation_version", 0)
 
 
-func save() -> void:
+func save(path := PATH) -> void:
 	var cf := ConfigFile.new()
 	for key in input_config():
 		cf.set_value("input", key, get(key))
 	cf.set_value("game", "assist", assist)
+	cf.set_value("game", "handling", Data.handling_id(handling))
 	cf.set_value("game", "difficulty", difficulty)
 	cf.set_value("game", "haptics", haptics)
 	cf.set_value("game", "dynamic_weather", dynamic_weather)
@@ -138,7 +145,8 @@ func save() -> void:
 	cf.set_value("meta", "stats", stats)
 	cf.set_value("meta", "seen_pws", seen_pws)
 	cf.set_value("meta", "presentation_version", presentation_version)
-	cf.save(PATH)
+	cf.set_value("meta", "version", VERSION)
+	cf.save(path)
 	changed.emit()
 
 

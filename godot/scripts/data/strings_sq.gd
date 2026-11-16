@@ -38,6 +38,9 @@ const T := {
 	# ------------ settings
 	"settings.title": "Cilësimet",
 	"settings.assist": "Ndihmë në kthesa",
+	"settings.handling": "Drejtimi i makinës",
+	"settings.handling.arcade": "Arkadë",
+	"settings.handling.pro": "Pro",
 	"settings.weather": "Mot dhe dritë dinamike",
 	"settings.haptics": "Dridhje",
 	"settings.quality": "Cilësia grafike",

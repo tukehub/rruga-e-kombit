@@ -409,6 +409,8 @@ func _page_settings() -> Control:
 	list.add_child(UiTheme.spacer(12))
 	var no_yes := [Data.t("common.no"), Data.t("common.yes")]
 	_set_row(list, "assist", Data.t("settings.assist"), no_yes, func(i): Settings.assist = (i == 1))
+	_set_row(list, "handling", Data.t("settings.handling"), [Data.t("settings.handling.arcade"), Data.t("settings.handling.pro")], func(i):
+		Settings.handling = Data.HANDLING.keys()[i])
 	_set_row(list, "weather", Data.t("settings.weather"), no_yes, func(i): Settings.dynamic_weather = (i == 1))
 	_set_row(list, "haptics", Data.t("settings.haptics"), no_yes, func(i): Settings.haptics = (i == 1))
 	_set_row(list, "quality", Data.t("settings.quality"), [Data.t("quality.auto"), Data.t("quality.low"), Data.t("quality.medium"), Data.t("quality.high")], func(i):
@@ -482,6 +484,7 @@ func _set_slider(list: VBoxContainer, key: String, title: String, on_change: Cal
 func _refresh_settings() -> void:
 	_seg_set(_set_rows.weather, 1 if Settings.dynamic_weather else 0)
 	_seg_set(_set_rows.assist, 1 if Settings.assist else 0)
+	_seg_set(_set_rows.handling, maxi(0, Data.HANDLING.keys().find(Settings.handling)))
 	_seg_set(_set_rows.haptics, 1 if Settings.haptics else 0)
 	_seg_set(_set_rows.quality, maxi(0, ["auto", "low", "medium", "high"].find(Settings.quality)))
 	_seg_set(_set_rows.fps, 1 if Settings.show_fps else 0)

@@ -112,6 +112,20 @@ const DIFFS := [
 	{"id": 2, "speed": 1.035, "react": 0.55, "aim": 1.0},
 ]
 
+# Handling difficulty, separate from the rivals' difficulty above. Each value
+# scales one driver aid in `Race`: `assist` the steering self-centring,
+# `brake_assist` the automatic speed trim before bends (when that aid is on),
+# `drift_grip` the extra grip a drift gives. Arcade is 1.0 throughout.
+const HANDLING_DEFAULT := "arcade"
+const HANDLING := {
+	"arcade": {"assist": 1.0, "brake_assist": 1.0, "drift_grip": 1.0},
+	"pro": {"assist": 0.7, "brake_assist": 0.5, "drift_grip": 0.5},
+}
+
+
+func handling_id(id: String) -> String:
+	return id if HANDLING.has(id) else HANDLING_DEFAULT
+
 
 func city(id: String) -> Dictionary:
 	for c in CITIES:
