@@ -200,6 +200,7 @@ const T := {
 	"race.tip.tilt": "Anoje telefonin për të kthyer",
 	"race.tip.auto_gas": "gazi automatik · freno për drift",
 	"race.tip.manual_gas": "mbaj GAZ për të përshpejtuar",
+	"intro.grid": "RRESHTIMI I NISJES",
 	"race.go": "Hajde!",
 	"race.lap": "Xhiro %d/%d",
 	"race.final_lap": "Xhiro e fundit!",

@@ -82,6 +82,32 @@ func _ready() -> void:
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
 	check(scene.race.laps == 1 and Settings.laps_override == 1, "selected laps applied and saved")
+	# Intro cinematic: one name card per racer, front of the grid first.
+	var cards: IntroCards = scene.intro_cards
+	check(scene.state == "intro" and is_instance_valid(cards) and cards.cards.size() == scene.race.cars.size() + 1, "the intro shows a heading and one name card per racer")
+	var grid_order := IntroCards.grid_order(scene.race.cars)
+	var card_names := []
+	var player_cards := 0
+	for i in range(1, cards.cards.size()):
+		var card_car: CarState = cards.cards[i].get_meta("car")
+		check(card_car == grid_order[i - 1] and (cards.cards[i].find_child("DriverName", true, false) as Label).text == card_car.name, "card %d names the driver in that grid slot" % i)
+		card_names.append(card_car.name)
+		if card_car.is_player:
+			player_cards += 1
+	check(grid_order[0].progress >= grid_order[-1].progress and player_cards == 1 and scene.race.traffic.all(func(t: CarState) -> bool: return not card_names.has(t.name)), "cards run from the front row back, the player once, no traffic")
+	check(cards.mouse_filter == Control.MOUSE_FILTER_IGNORE and not cards.leaving, "the cards do not take touches and stay for the sweep")
+	scene.cam.intro_t = 2.79
+	scene._process(1.0 / 60.0)
+	check(scene.state == "countdown" and cards.leaving, "the cards leave when the countdown starts")
+	await get_tree().create_timer(IntroCards.LEAVE_TIME + 0.2).timeout
+	check(not is_instance_valid(cards), "the cards are removed after fading out")
+	# Finish slow motion: slow on the line, back to full speed, briefly.
+	check(is_equal_approx(scene.finish_time_scale(0.0), scene.FINISH_SLOW_SCALE) and scene.FINISH_SLOW_SCALE < 0.5 and scene.FINISH_SLOW_SCALE > 0.1, "the finish starts in slow motion")
+	check(is_equal_approx(scene.finish_time_scale(scene.FINISH_SLOW_HOLD), scene.FINISH_SLOW_SCALE), "slow motion holds for a moment")
+	var mid_scale: float = scene.finish_time_scale(scene.FINISH_SLOW_HOLD + scene.FINISH_SLOW_EASE * 0.5)
+	check(mid_scale > scene.FINISH_SLOW_SCALE and mid_scale < 1.0, "time eases back")
+	check(is_equal_approx(scene.finish_time_scale(scene.FINISH_SLOW_HOLD + scene.FINISH_SLOW_EASE), 1.0) and scene.finish_time_scale(10.0) == 1.0, "full speed returns")
+	check(scene.FINISH_SLOW_HOLD + scene.FINISH_SLOW_EASE < 1.5, "slow motion is brief, well before the results")
 	var forward_track := RaceTrack.load_city("tirane")
 	check(Settings.reverse_lap and scene.track.tangent(0.0).dot(forward_track.tangent(0.0)) < -0.99, "reverse selection persists and applies to race")
 	scene.set_scenery_visible(false)
@@ -188,13 +214,27 @@ func _ready() -> void:
 	check(finish_visual.finish_driver.visible and finish_visual.finish_glass.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "finish reveals driver through windshield")
 	var finish_progress: float = scene.player.progress
 	var camera_before: Vector3 = scene.cam.global_position
+	var finish_time: float = scene.race.time
+	var drawn_before: Vector3 = finish_visual.base_pos
+	scene.acc = 0.0
 	scene._process(1.0 / 60.0)
-	check(scene.player.progress > finish_progress, "car continues moving on the first finish frame")
+	# In slow motion the first frame is a fraction of a simulation step: the
+	# drawn car still moves, by interpolation.
+	check(finish_visual.base_pos.distance_to(drawn_before) > 0.01, "car continues moving on the first finish frame")
 	check(scene.cam.global_position.distance_to(camera_before) < 2.0, "finish camera starts without a jump")
+	for i in 29:
+		scene._process(1.0 / 60.0)
+	var slow_time: float = scene.race.time - finish_time
+	check(slow_time > 0.5 * scene.FINISH_SLOW_SCALE * 0.8 and slow_time < 0.5 * scene.FINISH_SLOW_SCALE * 1.2, "the race runs in slow motion after the line (%.3f s in 0.5 s)" % slow_time)
+	check(scene.player.progress > finish_progress, "the car keeps travelling in slow motion")
+	for i in 150:
+		scene._process(1.0 / 60.0)
+	var late_time: float = scene.race.time
+	for i in 60:
+		scene._process(1.0 / 60.0)
+	check(absf((scene.race.time - late_time) - 1.0) < 0.05 and scene.state == "finish", "full speed is back before the results")
 	# The spider camera follows a 3.8-second arc; direction and approach side
 	# can put its halfway point near the side of the car on a reversed lap.
-	for i in 180:
-		scene._process(1.0 / 60.0)
 	check(scene.player.v < 35.0 and scene.player.progress > finish_progress, "finished car slows while continuing forward")
 	var forward: Vector3 = scene.track.tangent(scene.player.s)
 	var car_at: Vector3 = scene.track.pos(scene.player.s, scene.player.d)

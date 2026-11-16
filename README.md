@@ -340,8 +340,13 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     after another, first place first. The HUD standings start as a slim
     column of places and car colours; a tap opens names and gaps, another
     closes them (`Hud.set_standings_open`). Covered by `tests/ui_motion`.
-5.3 **Cinematics:** driver name cards during the intro sweep; brief slow motion
-    on the finish line before results.
+5.3 **Cinematics — done.** During the intro sweep `IntroCards`
+    (`scripts/ui/intro_cards.gd`) slides in one name card per racer, front
+    of the grid first, and fades them out when the countdown starts. On the
+    finish line the race runs at 30% speed for 0.7 s and eases back over
+    0.5 s (`RaceScene.finish_time_scale`); only the simulation clock slows,
+    so the camera move and the 4.2 s to the results are unchanged. Checked
+    in `tests/flow_test`.
 
 ### 6. Progression
 

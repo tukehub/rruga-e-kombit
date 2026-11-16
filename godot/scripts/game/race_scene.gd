@@ -42,6 +42,12 @@ var pause_ui: Control
 var _pause_box: Control
 var _controls_ui: Control
 var _ui_layer: CanvasLayer
+var intro_cards: IntroCards
+# Crossing the line: the race runs at FINISH_SLOW_SCALE for FINISH_SLOW_HOLD
+# seconds, then eases back to full speed over FINISH_SLOW_EASE.
+const FINISH_SLOW_SCALE := 0.3
+const FINISH_SLOW_HOLD := 0.7
+const FINISH_SLOW_EASE := 0.5
 
 var state := "intro"
 var acc := 0.0
@@ -292,6 +298,9 @@ func _build_ui() -> void:
 	input.bind(player, race)
 	hud = Hud.new()
 	safe.add_child(hud)
+	intro_cards = IntroCards.new()
+	safe.add_child(intro_cards)
+	intro_cards.setup(race)
 	hud.setup(race, player, track, route_guide)
 	input.bind_inventory(hud._slots)
 	input.inventory_selected.connect(func(i: int): hud.slot_selected.emit(i))
@@ -462,6 +471,12 @@ static func _timing_plan(accumulator: float, elapsed: float) -> Dictionary:
 	return {"steps": steps, "debt": maxf(0.0, total - whole * DT), "dropped": (whole - steps) * DT}
 
 
+## How fast the race runs `since_finish` seconds after the player's finish.
+static func finish_time_scale(since_finish: float) -> float:
+	var back := clampf((since_finish - FINISH_SLOW_HOLD) / FINISH_SLOW_EASE, 0.0, 1.0)
+	return lerpf(FINISH_SLOW_SCALE, 1.0, back * back * (3.0 - 2.0 * back))
+
+
 func _process(dt: float) -> void:
 	if paused:
 		return
@@ -480,6 +495,8 @@ func _process(dt: float) -> void:
 			cam.follow(player, dt)
 			if not cam.intro:
 				state = "countdown"
+				if is_instance_valid(intro_cards):
+					intro_cards.leave()
 				cd_t = 3.2
 				cd_n = 4
 				if not _seen_tip:
@@ -507,6 +524,8 @@ func _process(dt: float) -> void:
 		"race", "finish":
 			if state == "race":
 				input.apply(player)
+			if state == "finish":
+				elapsed *= finish_time_scale(fin_t)
 			var plan := _timing_plan(acc, elapsed)
 			acc = float(plan.debt)
 			dropped_sim_time += float(plan.dropped)
