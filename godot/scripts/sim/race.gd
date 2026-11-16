@@ -37,6 +37,14 @@ var time := 0.0
 var events: Array = []
 var next_id := 1
 var cars: Array[CarState] = []
+# Parked and slow-moving cars: hazards on the road, not racers. They are kept
+# out of `cars`, so standings, laps, pickups and weapons never see them.
+var traffic: Array[CarState] = []
+var _bodies: Array[CarState] = []   # cars + traffic, for the contact test
+const TRAFFIC_START_CLEAR := 110.0  # metres either side of the start line kept free
+const TRAFFIC_SPACING := 45.0
+const TRAFFIC_PARKED_INSET := 1.3   # parked: this far inside the wall
+const TRAFFIC_MAX_CURVATURE := 0.012
 var pickups: Array = []
 var projs: Array = []
 var mines: Array = []
@@ -50,7 +58,8 @@ var pickup_director: PickupDirector
 ## opt keys: laps, diff (0..2), seed, wet, assist (bool), brake_assist (bool),
 ## handling (id in Data.HANDLING, default "arcade"), driver (index),
 ## player_car (id), player_slot, no_player, bot_cars (optional Array of ids),
-## adaptive_pickups (default true; false retains the original fixed stations).
+## adaptive_pickups (default true; false retains the original fixed stations),
+## traffic ({"parked": n, "moving": n}; default none).
 func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	track = p_track
 	L = track.L
@@ -110,9 +119,91 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 		for lane in [-6.5, 0.0, 6.5]:
 			pickups.append({"id": _nid(), "s": track.mod_s(st), "d": lane, "type": _pick_type(wsum), "alive": true, "t": 0.0})
 	compute_order()
+	var hazards: Dictionary = opt.get("traffic", {})
+	_place_traffic(int(hazards.get("parked", 0)), int(hazards.get("moving", 0)))
 	if bool(opt.get("adaptive_pickups", true)):
 		pickup_director = PickupDirector.new(int(opt.get("seed", 1234)))
 		pickup_director.setup(self)
+
+
+## Traffic has its own generator: the race's stream, and so the grid, the
+## pickups and every bot decision roll, is the same with or without it.
+func _place_traffic(parked: int, moving: int) -> void:
+	var roll := RandomNumberGenerator.new()
+	roll.seed = int(opt.get("seed", 1234)) * 7919 + 104729
+	var span := L - 2.0 * TRAFFIC_START_CLEAR
+	if span > TRAFFIC_SPACING:
+		for i in maxi(0, moving):
+			# Spread along the lap, away from the grid, alternating sides.
+			var at := TRAFFIC_START_CLEAR + (i + 0.25 + roll.randf() * 0.5) * span / moving
+			var side := 1.0 if (i + int(roll.randi() % 2)) % 2 == 0 else -1.0
+			var c := _traffic_car("moving", at, side * (2.6 + roll.randf() * 0.8), roll)
+			c.cruise = 11.0 + roll.randf() * 3.0
+			c.v = c.cruise
+		var tries := maxi(0, parked) * 40
+		var placed := 0
+		while placed < parked and tries > 0:
+			tries -= 1
+			var at := TRAFFIC_START_CLEAR + roll.randf() * span
+			var side := 1.0 if roll.randf() < 0.5 else -1.0
+			if _traffic_spot_free(at):
+				_traffic_car("parked", at, side * (hw - TRAFFIC_PARKED_INSET), roll)
+				placed += 1
+	_bodies.assign(cars + traffic)
+
+
+func _traffic_spot_free(at: float) -> bool:
+	# Not in a bend, where the racing line runs along the kerb.
+	for x in [-30.0, -15.0, 0.0, 15.0, 30.0]:
+		if absf(track.curv(at + x)) > TRAFFIC_MAX_CURVATURE:
+			return false
+	for o in traffic:
+		if o.traffic == "parked" and absf(track.wrap_s(o.s - at)) < TRAFFIC_SPACING:
+			return false
+	for p in pickups:
+		if absf(track.wrap_s(float(p.s) - at)) < 14.0:
+			return false
+	return true
+
+
+func _traffic_car(kind: String, at: float, d: float, roll: RandomNumberGenerator) -> CarState:
+	var paint: String = Data.TRAFFIC_COLORS[roll.randi() % Data.TRAFFIC_COLORS.size()]
+	var c := CarState.new(1000 + traffic.size(), Data.TRAFFIC_CAR, "", false, Color.html(paint))
+	c.traffic = kind
+	c.autopilot = true
+	c.progress = at
+	c.s = track.mod_s(at)
+	c.d = d
+	c.lane = d
+	traffic.append(c)
+	return c
+
+
+## Traffic does not race: it holds its lane and speed, gives way when struck
+## and settles again. Parked cars only roll to a stop where they were pushed.
+func update_traffic(dt: float) -> void:
+	for c in traffic:
+		var want := 0.0
+		if c.traffic == "moving":
+			want = c.cruise
+			for o in traffic:
+				# Queue behind slower traffic instead of driving through it.
+				if o != c and absf(o.d - c.d) < 2.4:
+					var gap := track.wrap_s(o.s - c.s)
+					if gap > 0.0 and gap < 16.0:
+						want = minf(want, maxf(0.0, o.v - (16.0 - gap) * 0.5))
+			c.d += clampf(c.lane - c.d, -1.2 * dt, 1.2 * dt)
+		c.v = move_toward(c.v, want, (4.0 if c.v < want else 8.0) * dt)
+		c.lat_v = move_toward(c.lat_v, 0.0, 9.0 * dt)
+		c.yaw = move_toward(c.yaw, 0.0, 1.5 * dt)
+		c.d += (c.v * sin(c.yaw) + c.lat_v) * dt
+		var edge := hw - 1.1
+		if absf(c.d) > edge:
+			c.d = clampf(c.d, -edge, edge)
+			c.lat_v = 0.0
+		c.progress += c.v * cos(c.yaw) * dt / maxf(0.8, 1.0 - track.curv(c.s) * c.d)
+		c.s = track.mod_s(c.progress)
+		c.braking = c.v > want + 0.5
 
 
 ## Bots drive every car except the player's, each at most twice.
@@ -220,6 +311,7 @@ func step(dt: float) -> void:
 			ai_drive(c, dt)
 	for c in cars:
 		physics(c, dt)
+	update_traffic(dt)
 	collisions(dt)
 	for c in cars:
 		if not c.ctrl.discard.is_empty():
@@ -538,12 +630,14 @@ func _footprint_radius(axis: Vector2, forward: Vector2, side: Vector2) -> float:
 
 func collisions(dt: float = 1.0 / 60.0) -> void:
 	var T := track
+	# Racers come first in the list; traffic never collides with traffic.
+	var bodies := cars if traffic.is_empty() else _bodies
 	for i in cars.size():
-		var a := cars[i]
+		var a := bodies[i]
 		if a.finished or a.wreck_t > 0.0:
 			continue
-		for j in range(i + 1, cars.size()):
-			var b := cars[j]
+		for j in range(i + 1, bodies.size()):
+			var b := bodies[j]
 			if b.finished or b.wreck_t > 0.0:
 				continue
 			# This is only a broad phase; the actual contact test below uses
@@ -620,11 +714,12 @@ func collisions(dt: float = 1.0 / 60.0) -> void:
 
 
 func damage(c: CarState, dmg: float, by: CarState, kind: String, dir := Vector2.ZERO) -> void:
-	if c.wreck_t > 0.0 or c.finished or c.invuln_t > 0.0:
+	if c.wreck_t > 0.0 or c.finished or c.invuln_t > 0.0 or c.traffic != "":
 		return
 	c.health -= dmg
 	if c.health <= 0.0:
-		wreck(c, by, kind, dir)
+		# Driving into traffic is the driver's own doing: nobody scores it.
+		wreck(c, null if by != null and by.traffic != "" else by, kind, dir)
 
 
 ## `dir` on "hit" and "wreck" events is the way the blow travelled in the
@@ -1016,6 +1111,12 @@ func ai_drive(c: CarState, dt: float) -> void:
 			var ds := T.wrap_s(o.s - c.s)
 			if ds > 0.0 and ds < 24.0 and absf(o.d - c.d) < 2.6 and c.v > o.v + 0.5:
 				d_t = o.d + (-3.6 if o.d > 0.0 else 3.6)
+		for o in traffic:
+			# Traffic is far slower, so look further ahead, and keep both the
+			# car and the line it is aiming for out of the hazard's lane.
+			var ds := T.wrap_s(o.s - c.s)
+			if ds > -4.0 and ds < maxf(30.0, (c.v - o.v) * 2.2) and (absf(o.d - c.d) < 2.8 or absf(o.d - d_t) < 2.8):
+				d_t = o.d + (-3.8 if o.d > 0.0 else 3.8)
 		ai.d_t = clampf(d_t, -hw + 1.7, hw - 1.7)
 	c.ctrl.gas = c.v < ai.v_t - 0.5
 	c.ctrl.brake = c.v > ai.v_t + 3.0

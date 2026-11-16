@@ -36,7 +36,8 @@ city through the production race scene, and check the shared
 car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop, the chase camera's roll, hit kick,
-nitro pull-back and bumper view, the Arcade / Pro handling scales, and reject
+nitro pull-back and bumper view, the Arcade / Pro handling scales, traffic placement, contact and bot avoidance,
+and reject
 UI text written into a
 script instead of the string table. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.
@@ -56,7 +57,8 @@ godot --path godot -- --scene=race --auto --city=tirane --quality=medium --env=r
 
 Every race prints one `RACE seed=… city=… env=… laps=… diff=… handling=…` line (on a phone,
 `adb logcat -s godot`). Pass `--seed=<n>` with the same city, direction, weather,
-laps, difficulty and `--handling=<arcade|pro>` to replay it; `--laps=<n>`
+laps, difficulty, `--handling=<arcade|pro>` and `--traffic=<parked>,<moving>`
+to replay it; `--laps=<n>`
 shortens a race.
 
 Controls: tilt, or the touch-pad fallback in **Cilësimet**; right half gas, left
@@ -222,9 +224,18 @@ Rules for every change:
     names the handling and `--handling=<id>` replays it. Covered by
     `tests/handling`. The Pro numbers (0.7 / 0.5 / 0.5) are a first guess:
     tune them on a phone.
-2.3 **Traffic and hazards:** static parked cars and a few slow traffic vehicles
-    on the (s, d) ribbon as non-firing `CarState`s with `autopilot`; collision
-    uses the existing footprint check. Count capped by quality preset.
+2.3 **Traffic and hazards — done.** `Race.traffic` holds parked cars at
+    the kerb and slow traffic in a lane: non-firing `CarState`s with
+    `autopilot`, kept out of `Race.cars`, so standings, pickups and weapons
+    ignore them (shots pass through). They share the footprint contact test,
+    take no damage, and a wreck on one credits nobody. Bots steer around
+    them. Counts come from `Data.TRAFFIC` by quality preset (low 3+1, medium
+    5+2, high 8+3) through the `traffic` option; `RaceScene` draws those
+    within 260 m. Placement has its own seeded generator, so the rest of the
+    race is unchanged. The `RACE` line logs `traffic=<parked>,<moving>` and
+    `--traffic=<parked>,<moving>` replays it. Because the count changes the
+    race, an online lobby (7.1) must agree on it instead of reading each
+    phone's preset. Covered by `tests/traffic`.
 2.4 **Rubber-band pass:** mild catch-up for bots behind the player and slight
     drag on a runaway leader, tuned in `Data.DIFFS`; verified by the fixed-step
     race tests (finish spread inside a target window).

@@ -90,6 +90,9 @@ func _ready() -> void:
 	scene.set_scenery_visible(true)
 	check(scene.buildings.visible and scene.props.visible and scene.terrain.visible and scene.hud.diagnostic_fps, "scenery comparison restores world and keeps FPS display")
 	check(scene.views.mirror_panel.visible == Settings.mirror, "rear mirror follows the saved setting")
+	var traffic_counts: Dictionary = Data.traffic(Quality.preset)
+	check(scene.race.traffic.size() == int(traffic_counts.parked) + int(traffic_counts.moving), "the race places the quality preset's traffic")
+	check(scene.traffic_cars.size() == scene.race.traffic.size() and scene.cars.size() == scene.race.cars.size(), "every traffic car is drawn, apart from the racers")
 	if scene.views.enabled:
 		scene.views._toggle_mirror()
 	check(scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "disabled mirror renders nothing")

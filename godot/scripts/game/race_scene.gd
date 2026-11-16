@@ -47,6 +47,9 @@ var state := "intro"
 var acc := 0.0
 var dropped_sim_time := 0.0
 var _previous_poses: Array[Dictionary] = []
+var traffic_cars: Array[CarVisual] = []
+var _traffic_poses: Array[Dictionary] = []
+const TRAFFIC_DRAW_DISTANCE := 260.0  # metres along the road, either way
 var cd_t := 0.0
 var cd_n := 4
 var fin_t := 0.0
@@ -93,6 +96,10 @@ func restart() -> void:
 		cv.queue_free()
 	cars.clear()
 	_previous_poses.clear()
+	for cv in traffic_cars:
+		cv.queue_free()
+	traffic_cars.clear()
+	_traffic_poses.clear()
 	for node: Node in [pickups, effects, cam, views, speed_feedback, _ui_layer]:
 		node.queue_free()
 	_snd_t.clear()
@@ -207,6 +214,7 @@ func _build_race() -> void:
 	var seed_value := int(Time.get_unix_time_from_system()) % 100000
 	var laps := Game.city_laps(city_id)
 	var handling := Data.handling_id(Settings.handling)
+	var traffic: Dictionary = Data.traffic(Quality.preset).duplicate()
 	for a in Game.launch_options():
 		if a.begins_with("--seed="):
 			seed_value = int(a.substr(7))  # debug: replay a logged race
@@ -214,6 +222,9 @@ func _build_race() -> void:
 			laps = maxi(1, int(a.substr(7)))  # debug: short races
 		elif a.begins_with("--handling="):
 			handling = Data.handling_id(a.substr(11))  # debug: replay a logged race
+		elif a.begins_with("--traffic="):
+			var counts := a.substr(10).split(",")  # debug: parked,moving
+			traffic = {"parked": maxi(0, int(counts[0])), "moving": maxi(0, int(counts[1]) if counts.size() > 1 else 0)}
 	var opts := {
 		"laps": laps,
 		"diff": int(Game.race_opts.diff),
@@ -222,6 +233,7 @@ func _build_race() -> void:
 		"assist": Settings.assist,
 		"brake_assist": Settings.assist,
 		"handling": handling,
+		"traffic": traffic,
 		"driver": int(Game.race_opts.driver),
 		"player_car": str(Game.race_opts.car),
 	}
@@ -231,9 +243,9 @@ func _build_race() -> void:
 	if "--auto" in Game.launch_options():
 		player.autopilot = true  # debug: let the AI drive the player car
 	# One line per race in the log (adb logcat -s godot) is enough to replay it.
-	print("RACE seed=%d city=%s reverse=%s env=%s laps=%d diff=%d assist=%s handling=%s car=%s driver=%d" % [
+	print("RACE seed=%d city=%s reverse=%s env=%s laps=%d diff=%d assist=%s handling=%s traffic=%d,%d car=%s driver=%d" % [
 		seed_value, city_id, str(bool(Game.race_opts.reverse)), env_id, race.laps, int(Game.race_opts.diff),
-		str(Settings.assist), handling, str(Game.race_opts.car), int(Game.race_opts.driver)])
+		str(Settings.assist), handling, int(traffic.parked), int(traffic.moving), str(Game.race_opts.car), int(Game.race_opts.driver)])
 	for c in race.cars:
 		var cv := CarVisual.new()
 		add_child(cv)
@@ -242,6 +254,14 @@ func _build_race() -> void:
 		cv.apply_state(c, track, DT)
 		cars.append(cv)
 		_previous_poses.append(RenderPose.capture(c))
+	for c in race.traffic:
+		var cv := CarVisual.new()
+		add_child(cv)
+		cv.setup(c.def, c.color, false)
+		cv.set_night(sky.night)
+		cv.apply_state(c, track, DT)
+		traffic_cars.append(cv)
+		_traffic_poses.append(RenderPose.capture(c))
 	pickups = PickupVisual.new()
 	add_child(pickups)
 	pickups.setup(race, track)
@@ -493,6 +513,8 @@ func _process(dt: float) -> void:
 			for n in int(plan.steps):
 				for i in race.cars.size():
 					_previous_poses[i] = RenderPose.capture(race.cars[i])
+				for i in race.traffic.size():
+					_traffic_poses[i] = RenderPose.capture(race.traffic[i])
 				race.step(DT)
 				if state == "finish":
 					finish_speed_limit = maxf(6.0, finish_speed_limit - 8.0 * DT)
@@ -521,6 +543,16 @@ func _process(dt: float) -> void:
 		if state in ["race", "finish"]:
 			pose = RenderPose.sample(_previous_poses[i], race.cars[i], acc / DT, track.L)
 		cars[i].apply_state(race.cars[i], track, dt, pose)
+	for i in traffic_cars.size():
+		# Only the traffic near the player is drawn and posed.
+		var hazard := race.traffic[i]
+		var near := absf(track.wrap_s(hazard.s - player.s)) < TRAFFIC_DRAW_DISTANCE
+		traffic_cars[i].visible = near
+		if near:
+			var pose := {}
+			if state in ["race", "finish"]:
+				pose = RenderPose.sample(_traffic_poses[i], hazard, acc / DT, track.L)
+			traffic_cars[i].apply_state(hazard, track, dt, pose)
 	CarVisual.update_headlight_budget(cars, cam.global_position)
 	var view_pose := {}
 	if state in ["race", "finish"]:
@@ -771,5 +803,5 @@ func _update_weather(dt: float) -> void:
 		terrain.set_env(sky.wet, 0.0, sky.night)
 		buildings.set_env(sky.night, sky.wet)
 		props.set_night(sky.night)
-		for car in cars:
+		for car in cars + traffic_cars:
 			car.set_night(sky.night)

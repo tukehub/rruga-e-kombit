@@ -28,6 +28,9 @@ var def: Dictionary          # entry from Data.CARS
 var name := ""
 var is_player := false
 var autopilot := false
+var traffic := ""            # "" for a racer; "parked" or "moving" for a hazard
+var cruise := 0.0            # traffic: the speed it settles at
+var lane := 0.0              # traffic: the lateral offset it keeps
 var color := Color.WHITE
 
 var progress := 0.0          # total metres since the start (can exceed L)
