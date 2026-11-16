@@ -7,6 +7,13 @@ uniform float brake_light : hint_range(0.0, 1.0) = 0.0;
 uniform float body_damage : hint_range(0.0, 1.0) = 0.0;
 uniform bool paint_flakes = true;
 
+#include "res://shaders/livery.gdshaderinc"
+
+void vertex() {
+	livery_pos = VERTEX;
+	livery_normal = NORMAL;
+}
+
 float wear_hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -20,6 +27,8 @@ void fragment() {
 		* smoothstep(0.02, 0.12, col.g - col.r);
 	float lightness = max(max(col.r, col.g), col.b);
 	col = mix(col, paint_color.rgb * lightness, blue);
+	// The livery sits on the paint only, under any wear.
+	col = mix(col, livery_color.rgb * mix(0.85, 1.0, lightness), livery_mask() * blue);
 	// The source atlas has small third-party sponsor marks on a dark panel.
 	// Cover only that panel; the car remains unbranded in the game.
 	float logo = step(0.252, UV.x) * step(UV.x, 0.332)

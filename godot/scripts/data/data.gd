@@ -73,8 +73,40 @@ const CARS := [
 		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36},
 	{"id": "sprinteri", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#26b69b",
 		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36},
+	# Shop paints (6.3): the same car, bought with fans. Paints without a
+	# price are every player's from the start.
+	{"id": "ari", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#c9a227", "price": 600,
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36},
+	{"id": "smerald", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#0f7a4f", "price": 500,
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36},
+	{"id": "nata", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#45526e", "price": 700,
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36},
+	{"id": "bakri", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#b8653a", "price": 600,
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36},
+	{"id": "neoni", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#ff2d8f", "price": 900,
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36},
+	{"id": "akulli", "kind": "coupe", "vmax": 58.0, "acc": 8.0, "grip": 1.05, "hp": 115.0, "mass": 1.1, "color": "#9fd7f2", "price": 800,
+		"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36},
 ]
-const PAINTS := ["#e41e20", "#26262c", "#f1eee8", "#f2c230", "#2a6fdb", "#3f6d3b", "#ff6a1a", "#8e44ad"]
+# Shop (6.3). Rims colour the wheel rims; liveries are drawn in a second
+# colour from assets/cars/livery_atlas.png (tile = column in the atlas, -1
+# for none). Items without a price are owned from the start.
+const RIMS := [
+	{"id": "silver", "price": 0, "color": "#7a7f87", "metal": 0.7, "rough": 0.38},
+	{"id": "black", "price": 250, "color": "#1b1c20", "metal": 0.45, "rough": 0.42},
+	{"id": "white", "price": 300, "color": "#e4e6ea", "metal": 0.2, "rough": 0.35},
+	{"id": "red", "price": 350, "color": "#b3121b", "metal": 0.5, "rough": 0.32},
+	{"id": "bronze", "price": 400, "color": "#8a5a2b", "metal": 0.85, "rough": 0.3},
+	{"id": "gold", "price": 500, "color": "#d4a531", "metal": 0.95, "rough": 0.22},
+]
+const LIVERIES := [
+	{"id": "none", "price": 0, "tile": -1},
+	{"id": "stripes", "price": 400, "tile": 0},
+	{"id": "arrow", "price": 600, "tile": 1},
+	{"id": "checker", "price": 800, "tile": 2},
+	{"id": "split", "price": 500, "tile": 3},
+]
+const SHOP_KINDS := ["paint", "rim", "livery"]
 
 # ---------------------------------------------------------------- power-ups
 const PW := {
@@ -219,6 +251,41 @@ func cup_goal_text(event: Dictionary) -> String:
 	var goal: Dictionary = event.get("goal", {})
 	var kind := str(goal.get("kind", ""))
 	return t("cup.goal.clean") if kind == "clean" else t("cup.goal.%s" % kind, int(goal.get("n", 0)))
+
+
+func shop_items(kind: String) -> Array:
+	match kind:
+		"paint":
+			return CARS
+		"rim":
+			return RIMS
+		"livery":
+			return LIVERIES
+	return []
+
+
+func shop_item(kind: String, id: String) -> Dictionary:
+	for item: Dictionary in shop_items(kind):
+		if item.id == id:
+			return item
+	return {}
+
+
+func shop_price(kind: String, id: String) -> int:
+	return int(shop_item(kind, id).get("price", 0))
+
+
+## Ids every player owns from the start.
+func shop_free(kind: String) -> Array[String]:
+	var ids: Array[String] = []
+	for item: Dictionary in shop_items(kind):
+		if int(item.get("price", 0)) == 0:
+			ids.append(str(item.id))
+	return ids
+
+
+func shop_name(kind: String, id: String) -> String:
+	return car_name(id) if kind == "paint" else t("%s.%s.name" % [kind, id])
 
 
 func handling_id(id: String) -> String:

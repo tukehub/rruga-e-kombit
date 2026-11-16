@@ -50,7 +50,8 @@ var _ft_t := 0.0
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	race_opts.city = Settings.city_id
-	race_opts.car = Settings.car_id
+	# A saved paint the player no longer owns falls back to the first one.
+	race_opts.car = Settings.car_id if Progress.owns("paint", Settings.car_id) else str(Data.CARS[0].id)
 	race_opts.driver = Settings.driver
 	race_opts.diff = Settings.difficulty
 	race_opts.env = Settings.env_override
@@ -177,6 +178,14 @@ func _next_loading_fact() -> String:
 			_fact_bag[_fact_bag.size() - 1] = first
 	_last_fact = _fact_bag.pop_back()
 	return _last_fact
+
+
+## What the player's car wears: owned rim and livery, else the free ones.
+func cosmetics() -> Dictionary:
+	return {
+		"rim": Settings.rim_id if Progress.owns("rim", Settings.rim_id) else Data.shop_free("rim")[0],
+		"livery": Settings.livery_id if Progress.owns("livery", Settings.livery_id) else Data.shop_free("livery")[0],
+	}
 
 
 ## Play a cup event. Its settings are the event's; the player's own race

@@ -11,6 +11,7 @@ static var _sport_scene: PackedScene
 static var _flake_normal: NoiseTexture2D
 const CONTACT_SHADER := preload("res://shaders/car_contact.gdshader")
 const SPORT_SHADER := preload("res://shaders/sport_car.gdshader")
+const LIVERY_SHADER := preload("res://shaders/livery_overlay.gdshader")
 
 var def: Dictionary
 var is_player := false
@@ -38,6 +39,9 @@ var visual_wheelbase := 2.7
 var finish_driver: Node3D
 var finish_glass: StandardMaterial3D
 var damage_amount := 0.0
+var rim: Dictionary             # entry from Data.RIMS
+var livery: Dictionary          # entry from Data.LIVERIES
+var livery_material: ShaderMaterial   # set when the car wears a livery
 var _last_damage := -1.0
 var _healthy_paint := Color.WHITE
 var _healthy_roughness := 0.48
@@ -45,10 +49,18 @@ var _nitro_flares: Array[MeshInstance3D] = []
 var _bot_beams := false
 
 
-func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
+## `cosmetics`: {"rim": id in Data.RIMS, "livery": id in Data.LIVERIES}.
+## Missing keys mean the free ones.
+func setup(p_def: Dictionary, p_color: Color, p_is_player: bool, cosmetics := {}) -> void:
 	def = p_def
 	color = p_color
 	is_player = p_is_player
+	rim = Data.shop_item("rim", str(cosmetics.get("rim", "")))
+	if rim.is_empty():
+		rim = Data.RIMS[0]
+	livery = Data.shop_item("livery", str(cosmetics.get("livery", "")))
+	if livery.is_empty():
+		livery = Data.LIVERIES[0]
 	var scene := _load_car_scene(str(def.model))
 	model = scene.instantiate()
 	add_child(model)
@@ -67,6 +79,7 @@ func setup(p_def: Dictionary, p_color: Color, p_is_player: bool) -> void:
 		if wheels.has("wheel_fl"):
 			var front: MeshInstance3D = wheels["wheel_fl"]
 			visual_wheelbase = maxf(0.1, absf(front.position.z - rear.position.z))
+	_apply_livery()
 	_make_contact_shadow()
 	_make_nitro()
 	_make_shield()
@@ -194,11 +207,38 @@ func _override_materials(mi: MeshInstance3D) -> void:
 			"chrome": ov = _shared("chrome", func(): return _mk_simple(Color(0.9, 0.9, 0.92), 1.0, 0.12))
 			"interior": ov = _shared("interior", func(): return _mk_simple(Color(0.07, 0.07, 0.08), 0.0, 0.95))
 			"tyre": ov = _shared("tyre", func(): return _mk_simple(Color(0.035, 0.035, 0.04), 0.0, 0.9))
-			"rim": ov = _shared("rim", func(): return _mk_simple(Color(0.48, 0.50, 0.53), 0.7, 0.38))
+			"rim": ov = _shared("rim_" + str(rim.id), func(): return _mk_simple(Color.html(str(rim.color)), float(rim.metal), float(rim.rough)))
 			"brake": ov = _shared("brake", func(): return _mk_simple(Color(0.75, 0.12, 0.08), 0.3, 0.5))
 			"plate": ov = _shared("plate", func(): return _mk_simple(Color(0.95, 0.95, 0.9), 0.0, 0.5))
 		if ov:
 			mi.set_surface_override_material(i, ov)
+
+
+## The second colour stands out from the paint: dark on light paint, light on dark.
+static func livery_color_for(paint: Color) -> Color:
+	return Color("15171c") if paint.get_luminance() > 0.55 else Color("f1f2f4")
+
+
+func _apply_livery() -> void:
+	var tile := int(livery.get("tile", -1))
+	if tile < 0 or body == null or body.mesh == null:
+		return
+	var bounds := body.mesh.get_aabb()
+	var atlas: Texture2D = load("res://assets/cars/livery_atlas.png")
+	var targets: Array[ShaderMaterial] = []
+	if sport_paint != null:
+		targets.append(sport_paint)
+	if mat_paint != null:
+		livery_material = ShaderMaterial.new()
+		livery_material.shader = LIVERY_SHADER
+		mat_paint.next_pass = livery_material
+		targets.append(livery_material)
+	for material in targets:
+		material.set_shader_parameter("livery_atlas", atlas)
+		material.set_shader_parameter("livery_tile", tile)
+		material.set_shader_parameter("livery_color", livery_color_for(color))
+		material.set_shader_parameter("body_min", bounds.position)
+		material.set_shader_parameter("body_size", bounds.size)
 
 
 func _make_finish_driver() -> void:

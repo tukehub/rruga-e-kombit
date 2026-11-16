@@ -207,8 +207,8 @@ Rules for every change:
     stars (`add_fans`, `spend_fans`, `unlock_paint`, `unlock_city`,
     `set_stars`). Older files are upgraded in `_upgrade`, bad values repaired,
     a damaged file set aside, and a newer build's keys kept. Race fans feed
-    it since 6.1; 6.2 adds stars, 6.3 purchases, 8.3 cities. Every
-    paint offered today is owned from the start; 6.3 decides what gets locked.
+    it since 6.1; 6.2 adds stars, 6.3 purchases, 8.3 cities. The six
+    original paints stay free; 6.3 adds paints, rims and liveries to buy.
 1.4 **`Music` autoload — done.** `scripts/game/music.gd` plays on a "Music"
     bus (in `Sfx.BUSES`, level from `Settings.vol_music`) with two players:
     `Music.play(track)` crossfades to `assets/music/<track>.ogg`,
@@ -379,9 +379,22 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     the cup. Results show the stars and whether the goal was met. The free
     race stays, since points mode and the race options live beside it.
     Covered by `tests/cup`.
-6.3 **Shop:** paints, rims and livery decals bought with fans;
-    `CarVisual.setup()` takes a cosmetics dictionary; livery as a second atlas
-    in the car shader.
+6.3 **Shop — done.** Six new paints (500–900 fans), five rims (250–500)
+    and four liveries (400–800) in `Data.CARS`, `Data.RIMS` and
+    `Data.LIVERIES`; the six original paints, silver rims and no livery are
+    free. `Progress` (version 2) keeps what the player owns and `buy()`
+    takes the fans; `Settings` (version 2) keeps the rim and livery worn,
+    and `Game.cosmetics()` only ever returns owned ones.
+    `CarVisual.setup()` takes `{"rim", "livery"}`: the rim colours the rim
+    surfaces, the livery is a second, white-on-transparent atlas
+    (`assets/cars/livery_atlas.png`, from `tools/build_livery_atlas.py`)
+    projected onto the body from above and the sides in a contrasting
+    colour, as a `next_pass` over the paint or inside `sport_car.gdshader`.
+    The garage has tabs for paint, rims, livery and driver; a shop item is
+    tried on the garage car with a buy button that names the price or the
+    fans still missing. Bots keep plain cars. On the privately staged
+    atlas car the rims are part of the texture, so only the livery changes
+    there. Covered by `tests/shop`.
 6.4 **Tutorial** as the first cup event: one lap, bots do not fire, fixed
     pickups, HUD prompts by track position; skippable.
 

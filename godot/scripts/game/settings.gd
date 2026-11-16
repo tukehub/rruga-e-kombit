@@ -6,8 +6,9 @@ signal changed
 const PATH := "user://settings.cfg"
 const PRESENTATION_VERSION := 1
 # Version of the file layout. 1 added `handling`; an older file predates the
-# choice and keeps the arcade handling it always had.
-const VERSION := 1
+# choice and keeps the arcade handling it always had. 2 added the rim and
+# livery the player drives with; older files start with the free ones.
+const VERSION := 2
 
 # tilt sensitivity: index into TILT_FULL (degrees for full steer)
 const TILT_FULL := [32.0, 23.0, 15.0]
@@ -43,6 +44,8 @@ var vol_music := 0.7
 var show_fps := false
 var mirror := false            # rear-view mirror: a second scene render
 var car_id := "benxi"
+var rim_id := "silver"          # Data.RIMS; owned ones only, see Game.cosmetics()
+var livery_id := "none"         # Data.LIVERIES
 var driver := 0
 var city_id := "tirane"
 var env_override := "day"       # daylight for the focused Tirana build
@@ -103,6 +106,9 @@ func load_settings(path := PATH) -> void:
 	vol_ui = cf.get_value("audio", "ui", vol_ui)
 	vol_music = clampf(float(cf.get_value("audio", "music", vol_music)), 0.0, 1.0)
 	car_id = cf.get_value("race", "car", car_id)
+	if file_version >= 2:
+		rim_id = str(cf.get_value("race", "rim", rim_id))
+		livery_id = str(cf.get_value("race", "livery", livery_id))
 	driver = cf.get_value("race", "driver", driver)
 	city_id = cf.get_value("race", "city", city_id)
 	env_override = cf.get_value("race", "env", env_override)
@@ -136,6 +142,8 @@ func save(path := PATH) -> void:
 	cf.set_value("audio", "ui", vol_ui)
 	cf.set_value("audio", "music", vol_music)
 	cf.set_value("race", "car", car_id)
+	cf.set_value("race", "rim", rim_id)
+	cf.set_value("race", "livery", livery_id)
 	cf.set_value("race", "driver", driver)
 	cf.set_value("race", "city", city_id)
 	cf.set_value("race", "env", env_override)

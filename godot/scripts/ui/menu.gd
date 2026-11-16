@@ -10,7 +10,6 @@ var back_to := "title"
 var garage_car: CarVisual
 var garage_pivot: Node3D
 var _garage_t := 0.0
-var _car_btns := {}
 var _drv_btns := {}
 var _diff_btns: Array[Button] = []
 var _lap_value: Label
@@ -25,6 +24,15 @@ var cup_cards: Array[Button] = []
 const MODES := [{"mode": "race", "minutes": 0}, {"mode": "points", "minutes": 2}, {"mode": "points", "minutes": 3}]
 var _lap_plus: Button
 var _drv_tag: Label
+var _fans_label: Label
+var _buy_btn: Button
+var _garage_tabs: HBoxContainer
+var _garage_lists := {}          # tab -> its list
+var _shop_btns := {}             # "kind:id" -> button
+var _garage_tab := "paint"
+## A shop item tried on but not bought: {"kind", "id"}, or empty.
+var _preview := {}
+const GARAGE_TABS := ["paint", "rim", "livery", "driver"]
 var _car_desc: Label
 var _set_rows := {}
 
@@ -100,7 +108,7 @@ func _set_garage_car(id: String) -> void:
 	var def: Dictionary = Data.car(id)
 	garage_car = CarVisual.new()
 	garage_pivot.add_child(garage_car)
-	garage_car.setup(def, Color.html(def.color), false)
+	garage_car.setup(def, Color.html(def.color), false, {"rim": garage_choice("rim"), "livery": garage_choice("livery")})
 	garage_car.set_night(0.0)
 
 
@@ -149,6 +157,10 @@ func show_page(name: String) -> void:
 		_refresh_city()
 	if name == "car":
 		_refresh_car()
+	elif not _preview.is_empty():
+		# Leaving the garage puts back what the player owns.
+		_preview = {}
+		_set_garage_car(str(Game.race_opts.car))
 
 
 func _page(shade_a: float) -> Control:
@@ -476,77 +488,208 @@ func _page_car() -> Control:
 	var c := _page(0.25)
 	var mc := _margin(c, 32)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
+	v.add_theme_constant_override("separation", 10)
 	mc.add_child(v)
 	v.add_child(_eyebrow(Data.t("garage.eyebrow", Data.GAME_NAME)))
-	v.add_child(UiTheme.headline(Data.t("garage.title"), 54, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var title := UiTheme.headline(Data.t("garage.title"), 50, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	_fans_label = UiTheme.headline("", 34, UiTheme.AMBER, HORIZONTAL_ALIGNMENT_RIGHT)
+	_fans_label.name = "GarageFans"
+	_fans_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_fans_label)
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(body)
 	var panel := UiTheme.panel(20)
-	panel.custom_minimum_size.x = 550
+	panel.custom_minimum_size.x = 560
 	body.add_child(panel)
 	var left := VBoxContainer.new()
-	left.add_theme_constant_override("separation", 14)
+	left.add_theme_constant_override("separation", 10)
 	panel.add_child(left)
-	left.add_child(UiTheme.label(Data.t("garage.paint"), 24, UiTheme.CYAN))
-	var paints := GridContainer.new()
-	paints.columns = 3
-	paints.add_theme_constant_override("h_separation", 10)
-	paints.add_theme_constant_override("v_separation", 10)
-	left.add_child(paints)
-	for car in Data.CARS:
-		var b := UiTheme.button("●")
-		b.custom_minimum_size = Vector2(158, 72)
-		b.add_theme_font_size_override("font_size", 42)
-		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
-			b.add_theme_color_override(state, Color.html(car.color).lightened(0.15))
-		b.toggle_mode = true
-		b.tooltip_text = Data.car_name(car.id)
-		b.pressed.connect(func():
-			Sfx.ui_click()
-			Game.race_opts.car = car.id
-			_set_garage_car(car.id)
-			_refresh_car())
-		paints.add_child(b)
-		_car_btns[car.id] = b
-	_car_desc = UiTheme.label("", 24, UiTheme.TEXT)
-	left.add_child(_car_desc)
-	left.add_child(UiTheme.label(Data.t("garage.driver"), 24, UiTheme.CYAN))
-	var drivers := GridContainer.new()
-	drivers.columns = 3
-	drivers.add_theme_constant_override("h_separation", 10)
-	drivers.add_theme_constant_override("v_separation", 8)
+	# One tab per thing to choose; the shop items sit among the owned ones.
+	var tab_names := [Data.t("garage.tab.paint"), Data.t("garage.tab.rim"), Data.t("garage.tab.livery"), Data.t("garage.tab.driver")]
+	_garage_tabs = _seg(tab_names, func(i: int): _show_garage_tab(GARAGE_TABS[i]))
+	for b in _garage_tabs.get_children():
+		(b as Button).custom_minimum_size = Vector2(124, 46)
+		(b as Button).add_theme_font_size_override("font_size", 21)
+	left.add_child(_garage_tabs)
+	_garage_lists.clear()
+	_shop_btns.clear()
+	for kind in Data.SHOP_KINDS:
+		var grid := GridContainer.new()
+		grid.name = "Shop_" + kind
+		grid.columns = 3 if kind != "livery" else 2
+		grid.add_theme_constant_override("h_separation", 10)
+		grid.add_theme_constant_override("v_separation", 10)
+		left.add_child(grid)
+		_garage_lists[kind] = grid
+		for item: Dictionary in Data.shop_items(kind):
+			var b := _shop_button(kind, item)
+			grid.add_child(b)
+			_shop_btns[kind + ":" + str(item.id)] = b
+	var drivers := VBoxContainer.new()
+	drivers.add_theme_constant_override("separation", 10)
 	left.add_child(drivers)
+	_garage_lists["driver"] = drivers
+	var driver_grid := GridContainer.new()
+	driver_grid.columns = 3
+	driver_grid.add_theme_constant_override("h_separation", 10)
+	driver_grid.add_theme_constant_override("v_separation", 8)
+	drivers.add_child(driver_grid)
 	for i in Data.DRIVERS.size():
 		var d: Dictionary = Data.DRIVERS[i]
 		var b := UiTheme.button(d.name)
-		b.custom_minimum_size = Vector2(158, 50)
+		b.custom_minimum_size = Vector2(164, 50)
 		b.toggle_mode = true
 		var idx := i
 		b.pressed.connect(func(): Sfx.ui_click(); Game.race_opts.driver = idx; _refresh_car())
-		drivers.add_child(b)
+		driver_grid.add_child(b)
 		_drv_btns[i] = b
 	_drv_tag = UiTheme.label("", 22, UiTheme.MUTED)
 	_drv_tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	left.add_child(_drv_tag)
-	v.add_child(_bottombar(func(): show_page("title"), Data.t("menu.start"), func(): Game.race_opts.city = "tirane"; Game.start_race()))
+	drivers.add_child(_drv_tag)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(spacer)
+	_car_desc = UiTheme.label("", 23, UiTheme.TEXT)
+	_car_desc.name = "ItemName"
+	_car_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	left.add_child(_car_desc)
+	_buy_btn = UiTheme.button("", UiTheme.AMBER.darkened(0.45))
+	_buy_btn.name = "BuyButton"
+	_buy_btn.custom_minimum_size.y = 56
+	_buy_btn.pressed.connect(_buy_preview)
+	left.add_child(_buy_btn)
+	v.add_child(_bottombar(func(): show_page("title"), Data.t("menu.start"), func(): Game.race_opts.city = "tirane"; Game.race_opts.event = ""; Game.start_race()))
+	_show_garage_tab("paint")
 	return c
 
 
+func _shop_button(kind: String, item: Dictionary) -> Button:
+	var b := UiTheme.button("")
+	b.name = "%s_%s" % [kind, item.id]
+	b.toggle_mode = true
+	b.custom_minimum_size = Vector2(164, 64) if kind != "livery" else Vector2(250, 64)
+	b.add_theme_font_size_override("font_size", 20)
+	b.tooltip_text = Data.shop_name(kind, str(item.id))
+	if kind == "paint" or kind == "rim":
+		# A swatch of the colour on the left of the button.
+		b.icon = _swatch(Color.html(str(item.color)))
+	var id := str(item.id)
+	b.pressed.connect(func(): Sfx.ui_click(); _pick_item(kind, id))
+	return b
+
+
+func _swatch(col: Color) -> ImageTexture:
+	var image := Image.create(28, 28, false, Image.FORMAT_RGBA8)
+	for x in 28:
+		for y in 28:
+			var inside := Vector2(x - 13.5, y - 13.5).length() <= 12.5
+			image.set_pixel(x, y, col if inside else Color(0, 0, 0, 0))
+	return ImageTexture.create_from_image(image)
+
+
+func _show_garage_tab(tab: String) -> void:
+	_garage_tab = tab
+	for key in _garage_lists:
+		(_garage_lists[key] as Control).visible = key == tab
+	_seg_set(_garage_tabs, GARAGE_TABS.find(tab))
+	_refresh_car()
+
+
+## The item a garage car shows for `kind`: a previewed one, or the choice.
+func garage_choice(kind: String) -> String:
+	if _preview.get("kind", "") == kind:
+		return str(_preview.id)
+	match kind:
+		"paint":
+			return str(Game.race_opts.car)
+		"rim":
+			return str(Game.cosmetics().rim)
+		"livery":
+			return str(Game.cosmetics().livery)
+	return ""
+
+
+## Owned: wear it. Not owned: show it on the car with its price.
+func _pick_item(kind: String, id: String) -> void:
+	if Progress.owns(kind, id):
+		_preview = {}
+		_choose(kind, id)
+	else:
+		_preview = {"kind": kind, "id": id}
+	_set_garage_car(garage_choice("paint"))
+	_refresh_car()
+
+
+func _choose(kind: String, id: String) -> void:
+	match kind:
+		"paint":
+			Game.race_opts.car = id
+		"rim":
+			Settings.rim_id = id
+			Settings.save()
+		"livery":
+			Settings.livery_id = id
+			Settings.save()
+
+
+func _buy_preview() -> void:
+	if _preview.is_empty():
+		return
+	var kind := str(_preview.kind)
+	var id := str(_preview.id)
+	if not Progress.buy(kind, id):
+		Sfx.play("denied", "UI", -6.0)
+		return
+	Sfx.play("pickup", "UI", -4.0)
+	_preview = {}
+	_choose(kind, id)
+	_set_garage_car(garage_choice("paint"))
+	_refresh_car()
+
+
 func _refresh_car() -> void:
+	if _drv_tag == null:
+		return
 	for i in _drv_btns:
 		var b: Button = _drv_btns[i]
 		var selected: bool = i == int(Game.race_opts.driver)
 		b.button_pressed = selected
 		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.25) if selected else Color(1, 1, 1, 0.05), UiTheme.CYAN if selected else Color(1, 1, 1, 0.15), 12))
 	_drv_tag.text = Data.t("driver.%d.tag" % clampi(int(Game.race_opts.driver), 0, Data.DRIVERS.size() - 1))
-	for id in _car_btns:
-		var b: Button = _car_btns[id]
-		var selected: bool = id == Game.race_opts.car
-		b.button_pressed = selected
-		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.22) if selected else Color(1, 1, 1, 0.06), UiTheme.CYAN if selected else Color(1, 1, 1, 0.2), 12))
-	_car_desc.text = "%s · %s" % [Data.CAR_MODEL, Data.car_name(Data.car(Game.race_opts.car).id)]
+	for key in _shop_btns:
+		var b: Button = _shop_btns[key]
+		var kind: String = key.get_slice(":", 0)
+		var id: String = key.get_slice(":", 1)
+		var owned := Progress.owns(kind, id)
+		var shown := garage_choice(kind) == id
+		var worn := owned and shown
+		b.button_pressed = shown
+		var label := Data.shop_name(kind, id) if kind != "paint" else ""
+		if not owned:
+			label = (label + " · " if not label.is_empty() else "") + Data.t("garage.price", Data.shop_price(kind, id))
+		b.text = label
+		var border := UiTheme.CYAN if worn else (UiTheme.AMBER if shown else Color(1, 1, 1, 0.2 if owned else 0.1))
+		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.2) if worn else Color(1, 1, 1, 0.06 if owned else 0.02), border, 12, 2 if shown else 1))
+		b.add_theme_color_override("font_color", UiTheme.TEXT if owned else UiTheme.AMBER)
+	_fans_label.text = Data.t("garage.fans", Progress.fans)
+	# What is shown, and whether it can be bought.
+	if _preview.is_empty():
+		_buy_btn.visible = false
+		var kind := _garage_tab if _garage_tab != "driver" else "paint"
+		_car_desc.text = "%s · %s" % [Data.CAR_MODEL, Data.shop_name(kind, garage_choice(kind))] if _garage_tab != "driver" else "%s · %s" % [Data.CAR_MODEL, Data.car_name(str(Game.race_opts.car))]
+	else:
+		var kind := str(_preview.kind)
+		var id := str(_preview.id)
+		var price := Data.shop_price(kind, id)
+		_car_desc.text = Data.t("garage.preview", Data.shop_name(kind, id))
+		_buy_btn.visible = true
+		_buy_btn.disabled = price > Progress.fans
+		_buy_btn.text = Data.t("garage.buy", price) if price <= Progress.fans else Data.t("garage.need", price - Progress.fans)
 
 
 # ------------------------------------------------------------------ settings

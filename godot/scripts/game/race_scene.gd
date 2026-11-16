@@ -255,7 +255,7 @@ func _build_race() -> void:
 	for c in race.cars:
 		var cv := CarVisual.new()
 		add_child(cv)
-		cv.setup(c.def, (Color.html(c.def.color) if c.is_player else c.color), c.is_player)
+		cv.setup(c.def, (Color.html(c.def.color) if c.is_player else c.color), c.is_player, Game.cosmetics() if c.is_player else {})
 		cv.set_night(sky.night)
 		cv.apply_state(c, track, DT)
 		cars.append(cv)

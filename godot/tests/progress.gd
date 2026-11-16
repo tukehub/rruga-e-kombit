@@ -38,7 +38,8 @@ func _ready() -> void:
 	check(p.version == ProgressScript.VERSION and int(stored("meta", "version")) == ProgressScript.VERSION, "a first run is written at the current version")
 	check(p.fans == 0 and p.total_stars() == 0, "a new player has no fans and no stars")
 	for car: Dictionary in Data.CARS:
-		check(p.has_paint(car.id), "every paint offered today is owned from the start: " + str(car.id))
+		check(p.has_paint(car.id) == (int(car.get("price", 0)) == 0), "the six original paints are owned from the start, shop paints are not: " + str(car.id))
+	check(p.rims == Data.shop_free("rim") and p.liveries == Data.shop_free("livery"), "a new player owns the free rim and livery only")
 	check(p.has_city(ProgressScript.HOME_CITY) and not p.has_city("vlore"), "only the home city is open at the start")
 
 	# Earning, spending, unlocking.
@@ -79,7 +80,7 @@ func _ready() -> void:
 	p = fresh()
 	check(p.version == ProgressScript.VERSION and int(stored("meta", "version")) == ProgressScript.VERSION, "a file without a version is upgraded and rewritten")
 	check(p.fans == 0, "negative fans are repaired to zero")
-	check(p.paints.count("gold") == 1 and p.paints.count("benxi") == 1 and p.paints.size() == Data.CARS.size() + 1, "paint lists lose repeats and non-ids but keep what was earned")
+	check(p.paints.count("gold") == 1 and p.paints.count("benxi") == 1 and p.paints.size() == Data.shop_free("paint").size() + 1, "paint lists lose repeats and non-ids but keep what was earned")
 	check(p.cities == [ProgressScript.HOME_CITY], "a city list of the wrong type falls back to the home city")
 	check(p.cup_stars == {"tirana.sprint": ProgressScript.MAX_STARS}, "only valid cup results survive, within the maximum")
 	p.free()

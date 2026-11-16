@@ -1,6 +1,6 @@
 extends Node
-## What the player has earned (user://progress.cfg): fans, unlocked paints and
-## cities, cup stars. Settings holds preferences; this holds property, so it
+## What the player has earned (user://progress.cfg): fans, the paints, rims
+## and liveries they own, unlocked cities, cup stars. Settings holds preferences; this holds property, so it
 ## is written through a temporary file and a damaged file is set aside
 ## instead of being overwritten.
 ##
@@ -11,7 +11,7 @@ extends Node
 signal changed
 
 const PATH := "user://progress.cfg"
-const VERSION := 1
+const VERSION := 2
 const MAX_STARS := 3
 ## Never locked: the city the game opens on.
 const HOME_CITY := "tirane"
@@ -20,6 +20,8 @@ var path := PATH
 var version := VERSION
 var fans := 0
 var paints: Array[String] = []
+var rims: Array[String] = []
+var liveries: Array[String] = []
 var cities: Array[String] = []
 ## Cup event id -> best stars earned there (1..MAX_STARS).
 var cup_stars := {}
@@ -33,10 +35,7 @@ func _ready() -> void:
 
 ## Paints every player owns: the six the game has always offered.
 func starting_paints() -> Array[String]:
-	var ids: Array[String] = []
-	for car: Dictionary in Data.CARS:
-		ids.append(str(car.id))
-	return ids
+	return Data.shop_free("paint")
 
 
 func load_progress() -> void:
@@ -52,6 +51,8 @@ func load_progress() -> void:
 			push_warning("Progress file was unreadable; kept as " + path + ".damaged")
 	fans = maxi(0, int(_number(_file.get_value("progress", "fans", 0))))
 	paints = _ids(_file.get_value("progress", "paints", []), starting_paints())
+	rims = _ids(_file.get_value("progress", "rims", []), Data.shop_free("rim"))
+	liveries = _ids(_file.get_value("progress", "liveries", []), Data.shop_free("livery"))
 	cities = _ids(_file.get_value("progress", "cities", []), [HOME_CITY])
 	cup_stars = {}
 	var saved_stars: Variant = _file.get_value("progress", "cup_stars", {})
@@ -75,12 +76,18 @@ func _upgrade(from: int) -> void:
 			# Nothing was stored before version 1: a new player, or an install
 			# that predates progress. Both start from the defaults load applied.
 			pass
+		1:
+			# Version 2 adds rims and liveries; a version 1 player owns the
+			# free ones, which load already applied.
+			pass
 
 
 func save() -> void:
 	_file.set_value("meta", "version", version)
 	_file.set_value("progress", "fans", fans)
 	_file.set_value("progress", "paints", paints)
+	_file.set_value("progress", "rims", rims)
+	_file.set_value("progress", "liveries", liveries)
 	_file.set_value("progress", "cities", cities)
 	_file.set_value("progress", "cup_stars", cup_stars)
 	# A crash while writing must not cost the player what they earned.
@@ -114,6 +121,37 @@ func unlock_paint(id: String) -> void:
 	if not id.is_empty() and not paints.has(id):
 		paints.append(id)
 		save()
+
+
+## Shop ownership, by kind ("paint", "rim", "livery").
+func owns(kind: String, id: String) -> bool:
+	return _owned(kind).has(id)
+
+
+## Buys an item the player does not own yet, if they have the fans.
+func buy(kind: String, id: String) -> bool:
+	var item := Data.shop_item(kind, id)
+	if item.is_empty() or owns(kind, id):
+		return false
+	var price := int(item.get("price", 0))
+	if price > fans:
+		return false
+	fans -= price
+	_owned(kind).append(id)
+	save()
+	return true
+
+
+func _owned(kind: String) -> Array[String]:
+	match kind:
+		"paint":
+			return paints
+		"rim":
+			return rims
+		"livery":
+			return liveries
+	var none: Array[String] = []
+	return none
 
 
 func has_city(id: String) -> bool:

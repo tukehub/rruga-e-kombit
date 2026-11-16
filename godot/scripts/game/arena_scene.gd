@@ -47,7 +47,7 @@ func _ready() -> void:
 	for c in arena.cars:
 		var visual := CarVisual.new()
 		add_child(visual)
-		visual.setup(c.def, (Color.html(c.def.color) if c.is_player else c.color), c.is_player)
+		visual.setup(c.def, (Color.html(c.def.color) if c.is_player else c.color), c.is_player, Game.cosmetics() if c.is_player else {})
 		visual.apply_world(c, DT)
 		cars.append(visual)
 	for p in arena.pickups:
