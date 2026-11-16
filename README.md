@@ -16,7 +16,17 @@ recognizable eagle/lightning/etc power-up badges, larger phone text, explicit
 corner pedals and forward/back shooting buttons, and translucent standings
 that open on a tap. The middle of the screen stays clear for the road and car.
 
-The main menu starts a Tirana race directly. Other city datasets remain in the
+The main menu starts a Tirana race directly, or a **points round** on the
+walled Skanderbeg Square: the "Mënyra" button on the title page switches
+between a race and points for 2 or 3 minutes. Ram the others for points
+(closing speed × 14), three quick hits raise the multiplier up to ×5, a wreck
+you caused pays 300 × the multiplier, and the highest score when the clock
+runs out wins. Pickups on the square are ones a car uses on itself: the ram
+charge ("Dashi", double points and a hard shove), nitro, shield and repair.
+The simulation is `scripts/sim/arena.gd` (node-free, deterministic, a port of
+the legacy `src/035_arena.js` without its projectile weapons), drawn by
+`scripts/game/arena_scene.gd` with the race's touch controls; covered by
+`tests/arena_sim` and `tests/arena_flow`. Other city datasets remain in the
 repository for later review; they are not offered in this focused menu.
 Existing installs receive a one-time daylight/touch-control settings migration.
 See [current status and validation](docs/STATUS.md).

@@ -7,6 +7,7 @@ signal scene_changed(name: String)
 const SCENES := {
 	"menu": "res://scenes/menu.tscn",
 	"race": "res://scenes/race.tscn",
+	"arena": "res://scenes/arena.tscn",
 	"results": "res://scenes/results.tscn",
 }
 
@@ -30,6 +31,8 @@ var race_opts := {
 	"diff": 1,
 	"car": "benxi",
 	"driver": 0,
+	"mode": "race",        # "race", or "points": the square, by score
+	"points_minutes": 2,
 }
 var last_result: Dictionary = {}
 var current := ""
@@ -184,11 +187,14 @@ func start_race() -> void:
 	Settings.laps_override = race_opts.laps
 	Settings.reverse_lap = bool(race_opts.reverse)
 	Settings.save()
-	goto("race")
+	goto("arena" if str(race_opts.mode) == "points" else "race")
 
 
 func finish_race(result: Dictionary) -> void:
 	last_result = result
+	if str(result.get("mode", "race")) == "points":
+		goto("results")
+		return
 	Settings.record_result(result.get("city", ""), int(result.get("place", 6)), float(result.get("best_lap", INF)))
 	goto("results")
 

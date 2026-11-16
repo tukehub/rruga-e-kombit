@@ -468,6 +468,36 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	ground.y += 0.025
 	contact_shadow.global_transform = Transform3D(Basis.from_euler(Vector3(asin(clampf(t.y, -0.5, 0.5)), yaw_g, 0.0)), ground)
 	contact_shadow.transparency = clampf(float(pose.get("hop", c.hop)) / 1.5, 0.0, 1.0)
+	_animate(c, dt, c.def.grip * (29.0 if c.is_player and not c.autopilot and track.id == "tirane" else 22.0) * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0))
+
+
+## Place the car on flat ground at a world position and heading (points
+## mode): forward is (-sin h, cos h) in (x, z), as in the simulation.
+func apply_world(c: ArenaCar, dt: float) -> void:
+	_apply_damage(c)
+	var yaw_g := atan2(sin(c.h), -cos(c.h))
+	var roll := 0.0
+	var pitch := 0.0
+	if c.wreck_t > 0.0:
+		wreck_roll = minf(wreck_roll + dt * 3.0, 1.0)
+		roll = 0.12 * wreck_roll
+		pitch = 0.04 * wreck_roll
+	else:
+		wreck_roll = 0.0
+		roll = -c.steer * 0.045 * clampf(c.v / 20.0, 0.0, 1.0) - c.drift * 0.04 * signf(c.steer)
+		pitch = (-0.02 if c.gas_on else 0.0) + (0.035 if c.braking else 0.0)
+	var p := Vector3(c.x, c.hop, c.z)
+	base_pos = p
+	global_transform = Transform3D(Basis.from_euler(Vector3(pitch, yaw_g, roll)), p)
+	contact_shadow.global_transform = Transform3D(Basis.from_euler(Vector3(0.0, yaw_g, 0.0)), Vector3(c.x, 0.025, c.z))
+	contact_shadow.transparency = clampf(c.hop / 1.5, 0.0, 1.0)
+	# The wheels show the lock the driver holds, eased off with speed.
+	_animate(c, dt, 22.0 * float(c.def.grip), 0.5 / (1.0 + absf(c.v) * 0.04))
+
+
+## Wheels, lights, nitro, shield and the respawn blink: the same in both modes.
+## `full_lock` (radians) overrides the race's speed-limited wheel angle.
+func _animate(c: CarState, dt: float, lateral_accel: float, full_lock := -1.0) -> void:
 	# wheels
 	spin += c.v * dt / visual_wheel_radius
 	if spin > TAU * 100.0:
@@ -475,9 +505,10 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	# Match the simulation's speed-limited turning curvature. A fixed full-lock
 	# wheel angle at highway speed makes tires appear to scrub sideways.
 	var speed := maxf(absf(c.v), 1.0)
-	var lateral_accel: float = c.def.grip * (29.0 if c.is_player and not c.autopilot and track.id == "tirane" else 22.0) * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0)
 	var curvature := minf(0.12, lateral_accel / (speed * speed))
 	var target_steer := -atan(c.steer * curvature * visual_wheelbase)
+	if full_lock >= 0.0:
+		target_steer = -c.steer * full_lock
 	steer_vis = lerpf(steer_vis, target_steer, minf(1.0, dt * 12.0))
 	for nm in wheels:
 		var w: MeshInstance3D = wheels[nm]

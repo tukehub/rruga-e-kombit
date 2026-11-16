@@ -28,7 +28,11 @@ func _ready() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	mc.add_child(v)
-	v.add_child(UiTheme.label(("%s · %s" % [Data.city_name(city.id), Data.env_label(str(r.get("env", city.env)))]).to_upper(), 23, UiTheme.CYAN))
+	var points := str(r.get("mode", "race")) == "points"
+	if points:
+		v.add_child(UiTheme.label(Data.t("arena.title"), 23, UiTheme.CYAN))
+	else:
+		v.add_child(UiTheme.label(("%s · %s" % [Data.city_name(city.id), Data.env_label(str(r.get("env", city.env)))]).to_upper(), 23, UiTheme.CYAN))
 	var col := UiTheme.AMBER if place == 1 else (UiTheme.TEXT if place <= 3 else UiTheme.MUTED)
 	v.add_child(UiTheme.headline(Data.ordinal(place), 64, col, HORIZONTAL_ALIGNMENT_LEFT))
 	var msg := UiTheme.label(Data.place_msg(place, n), 25, UiTheme.MUTED)
@@ -48,6 +52,8 @@ func _ready() -> void:
 	grid.add_theme_constant_override("v_separation", 6)
 	sc.add_child(grid)
 	var headers := ["#", Data.t("results.column.driver"), Data.t("results.column.time"), Data.t("results.column.best_lap")]
+	if points:
+		headers = ["#", Data.t("results.column.driver"), Data.t("results.column.points"), Data.t("results.column.hits")]
 	for column in headers.size():
 		var l := UiTheme.label(str(headers[column]).to_upper(), 22, UiTheme.MUTED)
 		if column == 1:  # the driver column takes the spare width
@@ -68,9 +74,13 @@ func _ready() -> void:
 		nm.add_child(dot)
 		nm.add_child(UiTheme.label(Data.t("results.you", str(row.name)) if me else str(row.name), 27, c, me))
 		grid.add_child(nm)
-		var finished := bool(row.get("finished", false))
-		grid.add_child(UiTheme.label(Game.fmt_time(float(row.time)) if finished else Data.t("results.unfinished"), 25, c))
-		grid.add_child(UiTheme.label(Game.fmt_time(float(row.get("best_lap", INF))), 25, c))
+		if points:
+			grid.add_child(UiTheme.label(str(int(row.get("score", 0))), 25, c))
+			grid.add_child(UiTheme.label(str(int(row.get("hits", 0))), 25, c))
+		else:
+			var finished := bool(row.get("finished", false))
+			grid.add_child(UiTheme.label(Game.fmt_time(float(row.time)) if finished else Data.t("results.unfinished"), 25, c))
+			grid.add_child(UiTheme.label(Game.fmt_time(float(row.get("best_lap", INF))), 25, c))
 		var cells: Array = []
 		for cell in 4:
 			var control: Control = grid.get_child(grid.get_child_count() - 4 + cell)
@@ -81,7 +91,9 @@ func _ready() -> void:
 	var record: Dictionary = Settings.stats.best_laps
 	var rec_t := float(record.get(city.id, INF))
 	var foot := Data.t("results.best_lap", Game.fmt_time(best))
-	if best < INF and best <= rec_t:
+	if points:
+		foot = Data.t("results.points", int(r.get("score", 0)))
+	elif best < INF and best <= rec_t:
 		foot += "  ·  " + Data.t("results.new_record")
 	elif rec_t < INF:
 		foot += "  ·  " + Data.t("results.record", Game.fmt_time(rec_t))

@@ -17,6 +17,9 @@ var _lap_value: Label
 var _lap_minus: Button
 var _direction: Button
 var _weather: Button
+var _mode: Button
+## The choices the mode button steps through: a race, or points for 2 or 3 minutes.
+const MODES := [{"mode": "race", "minutes": 0}, {"mode": "points", "minutes": 2}, {"mode": "points", "minutes": 3}]
 var _lap_plus: Button
 var _drv_tag: Label
 var _car_desc: Label
@@ -266,6 +269,18 @@ func _page_title() -> Control:
 		_refresh_city())
 	options_row.add_child(_weather)
 	v.add_child(options_row)
+	_mode = UiTheme.button("")
+	_mode.name = "GameMode"
+	_mode.custom_minimum_size.y = 48
+	_mode.add_theme_font_size_override("font_size", 22)
+	_mode.pressed.connect(func():
+		Sfx.ui_click()
+		var next: Dictionary = MODES[(mode_index() + 1) % MODES.size()]
+		Game.race_opts.mode = next.mode
+		if int(next.minutes) > 0:
+			Game.race_opts.points_minutes = next.minutes
+		_refresh_city())
+	v.add_child(_mode)
 	var names := [Data.t("diff.0"), Data.t("diff.1"), Data.t("diff.2")]
 	var difficulty := _seg(names, func(i: int): Game.race_opts.diff = i; _refresh_city())
 	_diff_btns.clear()
@@ -296,13 +311,25 @@ func _page_title() -> Control:
 	return c
 
 
+func mode_index() -> int:
+	for i in MODES.size():
+		if MODES[i].mode == str(Game.race_opts.mode) and (MODES[i].mode == "race" or int(MODES[i].minutes) == int(Game.race_opts.points_minutes)):
+			return i
+	return 0
+
+
 func _refresh_city() -> void:
+	var points := str(Game.race_opts.mode) == "points"
+	_mode.text = Data.t("menu.mode.points", int(Game.race_opts.points_minutes)) if points else Data.t("menu.mode.race")
+	# The square has no laps, direction or weather to choose.
+	_direction.disabled = points
+	_weather.disabled = points
 	_direction.text = Data.t("menu.direction.reverse") if bool(Game.race_opts.reverse) else Data.t("menu.direction.normal")
 	_weather.text = Data.t("menu.weather.rain") if str(Game.race_opts.env) == "rainy" else Data.t("menu.weather.sun")
 	var laps := Game.city_laps("tirane")
 	_lap_value.text = str(laps)
-	_lap_minus.disabled = laps <= 1
-	_lap_plus.disabled = laps >= 9
+	_lap_minus.disabled = laps <= 1 or points
+	_lap_plus.disabled = laps >= 9 or points
 	for i in _diff_btns.size():
 		var b := _diff_btns[i]
 		var selected: bool = i == int(Game.race_opts.diff)

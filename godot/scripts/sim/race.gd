@@ -864,6 +864,10 @@ func item_status(c: CarState, back := false, kind := "") -> Dictionary:
 	return CombatRules.item_status(self, c, back, kind)
 
 
+func boost_status(c: CarState) -> String:
+	return CombatRules.boost_status(self, c)
+
+
 func incoming_threat(c: CarState) -> Dictionary:
 	return CombatRules.incoming(self, c)
 

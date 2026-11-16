@@ -114,7 +114,9 @@ var _cycle := false
 var _driving_enabled := false
 var _suspended := false
 var _car: CarState
-var _race: Race
+var _race                      # Race or Arena: whichever the car is in
+## The drift boost belongs to races; the points mode switches its button off.
+var show_boost := true
 var _settings_signature := {}
 var _inventory_buttons: Array[Button] = []
 var _inventory_finger := -1
@@ -153,7 +155,7 @@ func _ready() -> void:
 	sync_actions()
 
 
-func bind(car: CarState, race: Race) -> void:
+func bind(car: CarState, race) -> void:
 	reset_controls()
 	_car = car
 	_race = race
@@ -250,6 +252,8 @@ func zone_at(local_position: Vector2) -> String:
 	for zone in ["gas", "brake", "fire", "back", "boost", "steer"]:
 		if zone == "steer" and not Settings.touch_steer:
 			continue
+		if zone == "boost" and not show_boost:
+			continue
 		if zone == "back" and not _back_btn.visible:
 			continue
 		if control_rect(zone).has_point(local_position):
@@ -288,6 +292,7 @@ func _layout_buttons() -> void:
 		button.modulate.a = Settings.control_opacity
 	if _steer_btn != null:
 		_steer_btn.visible = Settings.touch_steer
+		_boost_btn.visible = show_boost
 		_gas_btn.visible = not Settings.auto_accel
 	if _auto_label != null:
 		_auto_label.position = Vector2(0, _brake_btn.size.y - 24)
@@ -375,7 +380,7 @@ func sync_actions() -> void:
 		_fire_btn.text = Data.t("input.full")
 	elif type == "shock" and _race != null and _race.leader() == _car:
 		_fire_btn.text = Data.t("hint.deny.first")
-	_fire_btn.icon = PowerupIcons.texture(type) if Data.PW.has(type) else null
+	_fire_btn.icon = PowerupIcons.texture(type) if Data.has_pw(type) else null
 	_back_btn.icon = _fire_btn.icon
 	_back_btn.text = Data.t("input.back.%s" % type) if Data.has_text("input.back.%s" % type) else Data.t("input.back")
 	_back_btn.visible = type in ["eagle", "bolt", "mine", "nitro"]
@@ -389,7 +394,7 @@ func sync_actions() -> void:
 		if type == "eagle" and not bool(_race.item_status(_car, true).ready):
 			_back_btn.text = Data.t("input.no_rival")
 		_boost_btn.text = Data.t("input.turbo") if _car.skill_charge >= 1.0 else Data.t("input.drift", floori(_car.skill_charge * 100.0))
-		_boost_btn.disabled = not _can_act() or not Rules.boost_status(_race, _car).is_empty()
+		_boost_btn.disabled = not _can_act() or not str(_race.boost_status(_car)).is_empty()
 		_boost_fill.position = Vector2(8, _boost_btn.size.y - 7)
 		_boost_fill.size = Vector2((_boost_btn.size.x - 16) * _car.skill_charge, 3)
 	else:
@@ -416,7 +421,7 @@ func _deny(reason: String) -> void:
 
 
 func _request_boost() -> void:
-	var why := Rules.boost_status(_race, _car)
+	var why := str(_race.boost_status(_car))
 	if why.is_empty() and _can_act():
 		_boost = true
 	else:

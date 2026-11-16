@@ -87,6 +87,10 @@ const PW := {
 	"shield": {"col": "#dfe9ff", "w": 10, "ammo": 1},
 	"repair": {"col": "#ff5fc8", "w": 9, "ammo": 1},
 }
+# Points mode only: used on the car itself. Not in PW_KEYS, so no race offers it.
+const ARENA_PW := {
+	"ram": {"col": "#ff3d9a", "ammo": 1},
+}
 const PW_KEYS := ["eagle", "bolt", "barge", "mine", "shock", "nitro", "shield", "repair"]
 
 # ---------------------------------------------------------------- drivers
@@ -147,6 +151,19 @@ const TRAFFIC_COLORS := ["#8a8f96", "#c9c4b8", "#3d4750", "#6f7f8c", "#a8a39a", 
 
 func traffic(preset: String) -> Dictionary:
 	return TRAFFIC[preset] if TRAFFIC.has(preset) else TRAFFIC.medium
+
+
+## Colour of any pickup, from a race or from the points mode.
+func pw_col(type: String) -> Color:
+	if PW.has(type):
+		return Color.html(PW[type].col)
+	if ARENA_PW.has(type):
+		return Color.html(ARENA_PW[type].col)
+	return Color.WHITE
+
+
+func has_pw(type: String) -> bool:
+	return PW.has(type) or ARENA_PW.has(type)
 
 
 func handling_id(id: String) -> String:
