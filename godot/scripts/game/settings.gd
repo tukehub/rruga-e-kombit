@@ -35,6 +35,7 @@ var vol_tyres := 0.7
 var vol_impacts := 1.0
 var vol_pickups := 0.9
 var vol_ui := 0.8
+var vol_music := 0.7
 var show_fps := false
 var mirror := false            # rear-view mirror: a second scene render
 var car_id := "benxi"
@@ -94,6 +95,7 @@ func load_settings() -> void:
 	vol_impacts = cf.get_value("audio", "impacts", vol_impacts)
 	vol_pickups = cf.get_value("audio", "pickups", vol_pickups)
 	vol_ui = cf.get_value("audio", "ui", vol_ui)
+	vol_music = clampf(float(cf.get_value("audio", "music", vol_music)), 0.0, 1.0)
 	car_id = cf.get_value("race", "car", car_id)
 	driver = cf.get_value("race", "driver", driver)
 	city_id = cf.get_value("race", "city", city_id)
@@ -125,6 +127,7 @@ func save() -> void:
 	cf.set_value("audio", "impacts", vol_impacts)
 	cf.set_value("audio", "pickups", vol_pickups)
 	cf.set_value("audio", "ui", vol_ui)
+	cf.set_value("audio", "music", vol_music)
 	cf.set_value("race", "car", car_id)
 	cf.set_value("race", "driver", driver)
 	cf.set_value("race", "city", city_id)

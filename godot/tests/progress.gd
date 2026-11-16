@@ -27,7 +27,7 @@ func clean() -> void:
 func stored(section: String, key: String) -> Variant:
 	var file := ConfigFile.new()
 	file.load(FILE)
-	return file.get_value(section, key, null)
+	return file.get_value(section, key) if file.has_section_key(section, key) else null
 
 func _ready() -> void:
 	check(Progress.path == ProgressScript.PATH and Progress.version == ProgressScript.VERSION, "the autoload reads the player's own file at the current version")
