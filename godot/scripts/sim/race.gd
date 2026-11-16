@@ -369,16 +369,27 @@ func step(dt: float) -> void:
 					emit({"t": "lap", "car": c, "lap": li + 1})
 	compute_order()
 	# rubber band + difficulty (bots only)
-	var has_ref := player != null and not player.finished
-	var ref := player.progress if has_ref else 0.0
 	for c in cars:
-		if c.is_player:
-			c.vmax_mul = 1.0
-			continue
-		var mul: float = diff.speed * c.ai.skill
-		if has_ref:
-			mul *= 1.0 + clampf(-(c.progress - ref) / 520.0, -0.05, 0.075)
-		c.vmax_mul = mul
+		c.vmax_mul = 1.0 if c.is_player else diff.speed * c.ai.skill * rubber_band(c)
+
+
+## Speed factor that keeps the field together, from the numbers in Data.DIFFS.
+## A bot behind the player gains a little, a bot ahead of the player or far
+## clear of second place loses a little. The player's own car is never touched.
+func rubber_band(c: CarState) -> float:
+	if c.is_player or c.finished:
+		return 1.0
+	var mul := 1.0
+	if player != null and not player.finished:
+		var behind := (player.progress - c.progress) / maxf(1.0, float(diff.band))
+		mul += clampf(behind, 0.0, 1.0) * float(diff.catch_up) - clampf(-behind, 0.0, 1.0) * float(diff.lead_drag)
+	# `order` is current: finished cars first, then by progress.
+	var racing := order.filter(func(o: CarState) -> bool: return not o.finished)
+	if racing.size() > 1 and racing[0] == c:
+		var gap := float(diff.runaway_gap)
+		var clear: float = c.progress - racing[1].progress
+		mul -= clampf((clear - gap) / maxf(1.0, gap), 0.0, 1.0) * float(diff.runaway_drag)
+	return mul
 
 
 func _near_finish(c: CarState) -> bool:

@@ -106,10 +106,19 @@ const DRIVERS := [
 # player's saved driver selection or the name displayed for that selection.
 const RIVAL_NAMES := ["Arben", "Dritan", "Luan", "Bora", "Era", "Valon"]
 
+# Rival difficulty. `speed`, `react` and `aim` set how good the bots are.
+# The rest is the rubber band, applied to bots only, as fractions of top speed:
+# `catch_up` is the most a bot behind the player gains and `lead_drag` the
+# most a bot ahead of the player loses, both reached `band` metres away;
+# `runaway_drag` is the most a leading bot loses once it is more than
+# `runaway_gap` metres clear of second place (full at twice that gap).
 const DIFFS := [
-	{"id": 0, "speed": 0.87, "react": 1.3, "aim": 0.55},
-	{"id": 1, "speed": 0.935, "react": 0.9, "aim": 0.8},
-	{"id": 2, "speed": 1.035, "react": 0.55, "aim": 1.0},
+	{"id": 0, "speed": 0.87, "react": 1.3, "aim": 0.55,
+		"catch_up": 0.06, "lead_drag": 0.05, "band": 60.0, "runaway_gap": 60.0, "runaway_drag": 0.04},
+	{"id": 1, "speed": 0.935, "react": 0.9, "aim": 0.8,
+		"catch_up": 0.045, "lead_drag": 0.03, "band": 80.0, "runaway_gap": 90.0, "runaway_drag": 0.03},
+	{"id": 2, "speed": 1.035, "react": 0.55, "aim": 1.0,
+		"catch_up": 0.03, "lead_drag": 0.015, "band": 100.0, "runaway_gap": 120.0, "runaway_drag": 0.02},
 ]
 
 # Handling difficulty, separate from the rivals' difficulty above. Each value

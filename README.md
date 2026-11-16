@@ -37,7 +37,7 @@ car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop, the chase camera's roll, hit kick,
 nitro pull-back and bumper view, the Arcade / Pro handling scales, traffic placement, contact and bot avoidance,
-and reject
+the rubber band's finish spread, and reject
 UI text written into a
 script instead of the string table. The runner rejects script errors even
 when Godot exits zero. Tests write settings only in Godot's user-data directory.
@@ -236,9 +236,14 @@ Rules for every change:
     `--traffic=<parked>,<moving>` replays it. Because the count changes the
     race, an online lobby (7.1) must agree on it instead of reading each
     phone's preset. Covered by `tests/traffic`.
-2.4 **Rubber-band pass:** mild catch-up for bots behind the player and slight
-    drag on a runaway leader, tuned in `Data.DIFFS`; verified by the fixed-step
-    race tests (finish spread inside a target window).
+2.4 **Rubber-band pass — done.** `Race.rubber_band()` reads five numbers
+    per difficulty from `Data.DIFFS`: `catch_up` (bots behind the player) and
+    `lead_drag` (bots ahead), both reached `band` metres away, and
+    `runaway_drag` on a leading bot more than `runaway_gap` clear of second
+    place. They replace the fixed +7.5% / -5% that saturated within 40 m; the
+    player's car is never touched. `tests/rubber_band` runs one-lap Tirana
+    races on all three difficulties: finish spread under 17% of the winner's
+    time each, under 10% on average (9.2% measured, 12.0% with the band off).
 2.5 **Combat counterplay:** a defensive use for `bolt` fired backward (destroys
     an incoming eagle) and last-place weighting in
     `scripts/sim/pickup_director.gd`.
