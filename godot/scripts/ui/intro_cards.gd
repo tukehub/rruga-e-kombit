@@ -11,7 +11,7 @@ var cards: Array[Control] = []
 var leaving := false
 
 
-## Front of the grid first. `cars` are the racers, not traffic.
+## Front of the grid first.
 static func grid_order(cars: Array[CarState]) -> Array[CarState]:
 	var order := cars.duplicate()
 	order.sort_custom(func(a: CarState, b: CarState) -> bool: return a.progress > b.progress)
@@ -20,7 +20,8 @@ static func grid_order(cars: Array[CarState]) -> Array[CarState]:
 
 func setup(race: Race) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	position = Vector2(100, 104)
+	# Right of the standings, under the speedometer.
+	position = Vector2(300, 136)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE

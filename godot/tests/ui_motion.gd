@@ -1,6 +1,6 @@
 extends Node
 ## UI motion (README 5.2): the UiTheme helpers, animated menu pages, the
-## scene transition fade, staggered result rows and collapsible standings.
+## scene transition fade, staggered result rows and standings.
 
 const MenuScript = preload("res://scripts/ui/menu.gd")
 const ResultsScript = preload("res://scripts/ui/results.gd")
@@ -128,7 +128,7 @@ func _ready() -> void:
 	results.queue_free()
 	Game.last_result = saved_result
 
-	# Standings: a slim column of places until tapped.
+	# Standings: always the full list with names and metres apart.
 	var track := RaceTrack.load_city("tirane")
 	var race := Race.new(track, {"seed": 31})
 	race.started = true
@@ -137,38 +137,10 @@ func _ready() -> void:
 	hud.setup(race, race.player, track)
 	hud._process(0.0)
 	await get_tree().process_frame
-	await get_tree().process_frame
-	var panel: PanelContainer = hud._standings
-	check(not hud.standings_open and hud._board.get_child_count() == race.cars.size(), "standings start collapsed, one row per racer")
-	check(hud._board_details.size() == race.cars.size() * 2 and hud._board_details.all(func(d: Control) -> bool: return not d.visible), "collapsed rows hide names and gaps")
-	check(not hud._board_title.visible, "the collapsed panel has no heading")
-	var slim := panel.size.x
-	check(slim < 90.0 and slim > 20.0, "collapsed standings are a slim column (%.0f px)" % slim)
+	check(hud._board.get_child_count() == race.cars.size() and hud._standings.size.x >= Hud.STANDINGS_WIDTH, "the standings show every racer at full width")
 	for row in hud._board.get_children():
-		check((row.get_child(0) as Label).visible and (row.get_child(1) as ColorRect).visible, "collapsed rows keep the place and the car colour")
-	check(hud._board_gaps.size() == race.cars.size() and not hud._board_gaps[0].text.is_empty(), "gaps keep updating while collapsed")
-	click(panel)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	check(hud.standings_open and hud._board_details.all(func(d: Control) -> bool: return d.visible) and hud._board_title.visible, "a tap opens names and gaps")
-	check(panel.size.x >= Hud.STANDINGS_WIDTH, "open standings take their full width")
-	check(panel.get_rect().end.x <= 300.0, "open standings stay inside the strip the controls keep clear")
-	var open_height := panel.size.y
-	await wait(UiTheme.FADE_TIME * 1.5)
-	check(hud._board_details.all(func(d: Control) -> bool: return is_equal_approx(d.modulate.a, 1.0)), "the details fade in")
-	# The order changes: rebuilt rows follow the current state.
-	race.cars[0].progress += 500.0
-	race.compute_order()
-	hud._process(0.0)
-	check(hud._board_details.all(func(d: Control) -> bool: return d.visible), "rebuilt rows stay open")
-	click(panel)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	check(not hud.standings_open and is_equal_approx(panel.size.x, slim) and panel.size.y < open_height, "a second tap collapses them to the same slim column")
-	race.cars[1].progress += 900.0
-	race.compute_order()
-	hud._process(0.0)
-	check(hud._board_details.all(func(d: Control) -> bool: return not d.visible), "rebuilt rows stay collapsed")
+		check(row.get_children().all(func(c: Control) -> bool: return c.visible), "each row shows place, colour, name and gap")
+	check(hud._board_gaps.all(func(l: Label) -> bool: return l.text == Data.t("hud.you") or l.text.ends_with("m")), "gaps are in metres")
 	hud.queue_free()
 
 	# Scene changes fade through the loading cover.

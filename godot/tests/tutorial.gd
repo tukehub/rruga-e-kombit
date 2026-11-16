@@ -84,9 +84,12 @@ func _ready() -> void:
 	await wait_scene("race")
 	var scene = Game._root.get_child(0)
 	scene.set_process(false)
-	check(scene.race.tutorial and scene.race.laps == 1 and scene.race.traffic.is_empty(), "the tutorial race: one lap, no traffic")
+	check(scene.race.tutorial and scene.race.laps == 1, "the tutorial race: one lap")
 	var prompt: TutorialPrompt = scene.tutorial_prompt
-	check(prompt != null and prompt.is_visible_in_tree() and prompt.label.text == Data.t("tutorial.welcome"), "the instructions start with a welcome")
+	check(prompt != null and not prompt.visible, "the instructions wait while the name cards are shown")
+	scene.cam.intro_t = 2.79
+	scene._process(1.0 / 60.0)
+	check(scene.state == "countdown" and prompt.is_visible_in_tree() and prompt.label.text == Data.t("tutorial.welcome"), "then start with a welcome")
 	check(prompt.skip.is_visible_in_tree() and prompt.skip.text == "Kalo", "with a way out")
 	await get_tree().process_frame
 	var banner := prompt.get_global_rect()

@@ -112,17 +112,17 @@ func _ready() -> void:
 	check(not controls.gas and controls._touches.is_empty(), "pause/control editing leaves no held inputs")
 	controls.set_driving_enabled(true)
 
-	# Actions expose the real selected item, including Nitro's reverse brake.
+	# Actions expose the real selected item; nitro only goes forward.
 	for type in Data.PW_KEYS:
 		car.slots = [{"type": type, "ammo": 1}]
 		car.health = car.max_hp * 0.5
 		car.progress = -100.0
 		controls.sync_actions()
-		var directional: bool = type in ["eagle", "bolt", "mine", "nitro"]
+		var directional: bool = type in ["eagle", "bolt", "mine"]
 		check(controls._back_btn.visible == directional and controls.action_available(true) == directional, "reverse readiness matches item " + type)
 		check(controls._fire_btn.icon != null and controls.action_available(false), "selected item has a usable labeled icon " + type)
 		if type == "nitro":
-			check(controls._fire_btn.text == "NITRO" and controls._back_btn.text == "FRENO NITRO", "nitro brake is explicit")
+			check(controls._fire_btn.text == "NITRO" and not controls._back_btn.visible, "nitro has no backward use")
 		if not directional:
 			touch(4, "back")
 			check(not controls.back, "hidden reverse action cannot fire " + type)

@@ -234,10 +234,11 @@ func control_rect(zone: String) -> Rect2:
 		"brake":
 			var left := size.x - inset - (pedal.x * 2.0 + gap if manual else pedal.x)
 			rect = Rect2(Vector2(left, size.y - bottom - pedal.y), pedal)
+		# Forward on top, backward under it, the pedals at the bottom.
 		"fire":
-			rect = Rect2(Vector2(size.x - inset - action.x, size.y - bottom - pedal.y - gap - action.y), action)
+			rect = Rect2(Vector2(size.x - inset - action.x, size.y - bottom - stack_height), action)
 		"back":
-			rect = Rect2(Vector2(size.x - inset - rear.x, size.y - bottom - stack_height), rear)
+			rect = Rect2(Vector2(size.x - inset - rear.x, size.y - bottom - pedal.y - gap - rear.y), rear)
 		"steer":
 			var width := minf(360.0 * scale, maxf(0.0, size.x * 0.5 - STEER_SLOT_CLEARANCE - inset))
 			rect = Rect2(Vector2(inset, size.y - bottom - 128.0 * scale), Vector2(width, 128.0 * scale))
@@ -383,8 +384,7 @@ func sync_actions() -> void:
 	_fire_btn.icon = PowerupIcons.texture(type) if Data.has_pw(type) else null
 	_back_btn.icon = _fire_btn.icon
 	_back_btn.text = Data.t("input.back.%s" % type) if Data.has_text("input.back.%s" % type) else Data.t("input.back")
-	_back_btn.visible = type in ["eagle", "bolt", "mine", "nitro"]
-	_back_btn.add_theme_color_override("font_color", UiTheme.AMBER if type == "nitro" else Color.WHITE)
+	_back_btn.visible = type in Rules.DIRECTIONAL
 	_fire_btn.disabled = not action_available(false)
 	_back_btn.disabled = not action_available(true)
 	if _car != null:

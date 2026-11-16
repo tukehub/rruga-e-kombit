@@ -222,6 +222,8 @@ func _ready() -> void:
 	check(wheel.steer == 0.0, "the half wheel centres again")
 	for zone in ["fire", "back", "boost"]:
 		check(controls._faces.has(zone) and controls._faces[zone].icon == null, "the %s button keeps its own item icon and status line" % zone)
+	# Forward fire on top, backward fire under it, the pedals below both.
+	check(controls.control_rect("fire").end.y <= controls.control_rect("back").position.y and controls.control_rect("back").end.y <= controls.control_rect("brake").position.y, "forward is the upper button, backward the lower")
 	# A held control shrinks and lights its ring; the hit rectangle stays put.
 	var brake_face: RaceInput.ControlFace = controls._faces.brake
 	var brake_rect := controls.control_rect("brake")

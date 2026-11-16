@@ -92,7 +92,7 @@ func targets_and_denials() -> void:
 	race.use_item(c, false)
 	check(c.slots.size() == 1 and race.events[-1].why == "nitro_active", "active turbo has an explicit denial")
 	race.use_item(c, true)
-	check(c.slots.is_empty() and c.nitro_t == 0.0 and c.hbrake_t > 0.0, "reverse Nitro consumes a deliberate brake and stops active turbo")
+	check(c.slots.size() == 1 and c.nitro_t > 0.0 and race.events[-1].why == "direction", "nitro has no backward use: it is refused and kept")
 	var lead := race.leader()
 	equip(c, "shock")
 	lead.recovery_t = 1.0

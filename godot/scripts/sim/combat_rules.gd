@@ -8,7 +8,8 @@ const SHIELD_DURATION := 8.0
 const NITRO_DURATION := 2.6
 const DRIFT_BOOST_DURATION := 1.25
 const DRIFT_METRES := 100.0
-const DIRECTIONAL := ["eagle", "bolt", "mine", "nitro"]
+# Items that can be used backwards. Nitro only ever pushes forward.
+const DIRECTIONAL := ["eagle", "bolt", "mine"]
 
 
 static func phase_reason(race, c: CarState) -> String:

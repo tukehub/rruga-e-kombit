@@ -262,7 +262,7 @@ func _ready() -> void:
 	# action must survive those frames and then be consumed exactly once.
 	test_car.wreck_t = 0.0
 	test_car.spin_t = 0.0
-	test_car.slots = [{"type": "bolt", "ammo": 3}, {"type": "nitro", "ammo": 1}]
+	test_car.slots = [{"type": "bolt", "ammo": 3}, {"type": "mine", "ammo": 1}]
 	controls.fire = true
 	controls.apply(test_car)
 	controls.apply(test_car)

@@ -167,25 +167,6 @@ const HANDLING := {
 	"pro": {"assist": 0.7, "brake_assist": 0.5, "drift_grip": 0.5},
 }
 
-# Traffic and hazards: how many parked and slow-moving cars a race places, by
-# quality preset (each one is a drawn car). They are part of the simulation,
-# so every peer of an online race must use the same pair.
-const TRAFFIC := {
-	"low": {"parked": 3, "moving": 1},
-	"medium": {"parked": 5, "moving": 2},
-	"high": {"parked": 8, "moving": 3},
-}
-# Heavier and far slower than a race car; same body, so the same footprint.
-const TRAFFIC_CAR := {"id": "traffic", "kind": "coupe", "vmax": 15.0, "acc": 3.0, "grip": 1.0, "hp": 115.0, "mass": 1.6, "color": "#8a8f96",
-	"model": "res://assets/cars/vortex_gt.glb", "size": Vector3(1.94, 1.38, 4.62), "wheel_r": 0.36}
-const TRAFFIC_COLORS := ["#8a8f96", "#c9c4b8", "#3d4750", "#6f7f8c", "#a8a39a", "#525a52"]
-
-
-func traffic(preset: String) -> Dictionary:
-	return TRAFFIC[preset] if TRAFFIC.has(preset) else TRAFFIC.medium
-
-
-## Colour of any pickup, from a race or from the points mode.
 func pw_col(type: String) -> Color:
 	if PW.has(type):
 		return Color.html(PW[type].col)

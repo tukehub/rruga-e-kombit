@@ -105,7 +105,7 @@ func _ready() -> void:
 		card_names.append(card_car.name)
 		if card_car.is_player:
 			player_cards += 1
-	check(grid_order[0].progress >= grid_order[-1].progress and player_cards == 1 and scene.race.traffic.all(func(t: CarState) -> bool: return not card_names.has(t.name)), "cards run from the front row back, the player once, no traffic")
+	check(grid_order[0].progress >= grid_order[-1].progress and player_cards == 1, "cards run from the front row back, the player once")
 	check(cards.mouse_filter == Control.MOUSE_FILTER_IGNORE and not cards.leaving, "the cards do not take touches and stay for the sweep")
 	scene.cam.intro_t = 2.79
 	scene._process(1.0 / 60.0)
@@ -127,9 +127,7 @@ func _ready() -> void:
 	scene.set_scenery_visible(true)
 	check(scene.buildings.visible and scene.props.visible and scene.terrain.visible and scene.hud.diagnostic_fps, "scenery comparison restores world and keeps FPS display")
 	check(scene.views.mirror_panel.visible == Settings.mirror, "rear mirror follows the saved setting")
-	var traffic_counts: Dictionary = Data.traffic(Quality.preset)
-	check(scene.race.traffic.size() == int(traffic_counts.parked) + int(traffic_counts.moving), "the race places the quality preset's traffic")
-	check(scene.traffic_cars.size() == scene.race.traffic.size() and scene.cars.size() == scene.race.cars.size(), "every traffic car is drawn, apart from the racers")
+	check(scene.cars.size() == scene.race.cars.size() and scene.cars.size() == 6, "the six racers are the only cars on the street")
 	if scene.views.enabled:
 		scene.views._toggle_mirror()
 	check(scene.views.viewport.render_target_update_mode == SubViewport.UPDATE_DISABLED, "disabled mirror renders nothing")
@@ -316,12 +314,12 @@ func _ready() -> void:
 	fan_file.load(PROGRESS_FILE)
 	check(int(fan_file.get_value("progress", "fans", 0)) == 500 + earned_in_race, "and saved at once")
 	check(results.fans_earned == earned_in_race and results.fans_total == 500 + earned_in_race, "the results page knows both numbers")
-	check(results._fans_label.text == "+0 FANË" and results._fans_total_label.text == "Gjithsej: 500 fanë", "the tally starts from what the player had")
+	check(results._fans_label.text == "+0 FANSA" and results._fans_total_label.text == "Gjithsej: 500 fansa", "the tally starts from what the player had")
 	await get_tree().create_timer(results.fan_tally_delay + Results.FAN_TALLY_TIME * 0.4).timeout
 	var midway := int(results._fans_label.text.trim_prefix("+").get_slice(" ", 0))
 	check(midway > 0 and midway < earned_in_race, "the tally counts up (%d of %d)" % [midway, earned_in_race])
 	await get_tree().create_timer(Results.FAN_TALLY_TIME).timeout
-	check(results._fans_label.text == "+%d FANË" % earned_in_race and results._fans_total_label.text == "Gjithsej: %d fanë" % (500 + earned_in_race), "the tally ends on the earned fans and the new total")
+	check(results._fans_label.text == "+%d FANSA" % earned_in_race and results._fans_total_label.text == "Gjithsej: %d fansa" % (500 + earned_in_race), "the tally ends on the earned fans and the new total")
 	button(results, "Përsërit").pressed.emit()
 	await wait_scene("race")
 	scene = Game._root.get_child(0)

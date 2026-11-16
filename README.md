@@ -13,8 +13,9 @@ model first; other cities and online play follow (see
 [Changes to be made](#changes-to-be-made)). The current build has one shared sports car
 for all six drivers, six paint choices with identical performance,
 recognizable eagle/lightning/etc power-up badges, larger phone text, explicit
-corner pedals and forward/back shooting buttons, and translucent standings
-that open on a tap. The middle of the screen stays clear for the road and car.
+corner pedals and forward/back shooting buttons (forward on top, backward
+under it), and always-visible translucent standings with each rival's
+distance in metres. Only the six racers are on the street. The middle of the screen stays clear for the road and car.
 
 The main menu starts a Tirana race directly, or a **points round** on the
 walled Skanderbeg Square: the "Mënyra" button on the title page switches
@@ -46,7 +47,7 @@ city through the production race scene, and check the shared
 car model (four animated wheels), all eight power-ups and their transient
 visuals, weather transitions, touch reset, landmark construction, and the actual
 menu → race → results → retry → menu loop, the chase camera's roll, hit kick,
-nitro pull-back and bumper view, the Arcade / Pro handling scales, traffic placement, contact and bot avoidance,
+nitro pull-back and bumper view, the Arcade / Pro handling scales,
 the rubber band's finish spread, the bolt-against-eagle defence, and reject
 UI text written into a
 script instead of the string table. The runner rejects script errors even
@@ -67,8 +68,7 @@ godot --path godot -- --scene=race --auto --city=tirane --quality=medium --env=r
 
 Every race prints one `RACE seed=… city=… env=… laps=… diff=… handling=…` line (on a phone,
 `adb logcat -s godot`). Pass `--seed=<n>` with the same city, direction, weather,
-laps, difficulty, `--handling=<arcade|pro>` and `--traffic=<parked>,<moving>`
-to replay it; `--laps=<n>`
+laps, difficulty and `--handling=<arcade|pro>` to replay it; `--laps=<n>`
 shortens a race.
 
 Controls: tilt, or the touch-pad fallback in **Cilësimet**; right half gas, left
@@ -226,7 +226,7 @@ Rules for every change:
     bumper (`ChaseCam.View`, `RaceViews.set_view`). The chosen view is not
     saved between races. Covered by `tests/camera_dynamics`.
 2.2 **Handling difficulty — done.** `Settings.handling` ("arcade" | "pro",
-    the "Drejtimi i makinës" row in settings) picks an entry of
+    the "Kontrolli i makinës" row in settings) picks an entry of
     `Data.HANDLING`; `Race` takes it as the `handling` option and scales the
     human driver's steering assist, corner brake trim and drift grip. Arcade
     is 1.0 throughout, so it drives as before; bots and `Data.DIFFS` are
@@ -234,18 +234,8 @@ Rules for every change:
     names the handling and `--handling=<id>` replays it. Covered by
     `tests/handling`. The Pro numbers (0.7 / 0.5 / 0.5) are a first guess:
     tune them on a phone.
-2.3 **Traffic and hazards — done.** `Race.traffic` holds parked cars at
-    the kerb and slow traffic in a lane: non-firing `CarState`s with
-    `autopilot`, kept out of `Race.cars`, so standings, pickups and weapons
-    ignore them (shots pass through). They share the footprint contact test,
-    take no damage, and a wreck on one credits nobody. Bots steer around
-    them. Counts come from `Data.TRAFFIC` by quality preset (low 3+1, medium
-    5+2, high 8+3) through the `traffic` option; `RaceScene` draws those
-    within 260 m. Placement has its own seeded generator, so the rest of the
-    race is unchanged. The `RACE` line logs `traffic=<parked>,<moving>` and
-    `--traffic=<parked>,<moving>` replays it. Because the count changes the
-    race, an online lobby (7.1) must agree on it instead of reading each
-    phone's preset. Covered by `tests/traffic`.
+2.3 **Traffic and hazards — removed.** Parked and slow cars were tried and
+    taken out: only the six racers are on the street.
 2.4 **Rubber-band pass — done.** `Race.rubber_band()` reads five numbers
     per difficulty from `Data.DIFFS`: `catch_up` (bots behind the player) and
     `lead_drag` (bots ahead), both reached `band` metres away, and
@@ -262,7 +252,7 @@ Rules for every change:
 2.5 **Combat counterplay — done.** A bolt fired toward an eagle that hunts
     its owner (backward for one from behind) leans across the road to meet
     it and shoots it down: an "intercept" event, `Race.FANS.intercept` fans,
-    a feed line, and a "KUNDËRGJUAJ" hint on the eagle warning while a bolt
+    a feed line, and a "RRËZOJE ME RRUFE" hint on the eagle warning while a bolt
     is selected. Bots fire that defence too, scaled by `aim`.
     `PickupDirector.weights()` scales its offers by standing through
     `RANK_WEIGHTS` ([first, last], interpolated): last place gets more
@@ -347,9 +337,9 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     title from the left, the rest from the right; the page shown switches at
     once and only its arrival is animated. `Game.goto()` fades the loading
     cover in (0.14 s) and off the new scene (0.3 s). Result rows arrive one
-    after another, first place first. The HUD standings start as a slim
-    column of places and car colours; a tap opens names and gaps, another
-    closes them (`Hud.set_standings_open`). Covered by `tests/ui_motion`.
+    after another, first place first. (A tap-to-open standings panel was
+    tried and dropped: the full list with metres is always shown.) Covered
+    by `tests/ui_motion`.
 5.3 **Cinematics — done.** During the intro sweep `IntroCards`
     (`scripts/ui/intro_cards.gd`) slides in one name card per racer, front
     of the grid first, and fades them out when the countdown starts. On the
@@ -397,7 +387,7 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     there. Covered by `tests/shop`.
 6.4 **Tutorial — done.** The cup's first event, "Mësimi" (`tutorial`
     in `Data.CUPS`): one lap, easy rivals that never fire or boost, no
-    traffic, and every station carrying a set pickup in all three lanes
+    every station carrying a set pickup in all three lanes
     (`Data.TUTORIAL_PICKUPS`: nitro first, then bolts, shield, eagle...).
     `TutorialPrompt` shows one instruction at a time at the top centre:
     steering and pedals at the start (touch or tilt, auto or manual gas),
