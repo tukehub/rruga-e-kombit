@@ -4,14 +4,16 @@ Working branch: `codex/section-3-graphics`. Base: `1314c9a`.
 
 ## Checkpoint: work started (2026-11-16)
 
-Read the README and current renderer/visual tests. Section 3 is pending.
-Implement items in README order, keeping simulation code node-free and
-deterministic. Commit and push each tested checkpoint to this branch.
+Read the README and current renderer/visual tests; section 3 was pending at
+the start. Implement items in README order, keeping simulation code node-free
+and deterministic. Commit and push each tested checkpoint to this branch.
+Current status:
 
 - **3.1 — implemented and tested:** masked clearcoat/metallic flakes and
   budgeted bot headlights, preserving player headlights and emissive lamps.
-- **3.2 — implemented, final validation in progress:** pooled GPU driving particles and a quality-aware speed post
-  effect, with regression coverage for state changes and bounded allocation.
+- **3.2 — implemented and tested:** pooled GPU driving particles and a
+  quality-aware speed post effect, with regression coverage for state changes
+  and bounded allocation.
 - **3.3–3.8 — pending:** reflections, OSM dressing, road decals, facade depth,
   baked lighting/culling, and colour grading.
 
@@ -69,3 +71,24 @@ Do not merge to `main`; the user requested a separate branch.
   `VK_ICD_FILENAMES=/workspace/setup/lavapipe.json`. Scratch logs are in
   `work/section-3.2-tests.log`, `work/graphics-mobile.log`, and
   `work/graphics-forward.log`.
+
+## Validation and handoff (2026-11-16)
+
+- The full Godot 4.4.1 runner passed: **26 scene launches**, including all
+  existing simulations, city/race flow, controls, string-table and performance
+  checks; paint/lights, speed feedback, renderer truth and profile launches
+  run on both Mobile and Forward+. No unexpected runtime errors.
+- Both software Vulkan render paths completed drift, wet-boost and low
+  captures. Paint/atlas shaders compile, particles appear, and UI stays sharp.
+  Low reports zero driving emitters and zero post strength. Final repeats
+  also check the shader's low-quality branch (flake calculations are skipped).
+- Fixed the optional visual harness to resume after window focus loss; the
+  production game's focus-loss pause remains intact. Render logs from the
+  final shader check use `work/graphics-{mobile,forward}-final.log`.
+- The initial plan, tested 3.1 and implemented 3.2 were pushed separately
+  (`b544d46`, `c087cc0`, `aa2f42e`). A final validation/docs checkpoint follows.
+- **Next: 3.3 reflections.** `Quality.p.probe` already exists, but race probes
+  are not implemented. Start with a probe that follows the player, landmark
+  probes on high, HDRI/probe garage and ambient-floor adjustment. Read
+  `sky_env.gd`, `menu.gd`, `race_scene.gd` and the renderer-budget tests first.
+  Items 3.3–3.8 remain pending; no phone performance claim or release was made.

@@ -6,8 +6,12 @@ var scene: RaceScene
 var frame := 0
 var phases := ["drift", "wet_boost", "low"]
 var phase := -1
+var paint_material: ShaderMaterial
 
 func _ready() -> void:
+	# Automated render captures must keep running when another window takes
+	# focus. The production race correctly pauses on focus loss.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	Sfx.enabled = false
 	Quality.adaptive_enabled = false
 	Quality.set_preset("medium")
@@ -19,6 +23,7 @@ func _ready() -> void:
 	scene.set_process(false)
 	scene.state = "race"
 	scene.race.started = true
+	scene.hud.center("", "", 0.0)
 	scene.cam.intro = false
 	scene.cam.cabin = false
 	# Compile the atlas-only shader even when the private GLB is absent.
@@ -31,11 +36,14 @@ func _ready() -> void:
 	var material := ShaderMaterial.new()
 	material.shader = CarVisual.SPORT_SHADER
 	material.set_shader_parameter("atlas", atlas)
+	paint_material = material
 	swatch.material_override = material
 	swatch.position = scene.track.pos(scene.player.s, scene.player.d + 4.0) + Vector3.UP
 	add_child(swatch)
 
 func _process(_dt: float) -> void:
+	if scene.paused:
+		scene.toggle_pause()
 	var next_phase := frame / 36
 	if next_phase >= phases.size():
 		scene.queue_free()
@@ -47,6 +55,7 @@ func _process(_dt: float) -> void:
 	if next_phase != phase:
 		phase = next_phase
 		Quality.set_preset("low" if phase == 2 else "medium")
+		paint_material.set_shader_parameter("paint_flakes", bool(Quality.p.paint_flakes))
 		scene.race.wet = phase == 1
 		scene.road.set_wet(1.0 if phase == 1 else 0.0)
 		for c in scene.race.cars:

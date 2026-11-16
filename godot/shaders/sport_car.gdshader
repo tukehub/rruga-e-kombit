@@ -45,11 +45,15 @@ void fragment() {
 	CLEARCOAT_ROUGHNESS = mix(0.18, 0.65, wear);
 	// Microflakes perturb only painted panels. Fade below a pixel to avoid
 	// shimmering at racing distance, and leave trim/glass/lamp normals intact.
-	vec2 flake_uv = UV * 900.0;
-	float resolved = 1.0 - smoothstep(0.35, 1.0, max(length(dFdx(flake_uv)), length(dFdy(flake_uv))));
-	vec2 tilt = vec2(wear_hash(floor(flake_uv)), wear_hash(floor(flake_uv) + vec2(37.0, 91.0))) - 0.5;
-	NORMAL_MAP = vec3(tilt * 0.12, 1.0) * 0.5 + 0.5;
-	NORMAL_MAP_DEPTH = paint_flakes ? blue * (1.0 - wear) * resolved : 0.0;
+	NORMAL_MAP = vec3(0.5, 0.5, 1.0);
+	NORMAL_MAP_DEPTH = 0.0;
+	if (paint_flakes) {
+		vec2 flake_uv = UV * 900.0;
+		float resolved = 1.0 - smoothstep(0.35, 1.0, max(length(dFdx(flake_uv)), length(dFdy(flake_uv))));
+		vec2 tilt = vec2(wear_hash(floor(flake_uv)), wear_hash(floor(flake_uv) + vec2(37.0, 91.0))) - 0.5;
+		NORMAL_MAP = vec3(tilt * 0.12, 1.0) * 0.5 + 0.5;
+		NORMAL_MAP_DEPTH = blue * (1.0 - wear) * resolved;
+	}
 	// Rear-light UV island from the supplied atlas. Exclude red sponsor/livery
 	// pixels elsewhere so only the lamp brightens when braking.
 	float rear_island = step(0.55, UV.x) * step(0.41, UV.y) * step(UV.y, 0.52);

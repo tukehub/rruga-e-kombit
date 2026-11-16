@@ -2,8 +2,8 @@
 
 Cars retain health-driven paint wear between hits. Stable marks and higher
 roughness affect painted panels; glass, trim, lamps and each car's identity stay
-readable. Repair and respawn restore clean paint. Public fallback cars use darker,
-rougher paint. The existing contact patch follows road elevation and fades in
+readable. Repair and respawn restore clean paint. Public fallback cars share the
+metallic/clearcoat finish. The existing contact patch follows road elevation and fades in
 airtime at every quality level. These effects reuse each car's existing materials.
 
 Road shoulders now join the baked terrain height instead of dropping a fixed
@@ -80,7 +80,8 @@ For example, medium at the strongest reduction changes:
 ## Fixed combat pools
 
 Race setup preallocates 54 bolt, 18 eagle, 24 mine and 3 dome units, plus 8
-flashes and 6 activation rings: 113 units total. The projectile capacity covers
+flashes and 6 activation rings: 113 combat units. Section 3 adds 18 driving
+emitters, bringing the preallocated total to 131. The projectile capacity covers
 a six-racer, three-slot inventory burst; mines already have a simulation cap
 of 24 and the existing single-storm rule permits three domes. Dome radii scale
 unit geometry. Activation rings animate fixed slots without per-use Tweens.
@@ -117,7 +118,8 @@ and active `workload` alongside frame/process/physics/GPU times, hardware,
 pickup and combat data. Physical Android review still needs sustained laps at
 30/60 FPS on target devices, including mirror on/off, weather transitions,
 thermal load, memory/loading cost, battery use and corner visibility at speed.
-# Section 3 paint and speed feedback
+
+## Section 3 paint and speed feedback
 
 Paint now uses a metallic base coat and clearcoat, with subtle normal-map
 flakes on paint only. Flakes turn off on low or sustained pressure. Damage
