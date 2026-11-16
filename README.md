@@ -66,6 +66,9 @@ Paint, driving particles and speed feedback have a separate rendered check:
 godot --path godot -- --scene=race --auto --city=tirane --quality=medium --env=rain --shots=3,10
 ```
 
+Every bend is marked by one continuous chevron band along its outside, from
+just before the turn to just after it, built by `scripts/world/route_signs.gd`.
+
 Every race prints one `RACE seed=… city=… env=… laps=… diff=… handling=…` line (on a phone,
 `adb logcat -s godot`). Pass `--seed=<n>` with the same city, direction, weather,
 laps, difficulty and `--handling=<arcade|pro>` to replay it; `--laps=<n>`

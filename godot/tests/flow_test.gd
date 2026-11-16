@@ -107,6 +107,11 @@ func _ready() -> void:
 			player_cards += 1
 	check(grid_order[0].progress >= grid_order[-1].progress and player_cards == 1, "cards run from the front row back, the player once")
 	check(cards.mouse_filter == Control.MOUSE_FILTER_IGNORE and not cards.leaving, "the cards do not take touches and stay for the sweep")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var card_rect: Rect2 = cards.get_child(0).get_global_rect()
+	for other: Control in [scene.hud._standings, scene.input._fire_btn, scene.input._back_btn, scene.views.view_button, scene.views.mirror_button]:
+		check(not card_rect.intersects(other.get_global_rect()), "the name cards leave %s uncovered" % other.name)
 	scene.cam.intro_t = 2.79
 	scene._process(1.0 / 60.0)
 	check(scene.state == "countdown" and cards.leaving, "the cards leave when the countdown starts")

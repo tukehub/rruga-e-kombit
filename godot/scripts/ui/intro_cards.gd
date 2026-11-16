@@ -20,10 +20,15 @@ static func grid_order(cars: Array[CarState]) -> Array[CarState]:
 
 func setup(race: Race) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Right of the standings, under the speedometer.
-	position = Vector2(300, 136)
+	# On the right, clear of the standings, the city title in the middle and
+	# the camera buttons at the edge.
+	set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	offset_left = -520
+	offset_right = -520
+	offset_top = 136
+	offset_bottom = 136
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
+	column.add_theme_constant_override("separation", 4)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(column)
 	var heading := UiTheme.label(Data.t("intro.grid"), 20, UiTheme.CYAN)
@@ -40,22 +45,24 @@ func setup(race: Race) -> void:
 func _card(place: int, c: CarState) -> Control:
 	var panel := UiTheme.panel(10)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.custom_minimum_size.x = 300
+	panel.custom_minimum_size.x = 270
 	var accent := c.color
 	panel.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.72 if c.is_player else 0.5), Color(accent, 0.95 if c.is_player else 0.45), 10, 2 if c.is_player else 1))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(row)
-	var number := UiTheme.label(str(place), 26, UiTheme.TEXT)
+	var number := UiTheme.label(str(place), 22, UiTheme.TEXT)
 	number.custom_minimum_size.x = 30
 	row.add_child(number)
 	var stripe := ColorRect.new()
 	stripe.color = accent
-	stripe.custom_minimum_size = Vector2(6, 30)
+	stripe.custom_minimum_size = Vector2(6, 24)
 	stripe.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(stripe)
-	var name_label := UiTheme.label(c.name, 26, Color.WHITE if c.is_player else UiTheme.TEXT, c.is_player)
+	var name_label := UiTheme.label(c.name, 22, Color.WHITE if c.is_player else UiTheme.TEXT)
+	if c.is_player:
+		name_label.add_theme_font_override("font", UiTheme.body_bold())
 	name_label.name = "DriverName"
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

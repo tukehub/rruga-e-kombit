@@ -30,21 +30,23 @@ func _ready() -> void:
 		var signs := Signs.new()
 		add_child(signs)
 		signs.build(track, guide, terrain.height_at)
-		check(signs.get_child_count() == 2 and signs.boards.multimesh.instance_count == guide.turns.size() * 4, "whole route uses two shared opaque batches")
-		check(signs.boards.multimesh.use_custom_data, "chevron batch carries per-corner direction/severity")
-		for i in signs.placements.size():
-			var placement: Dictionary = signs.placements[i]
-			var turn: Dictionary = guide.turns[i / 4]
-			var transform: Transform3D = placement.transform
-			check(absf(float(placement.d)) > track.half_w + RoadMesh.KERB_W + 1.0 and float(placement.d) * int(turn.side) < 0.0, "chevrons stand outside the barrier on the outside of the bend")
-			var road_point := track.pos(float(placement.s), float(placement.d))
-			var ground := maxf(road_point.y, terrain.height_at(road_point.x, road_point.z))
-			check(absf(transform.origin.y - ground - 1.55) < 0.001, "board/pole ground contact follows real terrain")
-			check(transform.basis.z.dot(track.tangent(float(turn.start) - 24.0)) < -0.99, "boards face approaching drivers")
-			# Dummy rendering doesn't retain GPU MultiMesh custom data.
-			if DisplayServer.get_name() != "headless":
-				var custom := signs.boards.multimesh.get_instance_custom_data(i)
-				check((custom.r > 0.5) == (turn.direction == "right"), "batched shader receives the same turn direction as HUD")
+		check(signs.get_child_count() == 2 and signs.band.mesh != null and signs.posts.multimesh.instance_count > 0, "whole route is one band mesh and one batch of posts")
+		check(signs.bands.size() == guide.turns.size(), "every bend has its band")
+		for i in signs.bands.size():
+			var band: Dictionary = signs.bands[i]
+			var turn: Dictionary = band.turn
+			var points: Array = band.points
+			# Continuous: from before the bend starts to after it ends, without gaps.
+			check(float(band.length) >= float(turn.span) + Signs.LEAD * 2.0 - 0.01, "the band runs the whole bend")
+			check(absf(track.wrap_s(float(band.from) - (float(turn.start) - Signs.LEAD))) < 0.01, "and starts just before it")
+			for k in range(1, points.size()):
+				check((points[k] as Vector3).distance_to(points[k - 1]) < 4.0, "the band is smooth, even round the outside of a tight bend")
+			check(absf(float(band.d)) > track.half_w + RoadMesh.KERB_W + 1.0 and float(band.d) * int(turn.side) < 0.0, "the band stands outside the barrier on the outside of the bend")
+			for k in [0, points.size() / 2, points.size() - 1]:
+				var p: Vector3 = points[k]
+				var s_at := float(band.from) + float(band.length) * float(k) / float(points.size() - 1)
+				var road_point := track.pos(s_at, float(band.d))
+				check(absf(p.y - maxf(road_point.y, terrain.height_at(road_point.x, road_point.z))) < 0.001, "the band follows the real ground")
 		signs.free()
 		terrain.free()
 	# Match physical apex locations rather than assuming reverse indices line up.
