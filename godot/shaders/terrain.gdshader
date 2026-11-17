@@ -11,7 +11,6 @@ uniform sampler2D tex_rock_n : hint_normal, filter_linear_mipmap_anisotropic, re
 uniform sampler2D tex_urban : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tex_urban_n : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tex_road : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D tex_square : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform bool skanderbeg_square = false;
 // Second, coarser texture scale that hides tiling in the distance.
 uniform bool two_scale = true;
@@ -22,6 +21,8 @@ uniform float night : hint_range(0.0, 1.0) = 0.0;
 uniform vec3 water_color : source_color = vec3(0.02, 0.09, 0.14);
 uniform vec3 grass_tint : source_color = vec3(0.78, 0.86, 0.62);
 uniform vec3 urban_tint : source_color = vec3(0.72, 0.70, 0.66);
+
+#include "res://shaders/square_paving.gdshaderinc"
 
 varying vec3 wpos;
 varying vec3 wnrm;
@@ -100,10 +101,13 @@ void fragment() {
 		vec2 square = abs(wpos.xz - vec2(20.0, -55.0));
 		float square_w = (1.0 - smoothstep(76.0, 84.0, square.x))
 			* (1.0 - smoothstep(75.0, 83.0, square.y));
-		vec3 paving = texture(tex_square, wpos.xz / 5.0).rgb * vec3(0.96, 0.94, 0.89);
+		// The square's own slabs: rows of mixed stone, polished.
+		float paving_rough;
+		float paving_joint;
+		vec3 paving = square_paving(wpos.xz, paving_rough, paving_joint);
 		base = mix(base, paving, square_w);
 		nrm = mix(nrm, vec3(0.5, 0.5, 1.0), square_w);
-		rough = mix(rough, 0.88, square_w);
+		rough = mix(rough, paving_rough, square_w);
 	}
 
 	// water

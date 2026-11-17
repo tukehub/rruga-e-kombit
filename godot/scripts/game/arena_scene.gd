@@ -4,6 +4,7 @@ extends Node3D
 ## the Arena simulation. States: countdown -> play -> over -> results.
 
 const DT := 1.0 / 60.0
+const GROUND_SHADER := preload("res://shaders/square_ground.gdshader")
 const MAX_STEPS := 3
 const WALL_HEIGHT := 1.5
 const OVER_TIME := 3.2           # seconds between time up and the results
@@ -87,7 +88,10 @@ func _build_world() -> void:
 	sky.sky_material = sky_material
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	# Mostly warm fill, a little of the sky's blue: the stone keeps its colours.
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.86, 0.85, 0.84)
+	environment.ambient_light_sky_contribution = 0.3
 	environment.ambient_light_energy = 0.9
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.glow_enabled = bool(Quality.p.glow)
@@ -105,12 +109,11 @@ func _build_world() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2((Arena.HALF_X + 60.0) * 2.0, (Arena.HALF_Z + 60.0) * 2.0)
 	ground.mesh = plane
-	var paving := StandardMaterial3D.new()
-	paving.albedo_color = Color(0.62, 0.6, 0.57)
-	paving.albedo_texture = load("res://assets/landmarks/plinth_stone.jpg")
-	paving.uv1_scale = Vector3(60.0, 42.0, 1.0)
-	paving.roughness = 0.85
+	# Rows of stone slabs in mixed colours, as the real square is paved.
+	var paving := ShaderMaterial.new()
+	paving.shader = GROUND_SHADER
 	ground.material_override = paving
+	ground.name = "SquarePaving"
 	add_child(ground)
 	add_child(_wall_mesh())
 	# The island in the middle carries the statue.
@@ -124,7 +127,7 @@ func _build_world() -> void:
 	island.position.y = 0.5
 	var stone := StandardMaterial3D.new()
 	stone.albedo_color = Color(0.5, 0.48, 0.46)
-	stone.albedo_texture = paving.albedo_texture
+	stone.albedo_texture = load("res://assets/landmarks/plinth_stone.jpg")
 	stone.uv1_triplanar = true
 	stone.uv1_scale = Vector3(0.17, 0.17, 0.17)
 	island.material_override = stone

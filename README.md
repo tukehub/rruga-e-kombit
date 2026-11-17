@@ -28,7 +28,9 @@ car; eagle, bolt, cluster ("Breshëria"), shockwave, mine, oil ("Vaji") and
 storm are weapons, worth 6–30 points a hit. Eagle, bolt, mine and oil can
 also go backwards, on the lower fire button. The square is half as large
 again in area as the legacy one, and Skanderbeg stands 2.4× life on a tall
-plinth in the middle. The simulation is `scripts/sim/arena.gd` (node-free,
+plinth in the middle. The ground is the square's real paving, rows of stone
+slabs in mixed colours (`shaders/square_paving.gdshaderinc`, procedural, no
+texture), also used for the square beside the Tirana circuit. The simulation is `scripts/sim/arena.gd` (node-free,
 deterministic, a port of the legacy `src/035_arena.js` plus oil), drawn by
 `scripts/game/arena_scene.gd` with the race's touch controls; covered by
 `tests/arena_sim` and `tests/arena_flow`. Other city datasets remain in the

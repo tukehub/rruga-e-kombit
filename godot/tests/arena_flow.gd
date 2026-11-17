@@ -55,6 +55,12 @@ func _ready() -> void:
 	# The scene: the square, six cars, the shared controls, the points HUD.
 	check(scene.arena != null and is_equal_approx(scene.arena.time_limit, 120.0) and scene.arena.cars.size() == 6, "a two-minute round with six cars")
 	check(scene.cars.size() == 6 and scene.pads.size() == Arena.PADS.size(), "every car and every pickup pad is drawn")
+	var paving := scene.get_node("SquarePaving") as MeshInstance3D
+	var paving_material := paving.material_override as ShaderMaterial
+	check(paving_material != null and paving_material.shader.resource_path == "res://shaders/square_ground.gdshader", "the ground is the square's own slab paving")
+	check((paving.mesh as PlaneMesh).size.x >= Arena.HALF_X * 2.0 and (paving.mesh as PlaneMesh).size.y >= Arena.HALF_Z * 2.0, "and covers the whole square")
+	var include := FileAccess.get_file_as_string("res://shaders/square_paving.gdshaderinc")
+	check(include.contains("square_paving(") and FileAccess.get_file_as_string("res://shaders/terrain.gdshader").contains("square_paving("), "the race's square uses the same paving")
 	check(scene.state == "countdown" and not scene.arena.started, "the round waits for the countdown")
 	var visual: CarVisual = scene.cars[scene.arena.cars.find(scene.player)]
 	check(visual.global_position.distance_to(Vector3(scene.player.x, 0.0, scene.player.z)) < 0.01, "the player's car is drawn where the simulation has it")
