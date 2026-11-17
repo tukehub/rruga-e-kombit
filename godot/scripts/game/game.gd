@@ -99,6 +99,7 @@ func goto(name: String) -> void:
 		await fade_in.finished
 	await get_tree().process_frame
 	await get_tree().process_frame
+	Announcer.clear()
 	for c in _root.get_children():
 		c.queue_free()
 	await get_tree().process_frame

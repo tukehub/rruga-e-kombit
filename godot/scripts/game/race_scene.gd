@@ -585,11 +585,13 @@ func _process(dt: float) -> void:
 				cd_n = n
 				hud.center(str(n), "", 0.9)
 				Sfx.play("beep", "UI", -4.0)
+				Announcer.say(str(n))
 			if cd_t <= 0.0:
 				race.started = true
 				state = "race"
 				hud.center(Data.t("race.go"), "", 1.0)
 				Sfx.play("go", "UI", -2.0)
+				Announcer.say("go")
 				acc = 0.0
 				if not Settings.touch_steer and not input.tilt_ok and not input.is_desktop():
 					_recover_missing_tilt(1.0)
@@ -701,6 +703,7 @@ func _events() -> void:
 				if c == player:
 					hud.animate_pickup(str(e.type), int(e.get("slot", player.slots.size() - 1)))
 					Sfx.play("pickup", "Pickups", -3.0)
+					Announcer.say("power_up")
 					var replaced := str(e.get("replaced", ""))
 					hud.feed((Data.pw_name(replaced) + " → " if not replaced.is_empty() else "+ ") + Data.pw_name(e.type), Color.html(Data.PW[e.type].col), 2.6)
 					if not Settings.seen_pw(e.type):
@@ -771,6 +774,7 @@ func _events() -> void:
 					Sfx.haptic("wreck")
 					Music.duck(0.3, 2.0)
 				elif e.by == player:
+					Announcer.say("target_destroyed")
 					hud.feed(Data.t("race.wrecked_by_you", [c.name, int(Race.FANS.wreck)]), UiTheme.AMBER)
 					hud.pop(Data.t("race.ko", int(Race.FANS.wreck)))
 				elif _near_vol(c.s) > 0.6:
@@ -818,6 +822,8 @@ func _events() -> void:
 			"lap":
 				if c == player:
 					Sfx.play("lap", "UI", -4.0)
+					if e.lap == race.laps and race.laps > 1:
+						Announcer.say("final_lap")
 					hud.center(Data.t("race.final_lap") if e.lap == race.laps else Data.t("race.lap", [e.lap, race.laps]), "", 1.6)
 			"finish":
 				if c == player and state == "race":
@@ -832,6 +838,7 @@ func _events() -> void:
 					views.view_button.disabled = true
 					Sfx.play("finish", "UI", -2.0)
 					Music.duck(0.45, 2.5)
+					Announcer.say(Announcer.finish_line(player.place, race.cars.size()))
 					hud.flash(Color(1.0, 0.71, 0.28), 0.7)
 					hud.finish_place(Data.ordinal(player.place) + "!", Game.fmt_time(player.finish_time))
 

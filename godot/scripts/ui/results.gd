@@ -124,6 +124,7 @@ func _ready() -> void:
 		foot = Data.t("results.points", int(r.get("score", 0)))
 	elif best < INF and best <= rec_t:
 		foot += "  ·  " + Data.t("results.new_record")
+		Announcer.say("new_record")
 	elif rec_t < INF:
 		foot += "  ·  " + Data.t("results.record", Game.fmt_time(rec_t))
 	v.add_child(UiTheme.label(foot, 23, UiTheme.MUTED))

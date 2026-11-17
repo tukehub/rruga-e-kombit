@@ -41,6 +41,7 @@ var acc := 0.0
 var cd_t := 3.2
 var cd_n := 4
 var over_t := 0.0
+var _hurry_said := false
 var _cam_h := 0.0
 var _cam_snap := true
 var _kick := Vector2.ZERO
@@ -351,6 +352,7 @@ func _process(dt: float) -> void:
 				cd_n = n
 				hud.center(str(n), Data.t("arena.goal"), 0.9)
 				Sfx.play("beep", "UI", -4.0)
+				Announcer.say(str(n))
 			if cd_t <= 0.0:
 				arena.started = true
 				arena.time = 0.0
@@ -358,6 +360,7 @@ func _process(dt: float) -> void:
 				acc = 0.0
 				hud.center(Data.t("race.go"), "", 1.0)
 				Sfx.play("go", "UI", -2.0)
+				Announcer.say("go")
 		"play", "over":
 			if state == "play":
 				input.apply(player)
@@ -372,6 +375,9 @@ func _process(dt: float) -> void:
 				steps += 1
 			acc = minf(acc, DT)
 			_events()
+			if state == "play" and not _hurry_said and arena.time_limit >= 60.0 and arena.time_left() <= 30.0:
+				_hurry_said = true
+				Announcer.say("hurry_up")
 			if state == "over" and over_t >= OVER_TIME:
 				_show_results()
 				return
@@ -585,11 +591,13 @@ func _events() -> void:
 					Sfx.haptic("wreck")
 					Music.duck(0.3, 2.0)
 				elif by == player:
+					Announcer.say("target_destroyed")
 					hud.pop("+%d" % int(e.pts))
 					hud.feed(Data.t("arena.wrecked", [c.name, int(e.pts)]), UiTheme.AMBER)
 			"pickup":
 				if c == player:
 					Sfx.play("pickup", "Pickups", -3.0)
+					Announcer.say("power_up")
 					hud.feed("+ " + Data.pw_name(str(e.type)), Data.pw_col(str(e.type)))
 				pads[arena.pickups.find(e.p)].visible = false
 			"pickup_back":
@@ -653,6 +661,8 @@ func _events() -> void:
 				input.hide()
 				hud.center(Data.t("arena.time_up"), Data.ordinal(player.place) + "!", OVER_TIME)
 				Sfx.play("finish", "UI", -2.0)
+				Announcer.say("time_over")
+				Announcer.say(Announcer.arena_line(player, arena.order))
 
 
 func _show_results() -> void:

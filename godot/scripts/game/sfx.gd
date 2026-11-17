@@ -156,6 +156,7 @@ func apply_volumes() -> void:
 	_set_vol("Pickups", Settings.vol_pickups)
 	_set_vol("UI", Settings.vol_ui)
 	_set_vol("Music", Settings.vol_music)
+	_set_vol("Voice", Settings.vol_voice)
 
 
 func _set_vol(bus: String, v: float) -> void:

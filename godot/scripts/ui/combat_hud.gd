@@ -130,6 +130,8 @@ func _process(dt: float) -> void:
 		return
 	if bool(threat.urgent) and not _was_urgent:
 		_warning_clock = minf(_warning_clock, 0.1)
+		if not bool(threat.shielded):
+			Announcer.say("look_out")
 	_was_urgent = bool(threat.urgent)
 	var guarded := bool(threat.shielded)
 	var color := UiTheme.CYAN if guarded else (UiTheme.RED if bool(threat.urgent) else UiTheme.AMBER)

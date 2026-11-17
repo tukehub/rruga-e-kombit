@@ -716,6 +716,7 @@ func _page_settings() -> Control:
 		Settings.handling = Data.HANDLING.keys()[i])
 	_set_row(list, "weather", Data.t("settings.weather"), no_yes, func(i): Settings.dynamic_weather = (i == 1))
 	_set_row(list, "haptics", Data.t("settings.haptics"), no_yes, func(i): Settings.haptics = (i == 1))
+	_set_row(list, "announcer", Data.t("settings.announcer"), no_yes, func(i): Settings.announcer = (i == 1))
 	_set_row(list, "quality", Data.t("settings.quality"), [Data.t("quality.auto"), Data.t("quality.low"), Data.t("quality.medium"), Data.t("quality.high")], func(i):
 		Settings.quality = ["auto", "low", "medium", "high"][i]
 		Quality.configure_from_settings()
@@ -734,6 +735,7 @@ func _page_settings() -> Control:
 	_set_slider(list, "tyres", Data.t("settings.volume.tyres"), func(x): Settings.vol_tyres = x)
 	_set_slider(list, "impacts", Data.t("settings.volume.impacts"), func(x): Settings.vol_impacts = x)
 	_set_slider(list, "pickups", Data.t("settings.volume.pickups"), func(x): Settings.vol_pickups = x)
+	_set_slider(list, "voice", Data.t("settings.volume.voice"), func(x): Settings.vol_voice = x)
 	var done := UiTheme.button(Data.t("settings.done"), UiTheme.PINK.darkened(0.25), 200)
 	done.pressed.connect(func():
 		Sfx.ui_click()
@@ -789,6 +791,7 @@ func _refresh_settings() -> void:
 	_seg_set(_set_rows.assist, 1 if Settings.assist else 0)
 	_seg_set(_set_rows.handling, maxi(0, Data.HANDLING.keys().find(Settings.handling)))
 	_seg_set(_set_rows.haptics, 1 if Settings.haptics else 0)
+	_seg_set(_set_rows.announcer, 1 if Settings.announcer else 0)
 	_seg_set(_set_rows.quality, maxi(0, ["auto", "low", "medium", "high"].find(Settings.quality)))
 	_seg_set(_set_rows.fps, 1 if Settings.show_fps else 0)
 	_seg_set(_set_rows.frame_target, 1 if Settings.frame_target == 30 else 0)
@@ -798,6 +801,7 @@ func _refresh_settings() -> void:
 	(_set_rows.tyres as HSlider).set_value_no_signal(Settings.vol_tyres)
 	(_set_rows.impacts as HSlider).set_value_no_signal(Settings.vol_impacts)
 	(_set_rows.pickups as HSlider).set_value_no_signal(Settings.vol_pickups)
+	(_set_rows.voice as HSlider).set_value_no_signal(Settings.vol_voice)
 	var qb: Button = _set_rows.quality.get_child(0)
 	qb.text = Data.t("quality.auto_detected", Data.t("quality.%s" % Quality.detected).to_lower())
 

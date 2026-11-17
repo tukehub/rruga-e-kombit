@@ -87,6 +87,7 @@ const T := {
 	"settings.handling.pro": "Pro",
 	"settings.weather": "Mot dhe dritë dinamike",
 	"settings.haptics": "Dridhje",
+	"settings.announcer": "Komentatori",
 	"settings.quality": "Cilësia grafike",
 	"quality.auto": "Auto",
 	"quality.low": "E ulët",
@@ -103,6 +104,7 @@ const T := {
 	"settings.volume.tyres": "Gomat",
 	"settings.volume.impacts": "Përplasjet",
 	"settings.volume.pickups": "Fuqitë",
+	"settings.volume.voice": "Komentatori",
 	"settings.done": "Gati",
 	# ------------ help
 	"help.title": "Si luhet",

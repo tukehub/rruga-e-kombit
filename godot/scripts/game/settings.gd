@@ -7,8 +7,9 @@ const PATH := "user://settings.cfg"
 const PRESENTATION_VERSION := 1
 # Version of the file layout. 1 added `handling`; an older file predates the
 # choice and keeps the arcade handling it always had. 2 added the rim and
-# livery the player drives with; older files start with the free ones.
-const VERSION := 2
+# livery the player drives with; older files start with the free ones. 3 added
+# the announcer switch and its level; older files start with it on, full.
+const VERSION := 3
 
 # tilt sensitivity: index into TILT_FULL (degrees for full steer)
 const TILT_FULL := [32.0, 23.0, 15.0]
@@ -31,6 +32,7 @@ var handling := "arcade"        # id in Data.HANDLING: "arcade" | "pro"
 var difficulty := 1
 var dynamic_weather := false
 var haptics := true
+var announcer := true
 var quality := "auto"           # "auto" | "low" | "medium" | "high"
 var frame_target := 60          # rendering only; simulation stays at60Hz
 var adaptive_quality := true
@@ -41,6 +43,7 @@ var vol_impacts := 1.0
 var vol_pickups := 0.9
 var vol_ui := 0.8
 var vol_music := 0.7
+var vol_voice := 1.0
 var show_fps := false
 var mirror := false            # rear-view mirror: a second scene render
 var car_id := "benxi"
@@ -92,6 +95,9 @@ func load_settings(path := PATH) -> void:
 	handling = Data.HANDLING_DEFAULT if file_version < 1 else Data.handling_id(str(cf.get_value("game", "handling", handling)))
 	difficulty = cf.get_value("game", "difficulty", difficulty)
 	haptics = cf.get_value("game", "haptics", haptics)
+	if file_version >= 3:
+		announcer = bool(cf.get_value("game", "announcer", announcer))
+		vol_voice = clampf(float(cf.get_value("audio", "voice", vol_voice)), 0.0, 1.0)
 	dynamic_weather = cf.get_value("game", "dynamic_weather", dynamic_weather)
 	quality = cf.get_value("video", "quality", quality)
 	frame_target = 30 if int(cf.get_value("video", "frame_target", frame_target)) == 30 else 60
@@ -128,6 +134,7 @@ func save(path := PATH) -> void:
 	cf.set_value("game", "handling", Data.handling_id(handling))
 	cf.set_value("game", "difficulty", difficulty)
 	cf.set_value("game", "haptics", haptics)
+	cf.set_value("game", "announcer", announcer)
 	cf.set_value("game", "dynamic_weather", dynamic_weather)
 	cf.set_value("video", "quality", quality)
 	cf.set_value("video", "frame_target", frame_target)
@@ -141,6 +148,7 @@ func save(path := PATH) -> void:
 	cf.set_value("audio", "pickups", vol_pickups)
 	cf.set_value("audio", "ui", vol_ui)
 	cf.set_value("audio", "music", vol_music)
+	cf.set_value("audio", "voice", vol_voice)
 	cf.set_value("race", "car", car_id)
 	cf.set_value("race", "rim", rim_id)
 	cf.set_value("race", "livery", livery_id)

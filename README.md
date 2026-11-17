@@ -325,12 +325,21 @@ work. An item below that needs a Forward+-only feature is desktop-only.
 4.2 **Engine:** replace the two-loop crossfade in `RaceScene._engine_audio()`
     with idle/low/mid/high layers plus fake gears (pitch ramp, shift one-shot)
     and an off-throttle layer; the nearest two bots get 3D engine loops.
-4.3 **Announcer (English first, Albanian later):** countdown, final lap,
-    position changes, power-up names, new record; priority queue with a
-    minimum gap, on the "Voice" bus (already ducks World and Music), a
-    settings toggle. Lines are keyed per language under
-    `assets/voice/<lang>/` so Albanian recordings drop in later without code
-    changes.
+4.3 **Announcer — English done, Albanian later.** `scripts/game/announcer.gd`
+    (autoload `Announcer`) says lines from `assets/voice/<lang>/<key>.ogg`
+    on the "Voice" bus, which ducks World and Music. `Announcer.LINES` gives
+    each line a priority, a time-to-live (a late warning is dropped, not
+    said late) and a cooldown; lines queue with a 0.25 s gap, at most three
+    wait, and countdown/results lines cut in. Hooked up: 3-2-1-Go in both
+    modes, final lap, power-up, "look out" when an unshielded threat turns
+    urgent, "target destroyed" for a wreck you caused, win / podium / lose
+    at the finish, new lap record on the results, and "hurry up", "time
+    over" and win / tie / lose in points rounds. Settings (version 3) add
+    the "Komentatori" switch and its slider. The lines are Kenney's CC0
+    "Voiceover Pack", male voice (`tools/build_voice.py --voice male|female`);
+    it says "final round", not "final lap", and has no position or power-up
+    name lines. Albanian: record the same keys into `assets/voice/sq/` and
+    point `Announcer.LANG` at it. Covered by `tests/announcer`.
 4.4 **Mix — groundwork done.** `scripts/game/sfx.gd` builds Master
     (hard limiter at -0.5 dB) ← World (reverb, low-pass, compressor keyed by
     Voice) ← Engine / Tyres / Impacts / Pickups / Ambience, plus UI, Music
