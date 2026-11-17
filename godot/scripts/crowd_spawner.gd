@@ -1,10 +1,11 @@
 class_name CrowdSpawner
 extends Node3D
-## Spectators around Skanderbeg Square. One MultiMeshInstance3D per optimised
-## model in CROWD_DIR (tools/optimize_crowd.py writes them), so the whole
-## crowd costs one draw call per model. People stand in small clusters on the
-## first two rows of the grandstands outside the wall, facing the statue;
-## crowd_spectator.gdshader animates them, no skeletons.
+## Spectators around Skanderbeg Square, packed in groups along the first two
+## rows of the grandstands outside the wall, facing the statue. Models come
+## from CROWD_DIR (tools/optimize_crowd.py writes them); there is one
+## MultiMeshInstance3D per model per stand, so stands out of view are culled
+## and far stands drop to the meshes' automatic LODs. crowd_spectator.gdshader
+## animates them, no skeletons.
 ## Barrier geometry comes from Arena (HALF_X x HALF_Z rounded rectangle,
 ## CORNER radius); the stands from ArenaSurroundings.stand_segments().
 
@@ -13,8 +14,10 @@ const SHADER := preload("res://shaders/crowd_spectator.gdshader")
 const MIN_GAP := 0.62              # metres between two people's feet
 const ROWS_USED := 2               # front rows of the stands only
 
-@export var target_count := 110    # 80 on the low preset
-@export var cluster_size := Vector2i(3, 9)
+## People per quality preset; the stands hold ~1,400 at most.
+@export var counts := {"low": 260, "medium": 420, "high": 620}
+@export var cluster_size := Vector2i(6, 20)
+@export var cluster_gap := Vector2(0.8, 3.5)    # metres between two groups
 @export var crowd_seed := 1912
 
 var rng := RandomNumberGenerator.new()
@@ -35,17 +38,20 @@ func spawn() -> void:
 	if meshes.is_empty():
 		push_warning("CrowdSpawner: no *_opt.glb in " + CROWD_DIR)
 		return
-	var count := 80 if Quality.preset == "low" else target_count
+	var count := int(counts.get(Quality.preset, counts.medium))
 	var spots := _scatter(count)
 	spectators = spots.size()
-	# Deal the people out across the models.
-	var per_model: Array = []
-	for i in meshes.size():
-		per_model.append([])
-	for i in spots.size():
-		per_model[rng.randi() % meshes.size()].append(spots[i])
-	for i in meshes.size():
-		_build_multimesh(meshes[i], per_model[i], i)
+	# Deal the people out across the models, one MultiMesh per model per stand.
+	var chunks := {}
+	for spot in spots:
+		var key := Vector2i(rng.randi() % meshes.size(), int(spot.stand))
+		if not chunks.has(key):
+			chunks[key] = []
+		chunks[key].append(spot)
+	var keys := chunks.keys()
+	keys.sort()
+	for key in keys:
+		_build_multimesh(meshes[key.x], chunks[key], key.y)
 
 
 ## [{mesh, texture}] for every optimised spectator model.
@@ -87,45 +93,48 @@ func _first_mesh(node: Node) -> MeshInstance3D:
 	return null
 
 
-## Clusters of people along the front stand rows: [{position, basis}].
+## Groups of people along the front stand rows: [{position, basis, stand}].
+## Every stand row is filled with groups and gaps, then whole groups are
+## dropped at random until `count` remain, so it stays clustered, not thin.
 func _scatter(count: int) -> Array:
 	var segments := ArenaSurroundings.stand_segments(Arena.HALF_X, Arena.HALF_Z, Arena.CORNER)
-	var total := 0.0
-	for s in segments:
-		total += float(s[3])
-	var placed: Array = []
-	var attempts := 0
-	while placed.size() < count and attempts < count * 20:
-		attempts += 1
-		# A cluster: pick a stand by length, a spot on it, then a few friends.
-		var pick := rng.randf() * total
-		var seg: Array = segments[0]
-		for s in segments:
-			pick -= float(s[3])
-			if pick <= 0.0:
-				seg = s
-				break
+	var groups: Array = []
+	for stand in segments.size():
+		var seg: Array = segments[stand]
 		var origin: Vector3 = seg[0]
 		var along: Vector3 = seg[1]
 		var out: Vector3 = seg[2]
 		var length: float = seg[3]
-		var centre := rng.randf_range(2.0, length - 2.0)
-		var size := mini(rng.randi_range(cluster_size.x, cluster_size.y), count - placed.size())
-		for k in size:
-			var row := rng.randi() % ROWS_USED
-			var offset := centre + (k - size * 0.5) * rng.randf_range(0.62, 0.9)
-			if offset < 0.4 or offset > length - 0.4:
-				continue
-			var p := origin + along * offset
-			p += out * (ArenaSurroundings.STAND_STEP * (row + 0.5) + rng.randf_range(-0.25, 0.25))
-			p.y = ArenaSurroundings.STAND_RISE * (row + 1)
-			if not _free(p, placed):
-				continue
-			# Face the statue at the middle of the square: model front is +Z.
-			var to_centre := Vector3(-p.x, 0.0, -p.z).normalized()
-			var basis := Basis.looking_at(to_centre, Vector3.UP, true)
-			basis = basis.rotated(Vector3.UP, rng.randf_range(-0.25, 0.25))
-			placed.append({"position": p, "basis": basis.scaled(Vector3.ONE * rng.randf_range(0.93, 1.06))})
+		for row in ROWS_USED:
+			var at := rng.randf_range(0.4, 2.0)
+			while at < length - 0.4:
+				var group: Array = []
+				for k in rng.randi_range(cluster_size.x, cluster_size.y):
+					if at > length - 0.4:
+						break
+					var p := origin + along * at
+					p += out * (ArenaSurroundings.STAND_STEP * (row + 0.5) + rng.randf_range(-0.22, 0.22))
+					p.y = ArenaSurroundings.STAND_RISE * (row + 1)
+					# Face the statue at the middle of the square: model front is +Z.
+					var to_centre := Vector3(-p.x, 0.0, -p.z).normalized()
+					var basis := Basis.looking_at(to_centre, Vector3.UP, true)
+					basis = basis.rotated(Vector3.UP, rng.randf_range(-0.3, 0.3))
+					group.append({"position": p, "stand": stand,
+						"basis": basis.scaled(Vector3.ONE * rng.randf_range(0.93, 1.06))})
+					at += rng.randf_range(0.62, 0.82)
+				groups.append(group)
+				at += rng.randf_range(cluster_gap.x, cluster_gap.y)
+	var total := 0
+	for g in groups:
+		total += g.size()
+	while total > count and not groups.is_empty():
+		var drop: Array = groups.pop_at(rng.randi() % groups.size())
+		total -= drop.size()
+	var placed: Array = []
+	for g in groups:
+		for spot in g:
+			if _free(spot.position, placed):
+				placed.append(spot)
 	return placed
 
 
@@ -136,7 +145,7 @@ func _free(p: Vector3, placed: Array) -> bool:
 	return true
 
 
-func _build_multimesh(model: Dictionary, spots: Array, index: int) -> void:
+func _build_multimesh(model: Dictionary, spots: Array, stand: int) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
@@ -147,7 +156,7 @@ func _build_multimesh(model: Dictionary, spots: Array, index: int) -> void:
 		# r phase, g speed, b outfit/tint seed.
 		mm.set_instance_custom_data(i, Color(rng.randf(), rng.randf(), rng.randf(), 0.0))
 	var node := MultiMeshInstance3D.new()
-	node.name = "Crowd_" + str(model.name)
+	node.name = "Crowd_%s_%d" % [model.name, stand]
 	node.multimesh = mm
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var material := ShaderMaterial.new()

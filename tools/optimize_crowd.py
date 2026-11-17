@@ -69,16 +69,22 @@ def tri_count(mesh: bpy.types.Mesh) -> int:
 
 
 def world_width(objs: list[bpy.types.Object]) -> float:
-    """Horizontal extent of the evaluated meshes: small = arms down."""
+    """Footprint of the evaluated meshes, width + stride: small = arms down,
+    feet together (no T-poses, no frozen mid-stride walkers)."""
     dg = bpy.context.evaluated_depsgraph_get()
     xs: list[float] = []
+    ys: list[float] = []
     for o in objs:
         ev = o.evaluated_get(dg)
         m = ev.to_mesh()
         mw = o.matrix_world
-        xs.extend((mw @ v.co).x for i, v in enumerate(m.vertices) if i % 7 == 0)
+        for i, v in enumerate(m.vertices):
+            if i % 7 == 0:
+                p = mw @ v.co
+                xs.append(p.x)
+                ys.append(p.y)
         ev.to_mesh_clear()
-    return max(xs) - min(xs) if xs else 0.0
+    return (max(xs) - min(xs)) + (max(ys) - min(ys)) if xs else 0.0
 
 
 def relaxed_frame(objs: list[bpy.types.Object]) -> int:
@@ -89,13 +95,13 @@ def relaxed_frame(objs: list[bpy.types.Object]) -> int:
         return scene.frame_current
     start, end = (int(f) for f in actions[0].frame_range)
     best, best_w = start, float("inf")
-    for f in range(start, end + 1, max(1, (end - start) // 24)):
+    for f in range(start, end + 1, max(1, (end - start) // 48)):
         scene.frame_set(f)
         w = world_width(objs)
         if w < best_w:
             best, best_w = f, w
     scene.frame_set(best)
-    print(f"  pose: frame {best} (width {best_w:.2f} m)")
+    print(f"  pose: frame {best} (width + stride {best_w:.2f} m)")
     return best
 
 
