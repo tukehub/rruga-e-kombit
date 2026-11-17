@@ -73,6 +73,8 @@ const T := {
 	"garage.tab.rim": "Disqet",
 	"garage.tab.livery": "Dekori",
 	"garage.tab.driver": "Shoferi",
+	"garage.driver_name": "Emri",
+	"garage.driver_name.hint": "Shkruaj emrin",
 	"garage.fans": "%d fansa",
 	"garage.price": "%d fansa",
 	"garage.preview": "Provë: %s",

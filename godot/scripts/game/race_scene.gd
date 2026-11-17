@@ -236,6 +236,7 @@ func _build_race() -> void:
 		"handling": handling,
 		"tutorial": bool(Game.race_setting("tutorial")),
 		"driver": int(Game.race_opts.driver),
+		"player_name": Settings.driver_name(int(Game.race_opts.driver)),
 		"player_car": str(Game.race_opts.car),
 	}
 	race = Race.new(track, opts)

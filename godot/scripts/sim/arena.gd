@@ -51,6 +51,7 @@ var projs: Array = []            # eagles, bolts, cluster darts in flight
 var mines: Array = []            # mines and oil slicks on the ground
 var domes: Array = []            # storm domes
 var player: ArenaCar = null
+const SKIP_HASH := ["events", "player", "cars", "order", "opt", "diff"]
 var _pair_t := {}
 var _next_id := 1
 var _weight_sum := 0.0
@@ -74,7 +75,10 @@ func _init(p_opt: Dictionary) -> void:
 	for i in roster.size():
 		var is_player := not no_player and i == 0
 		var def: Dictionary = player_def if is_player else Data.CARS[rng.randi() % Data.CARS.size()]
-		var c := ArenaCar.new(i, def, str(roster[i].name), is_player, Color.html(str(roster[i].col)))
+		var car_name := str(roster[i].name)
+		if is_player and not str(opt.get("player_name", "")).is_empty():
+			car_name = str(opt.player_name)
+		var c := ArenaCar.new(i, def, car_name, is_player, Color.html(str(roster[i].col)))
 		# Spread round the island, facing it: the first seconds are a charge.
 		var angle := float(i) / roster.size() * TAU + 0.6
 		c.x = sin(angle) * (HALF_X - 26.0)
@@ -108,6 +112,28 @@ func _pick_type() -> String:
 
 func emit(e: Dictionary) -> void:
 	events.append(e)
+
+
+## Lockstep desync check (plan 7.1): a digest of everything the next tick
+## depends on. Peers with the same inputs must agree on it every tick.
+func state_hash() -> int:
+	var buf := StreamPeerBuffer.new()
+	StateHash.expand(buf, self, SKIP_HASH)
+	for c in cars:
+		StateHash.expand(buf, c, ["def"])
+		StateHash.write(buf, str(c.def.get("id", "")))
+	for c in order:
+		buf.put_64(c.id)
+	pass
+	return StateHash.digest(buf)
+
+
+## Applies one tick of input to car `index` from Ctrl.pack() bytes, as a
+## lockstep peer would; local input goes through the same path so every peer
+## sees the same quantised values.
+func apply_packed(index: int, bytes: PackedByteArray) -> void:
+	var c: CarState = cars[index]
+	c.ctrl.unpack(bytes, c.slots)
 
 
 func take_events() -> Array:

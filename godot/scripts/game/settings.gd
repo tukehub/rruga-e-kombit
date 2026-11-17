@@ -8,8 +8,11 @@ const PRESENTATION_VERSION := 1
 # Version of the file layout. 1 added `handling`; an older file predates the
 # choice and keeps the arcade handling it always had. 2 added the rim and
 # livery the player drives with; older files start with the free ones. 3 added
-# the announcer switch and its level; older files start with it on, full.
-const VERSION := 3
+# the announcer switch and its level; older files start with it on, full. 4
+# added names the player gives the drivers; older files keep the defaults.
+const VERSION := 4
+## Longest name a driver can be given (fits the standings and name cards).
+const NAME_MAX := 14
 
 # tilt sensitivity: index into TILT_FULL (degrees for full steer)
 const TILT_FULL := [32.0, 23.0, 15.0]
@@ -50,6 +53,7 @@ var car_id := "benxi"
 var rim_id := "silver"          # Data.RIMS; owned ones only, see Game.cosmetics()
 var livery_id := "none"         # Data.LIVERIES
 var driver := 0
+var driver_names := {}        # driver index (String) -> the player's name for them
 var city_id := "tirane"
 var env_override := "day"       # daylight for the focused Tirana build
 var presentation_version := 0
@@ -116,6 +120,12 @@ func load_settings(path := PATH) -> void:
 		rim_id = str(cf.get_value("race", "rim", rim_id))
 		livery_id = str(cf.get_value("race", "livery", livery_id))
 	driver = cf.get_value("race", "driver", driver)
+	driver_names = {}
+	if file_version >= 4:
+		var names = cf.get_value("race", "driver_names", {})
+		if names is Dictionary:
+			for k in names:
+				set_driver_name(int(k), str(names[k]))
 	city_id = cf.get_value("race", "city", city_id)
 	env_override = cf.get_value("race", "env", env_override)
 	laps_override = cf.get_value("race", "laps", laps_override)
@@ -153,6 +163,7 @@ func save(path := PATH) -> void:
 	cf.set_value("race", "rim", rim_id)
 	cf.set_value("race", "livery", livery_id)
 	cf.set_value("race", "driver", driver)
+	cf.set_value("race", "driver_names", driver_names)
 	cf.set_value("race", "city", city_id)
 	cf.set_value("race", "env", env_override)
 	cf.set_value("race", "laps", laps_override)
@@ -167,6 +178,37 @@ func save(path := PATH) -> void:
 
 
 ## Shared by persistence, live layout changes and the pause settings panel.
+## A typed name made safe: printable characters only, spaces collapsed, at
+## most NAME_MAX characters.
+static func clean_name(text: String) -> String:
+	var out := ""
+	for ch in text.strip_edges():
+		var code := ch.unicode_at(0)
+		if code < 32 or code == 127:
+			continue
+		if ch == " " and out.ends_with(" "):
+			continue
+		out += ch
+	return out.strip_edges().left(NAME_MAX).strip_edges()
+
+
+## The name driver `index` races under: the player's, or the default.
+func driver_name(index: int) -> String:
+	var i := clampi(index, 0, Data.DRIVERS.size() - 1)
+	return str(driver_names.get(str(i), Data.DRIVERS[i].name))
+
+
+## Renames driver `index`; an empty name or the default restores the default.
+func set_driver_name(index: int, text: String) -> void:
+	if index < 0 or index >= Data.DRIVERS.size():
+		return
+	var name := clean_name(text)
+	if name.is_empty() or name == str(Data.DRIVERS[index].name):
+		driver_names.erase(str(index))
+	else:
+		driver_names[str(index)] = name
+
+
 func input_config() -> Dictionary:
 	var values := {}
 	for key in ["tilt_sens", "tilt_invert", "touch_steer", "auto_accel", "left_handed", "touch_sens", "control_size", "control_opacity", "control_offset_x", "control_offset_y", "tilt_center"]:

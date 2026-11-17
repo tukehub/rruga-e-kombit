@@ -432,15 +432,37 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     for the cup at any time, earning nothing; like every event it is never
     required. Covered by `tests/tutorial`.
 
+6.5 **Driver names — done.** The garage's driver tab has a name field for
+    the chosen driver: up to 14 characters, control characters dropped,
+    spaces collapsed, empty restores the default. Names are kept per driver
+    in `Settings.driver_names` (version 4; older files keep the defaults)
+    and reach the simulation as the `player_name` option of `Race` and
+    `Arena`, so the standings, name cards, feed and results all use it; the
+    rivals are unchanged. It is also the name a player will show in the
+    lobby (7.3). Covered by `tests/driver_names`.
+
 ### 7. Online multiplayer (2+ friends from home, bots optional)
 
-7.1 **Model:** deterministic lockstep on the existing fixed-step `Race`. Each
-    peer sends only `CarState.ctrl` per tick; seed, city, env, laps and diff
-    are agreed in the lobby. Add an input-delay buffer (2–3 ticks) and a
-    per-tick state hash for desync detection. Prerequisite: audit `race.gd` and
-    `pickup_director.gd` for nondeterminism (RNG usage, dictionary iteration
-    order, float accumulation) and lock it with a replay test comparing two
-    runs of the same seed.
+7.1 **Model: deterministic lockstep — groundwork done.** Each peer sends
+    only `CarState.Ctrl` per tick, packed into 4 bytes by `Ctrl.pack()`
+    (steer as a signed byte, button bits, select, discard as a slot index);
+    `Race.apply_packed()` / `Arena.apply_packed()` apply them, and button
+    presses are OR-ed so a press survives until the tick that uses it.
+    `state_hash()` on both (`scripts/sim/state_hash.gd`) is a SHA-256 digest
+    of every script variable of the simulation, its cars, the pickup
+    director and the RNG state, so new fields are covered automatically.
+    Audit: the simulation uses only its own seeded generators (no global
+    `randf`, clock or OS calls), and arrays and dictionaries iterate in
+    insertion order. `tests/lockstep_replay` steps three races (and three
+    points rounds) side by side: equal hashes for 50 s with the same seed
+    and inputs, apart from exactly the tick where one input changes.
+    Still to do with 7.2/7.3: an input-delay buffer (2–3 ticks), the local
+    car's input through the same pack/unpack path (so its steering is
+    quantised like a remote one), and a hash exchange every ~30 ticks. Risk:
+    floats are exact across identical builds on the same CPU family, but
+    `sin`/`pow` may differ between ARM phones and x86 desktops; a mismatch
+    there is caught by the hash and answered with a state resync from the
+    host (7.4), not by trusting it.
 7.2 **Transport:** Godot `ENetMultiplayerPeer`; one player hosts. Add a small
     relay server (headless Godot, same project, `--server`) for players behind
     NAT.

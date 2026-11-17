@@ -47,6 +47,9 @@ var order: Array[CarState] = []
 var started := false
 var player: CarState = null
 var pickup_director: PickupDirector
+## Left out of state_hash(): static data, presentation queues and references
+## written separately.
+const SKIP_HASH := ["track", "events", "player", "cars", "order", "opt", "pickup_director", "diff", "handling"]
 
 
 ## opt keys: laps, diff (0..2), seed, wet, assist (bool), brake_assist (bool),
@@ -81,7 +84,8 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 		var c: CarState
 		if i == pslot and not no_player:
 			var drv: Dictionary = Data.DRIVERS[clampi(pi, 0, Data.DRIVERS.size() - 1)]
-			c = CarState.new(i, player_def, drv.name, true, Color.html(drv.col))
+			var player_name := str(opt.get("player_name", ""))
+			c = CarState.new(i, player_def, drv.name if player_name.is_empty() else player_name, true, Color.html(drv.col))
 			player = c
 		else:
 			var drv: Dictionary = rivals[bi]
@@ -147,6 +151,28 @@ func _nid() -> int:
 
 func emit(e: Dictionary) -> void:
 	events.append(e)
+
+
+## Lockstep desync check (plan 7.1): a digest of everything the next tick
+## depends on. Peers with the same inputs must agree on it every tick.
+func state_hash() -> int:
+	var buf := StreamPeerBuffer.new()
+	StateHash.expand(buf, self, SKIP_HASH)
+	for c in cars:
+		StateHash.expand(buf, c, ["def"])
+		StateHash.write(buf, str(c.def.get("id", "")))
+	for c in order:
+		buf.put_64(c.id)
+	StateHash.expand(buf, pickup_director)
+	return StateHash.digest(buf)
+
+
+## Applies one tick of input to car `index` from Ctrl.pack() bytes, as a
+## lockstep peer would; local input goes through the same path so every peer
+## sees the same quantised values.
+func apply_packed(index: int, bytes: PackedByteArray) -> void:
+	var c: CarState = cars[index]
+	c.ctrl.unpack(bytes, c.slots)
 
 
 func take_events() -> Array:

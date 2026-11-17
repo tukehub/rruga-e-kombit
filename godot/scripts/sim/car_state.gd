@@ -23,6 +23,47 @@ class Ctrl:
 	var boost := false
 	var discard: Dictionary = {} # exact item reference; never discard a stale index
 
+	## Steering travels as a signed byte; quantise local input the same way
+	## so the local car and every peer simulate identical values.
+	static func quantize(steer_in: float) -> float:
+		return roundf(clampf(steer_in, -1.0, 1.0) * 127.0) / 127.0
+
+	## One tick of input in 4 bytes: steer, button bits, select, discard slot.
+	## `slots` is the car's inventory, to send the discarded item as an index.
+	func pack(slots: Array) -> PackedByteArray:
+		var bytes := PackedByteArray()
+		bytes.resize(4)
+		bytes.encode_s8(0, int(roundf(clampf(steer, -1.0, 1.0) * 127.0)))
+		var bits := (1 if gas else 0) | (2 if brake else 0) | (4 if fire else 0) | (8 if back else 0) | (16 if cycle else 0) | (32 if boost else 0)
+		bytes.encode_u8(1, bits)
+		bytes.encode_u8(2, clampi(select, 0, 255))
+		var slot := -1
+		if not discard.is_empty():
+			for i in slots.size():
+				if is_same(slots[i], discard):
+					slot = i
+					break
+		bytes.encode_s8(3, slot)
+		return bytes
+
+	## Inverse of pack(); the discard index is resolved against `slots`.
+	## Button presses are OR-ed in: a press waits for the tick that uses it.
+	func unpack(bytes: PackedByteArray, slots: Array) -> void:
+		if bytes.size() < 4:
+			return
+		steer = bytes.decode_s8(0) / 127.0
+		var bits := bytes.decode_u8(1)
+		gas = bits & 1 != 0
+		brake = bits & 2 != 0
+		fire = fire or bits & 4 != 0
+		back = back or bits & 8 != 0
+		cycle = cycle or bits & 16 != 0
+		boost = boost or bits & 32 != 0
+		select = maxi(select, bytes.decode_u8(2))
+		var slot := bytes.decode_s8(3)
+		if slot >= 0 and slot < slots.size():
+			discard = slots[slot]
+
 var id := 0
 var def: Dictionary          # entry from Data.CARS
 var name := ""

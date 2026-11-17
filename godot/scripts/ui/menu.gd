@@ -24,6 +24,7 @@ var cup_cards: Array[Button] = []
 const MODES := [{"mode": "race", "minutes": 0}, {"mode": "points", "minutes": 2}, {"mode": "points", "minutes": 3}]
 var _lap_plus: Button
 var _drv_tag: Label
+var _drv_name: LineEdit
 var _fans_label: Label
 var _buy_btn: Button
 var _garage_tabs: HBoxContainer
@@ -541,13 +542,29 @@ func _page_car() -> Control:
 	drivers.add_child(driver_grid)
 	for i in Data.DRIVERS.size():
 		var d: Dictionary = Data.DRIVERS[i]
-		var b := UiTheme.button(d.name)
+		var b := UiTheme.button(Settings.driver_name(i))
 		b.custom_minimum_size = Vector2(164, 50)
 		b.toggle_mode = true
 		var idx := i
 		b.pressed.connect(func(): Sfx.ui_click(); Game.race_opts.driver = idx; _refresh_car())
 		driver_grid.add_child(b)
 		_drv_btns[i] = b
+	var name_row := HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 10)
+	drivers.add_child(name_row)
+	name_row.add_child(UiTheme.label(Data.t("garage.driver_name"), 22, UiTheme.TEXT))
+	_drv_name = LineEdit.new()
+	_drv_name.name = "DriverName"
+	_drv_name.max_length = Settings.NAME_MAX
+	_drv_name.placeholder_text = Data.t("garage.driver_name.hint")
+	_drv_name.custom_minimum_size = Vector2(260, 50)
+	_drv_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_drv_name.select_all_on_focus = true
+	_drv_name.add_theme_font_size_override("font_size", 24)
+	_drv_name.text_changed.connect(func(text: String) -> void: rename_driver(int(Game.race_opts.driver), text, false))
+	_drv_name.text_submitted.connect(func(text: String) -> void: rename_driver(int(Game.race_opts.driver), text, true))
+	_drv_name.focus_exited.connect(func() -> void: rename_driver(int(Game.race_opts.driver), _drv_name.text, true))
+	name_row.add_child(_drv_name)
 	_drv_tag = UiTheme.label("", 22, UiTheme.MUTED)
 	_drv_tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	drivers.add_child(_drv_tag)
@@ -652,6 +669,18 @@ func _buy_preview() -> void:
 	_refresh_car()
 
 
+## Gives driver `index` the typed name; `commit` (enter, leaving the field)
+## saves it and shows the cleaned name, or the default when left empty.
+func rename_driver(index: int, text: String, commit: bool) -> void:
+	Settings.set_driver_name(index, text)
+	if _drv_btns.has(index):
+		(_drv_btns[index] as Button).text = Settings.driver_name(index)
+	if commit:
+		Settings.save()
+		if _drv_name != null:
+			_drv_name.text = Settings.driver_name(index)
+
+
 func _refresh_car() -> void:
 	if _drv_tag == null:
 		return
@@ -661,6 +690,8 @@ func _refresh_car() -> void:
 		b.button_pressed = selected
 		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.25) if selected else Color(1, 1, 1, 0.05), UiTheme.CYAN if selected else Color(1, 1, 1, 0.15), 12))
 	_drv_tag.text = Data.t("driver.%d.tag" % clampi(int(Game.race_opts.driver), 0, Data.DRIVERS.size() - 1))
+	if _drv_name != null and not _drv_name.has_focus():
+		_drv_name.text = Settings.driver_name(int(Game.race_opts.driver))
 	for key in _shop_btns:
 		var b: Button = _shop_btns[key]
 		var kind: String = key.get_slice(":", 0)
