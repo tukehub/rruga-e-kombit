@@ -10,7 +10,6 @@ var back_to := "title"
 var garage_car: CarVisual
 var garage_pivot: Node3D
 var _garage_t := 0.0
-var _drv_btns := {}
 var _diff_btns: Array[Button] = []
 var _lap_value: Label
 var _lap_minus: Button
@@ -23,7 +22,6 @@ var cup_cards: Array[Button] = []
 ## The choices the mode button steps through: a race, or points for 2 or 3 minutes.
 const MODES := [{"mode": "race", "minutes": 0}, {"mode": "points", "minutes": 2}, {"mode": "points", "minutes": 3}]
 var _lap_plus: Button
-var _drv_tag: Label
 var _drv_name: LineEdit
 var _fans_label: Label
 var _buy_btn: Button
@@ -535,39 +533,22 @@ func _page_car() -> Control:
 	drivers.add_theme_constant_override("separation", 10)
 	left.add_child(drivers)
 	_garage_lists["driver"] = drivers
-	var driver_grid := GridContainer.new()
-	driver_grid.columns = 3
-	driver_grid.add_theme_constant_override("h_separation", 10)
-	driver_grid.add_theme_constant_override("v_separation", 8)
-	drivers.add_child(driver_grid)
-	for i in Data.DRIVERS.size():
-		var d: Dictionary = Data.DRIVERS[i]
-		var b := UiTheme.button(Settings.driver_name(i))
-		b.custom_minimum_size = Vector2(164, 50)
-		b.toggle_mode = true
-		var idx := i
-		b.pressed.connect(func(): Sfx.ui_click(); Game.race_opts.driver = idx; _refresh_car())
-		driver_grid.add_child(b)
-		_drv_btns[i] = b
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 10)
 	drivers.add_child(name_row)
 	name_row.add_child(UiTheme.label(Data.t("garage.driver_name"), 22, UiTheme.TEXT))
 	_drv_name = LineEdit.new()
-	_drv_name.name = "DriverName"
+	_drv_name.name = "PlayerName"
 	_drv_name.max_length = Settings.NAME_MAX
-	_drv_name.placeholder_text = Data.t("garage.driver_name.hint")
+	_drv_name.placeholder_text = Data.t("player.default_name")
 	_drv_name.custom_minimum_size = Vector2(260, 50)
 	_drv_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_drv_name.select_all_on_focus = true
 	_drv_name.add_theme_font_size_override("font_size", 24)
-	_drv_name.text_changed.connect(func(text: String) -> void: rename_driver(int(Game.race_opts.driver), text, false))
-	_drv_name.text_submitted.connect(func(text: String) -> void: rename_driver(int(Game.race_opts.driver), text, true))
-	_drv_name.focus_exited.connect(func() -> void: rename_driver(int(Game.race_opts.driver), _drv_name.text, true))
+	_drv_name.text_changed.connect(func(text: String) -> void: rename_player(text, false))
+	_drv_name.text_submitted.connect(func(text: String) -> void: rename_player(text, true))
+	_drv_name.focus_exited.connect(func() -> void: rename_player(_drv_name.text, true))
 	name_row.add_child(_drv_name)
-	_drv_tag = UiTheme.label("", 22, UiTheme.MUTED)
-	_drv_tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	drivers.add_child(_drv_tag)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_child(spacer)
@@ -669,29 +650,21 @@ func _buy_preview() -> void:
 	_refresh_car()
 
 
-## Gives driver `index` the typed name; `commit` (enter, leaving the field)
-## saves it and shows the cleaned name, or the default when left empty.
-func rename_driver(index: int, text: String, commit: bool) -> void:
-	Settings.set_driver_name(index, text)
-	if _drv_btns.has(index):
-		(_drv_btns[index] as Button).text = Settings.driver_name(index)
+## The player's typed name; `commit` (enter, leaving the field) saves it and
+## shows the cleaned name, or the default when left empty.
+func rename_player(text: String, commit: bool) -> void:
+	Settings.set_player_name(text)
 	if commit:
 		Settings.save()
 		if _drv_name != null:
-			_drv_name.text = Settings.driver_name(index)
+			_drv_name.text = Settings.player_name
 
 
 func _refresh_car() -> void:
-	if _drv_tag == null:
+	if _drv_name == null:
 		return
-	for i in _drv_btns:
-		var b: Button = _drv_btns[i]
-		var selected: bool = i == int(Game.race_opts.driver)
-		b.button_pressed = selected
-		b.add_theme_stylebox_override("normal", UiTheme.flat(Color(UiTheme.CYAN, 0.25) if selected else Color(1, 1, 1, 0.05), UiTheme.CYAN if selected else Color(1, 1, 1, 0.15), 12))
-	_drv_tag.text = Data.t("driver.%d.tag" % clampi(int(Game.race_opts.driver), 0, Data.DRIVERS.size() - 1))
-	if _drv_name != null and not _drv_name.has_focus():
-		_drv_name.text = Settings.driver_name(int(Game.race_opts.driver))
+	if not _drv_name.has_focus():
+		_drv_name.text = Settings.player_name
 	for key in _shop_btns:
 		var b: Button = _shop_btns[key]
 		var kind: String = key.get_slice(":", 0)

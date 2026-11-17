@@ -100,8 +100,6 @@ func data_checks() -> void:
 	for type: String in Data.PW_KEYS:
 		check(Data.has_text("pw.%s.name" % type) and Data.has_text("pw.%s.desc" % type), "power-up has a name and a description: " + type)
 		check(Data.has_text("input.fire.%s" % type), "power-up has a fire button caption: " + type)
-	for index in Data.DRIVERS.size():
-		check(Data.has_text("driver.%d.tag" % index), "driver has a tag line: %d" % index)
 	for index in Data.DIFFS.size():
 		check(Data.has_text("diff.%d" % index), "difficulty has a name: %d" % index)
 	for preset: String in Quality.PRESETS:

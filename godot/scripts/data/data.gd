@@ -131,14 +131,18 @@ const PW_KEYS := ["eagle", "bolt", "barge", "mine", "shock", "nitro", "shield", 
 # Six drivers: the player is one, the other five drive the bots. Their names
 # are proper names, the same in every language; the tag lines are text
 # ("driver.<index>.tag").
+# The grid's six marker colours. The player always takes the first and races
+# under Settings.display_name(); the other five are bots named below.
 const DRIVERS := [
-	{"name": "Artur", "col": "#ff2a3d"},
-	{"name": "Ritvan", "col": "#1fb6ff"},
-	{"name": "Desantin", "col": "#ffc21a"},
-	{"name": "Eno", "col": "#2bff88"},
-	{"name": "Erlin", "col": "#c46bff"},
-	{"name": "Flori", "col": "#19e6c1"},
+	{"col": "#ff2a3d"},
+	{"col": "#1fb6ff"},
+	{"col": "#ffc21a"},
+	{"col": "#2bff88"},
+	{"col": "#c46bff"},
+	{"col": "#19e6c1"},
 ]
+## The player's name when a simulation is built without one (tests, replays).
+const PLAYER_FALLBACK_NAME := "P1"
 
 # Opponents have their own names so changing the AI lineup never changes the
 # player's saved driver selection or the name displayed for that selection.

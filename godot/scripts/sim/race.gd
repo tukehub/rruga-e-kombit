@@ -46,10 +46,12 @@ var domes: Array = []
 var order: Array[CarState] = []
 var started := false
 var player: CarState = null
+## Human-driven cars in lobby order (online races; empty otherwise).
+var humans: Array[CarState] = []
 var pickup_director: PickupDirector
 ## Left out of state_hash(): static data, presentation queues and references
 ## written separately.
-const SKIP_HASH := ["track", "events", "player", "cars", "order", "opt", "pickup_director", "diff", "handling"]
+const SKIP_HASH := ["track", "events", "player", "humans", "cars", "order", "opt", "pickup_director", "diff", "handling"]
 
 
 ## opt keys: laps, diff (0..2), seed, wet, assist (bool), brake_assist (bool),
@@ -70,6 +72,16 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 	brake_assist = bool(opt.get("brake_assist", false))
 	handling = Data.HANDLING[Data.handling_id(str(opt.get("handling", Data.HANDLING_DEFAULT)))]
 	tutorial = bool(opt.get("tutorial", false))
+	if opt.has("humans"):
+		var list: Array = opt.humans
+		_grid_for_humans(list, int(opt.get("bots", Data.DRIVERS.size() - list.size())))
+	else:
+		_grid_for_player()
+	_stations_and_director()
+
+
+## The usual grid: one player (or none) and bots.
+func _grid_for_player() -> void:
 	var no_player := bool(opt.get("no_player", false))
 	var pi := -1 if no_player else int(opt.get("driver", 0))
 	var rivals := Data.rivals_of(pi, rng)
@@ -85,7 +97,7 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 		if i == pslot and not no_player:
 			var drv: Dictionary = Data.DRIVERS[clampi(pi, 0, Data.DRIVERS.size() - 1)]
 			var player_name := str(opt.get("player_name", ""))
-			c = CarState.new(i, player_def, drv.name if player_name.is_empty() else player_name, true, Color.html(drv.col))
+			c = CarState.new(i, player_def, Data.PLAYER_FALLBACK_NAME if player_name.is_empty() else player_name, true, Color.html(drv.col))
 			player = c
 		else:
 			var drv: Dictionary = rivals[bi]
@@ -108,7 +120,10 @@ func _init(p_track: RaceTrack, p_opt: Dictionary) -> void:
 		c.ai.skill = 0.975 + rng.randf() * 0.05
 		c.ai.react = 0.8 + rng.randf() * 0.5
 		cars.append(c)
-	# pick-up stations
+
+
+## Pick-up stations and the adaptive director; the same for every grid.
+func _stations_and_director() -> void:
 	var n_st := clampi(roundi(L / 300.0), 5, 10)
 	var wsum := 0.0
 	for k in Data.PW_KEYS:
@@ -151,6 +166,58 @@ func _nid() -> int:
 
 func emit(e: Dictionary) -> void:
 	events.append(e)
+
+
+## A grid for an online race (plan 7.3): `humans` is [{name, car}] in the
+## order every peer agrees on, `bots` fills the rest. Humans take the first
+## colours and the back of the grid, bots the other colours and rival names.
+## `player` is the first human on every peer, so everything the simulation
+## measures against "the player" (rubber band, help pickups) is the same
+## everywhere; each scene finds its own car in `humans`.
+func _grid_for_humans(list: Array, bots: int) -> void:
+	var h := clampi(list.size(), 1, Data.DRIVERS.size())
+	var n := clampi(h + maxi(bots, 0), h, Data.DRIVERS.size())
+	var used := []
+	for i in h:
+		used.append(Data.DRIVERS[i].col)
+	var rivals := []
+	for r: Dictionary in Data.rivals_of(-1, rng):
+		if not r.col in used:
+			rivals.append(r)
+	var human_slots := []
+	for k in [n - 2, n - 1, n - 3, n - 4, n - 5, n - 6]:
+		if k >= 0 and human_slots.size() < h:
+			human_slots.append(k)
+	var bot_def: Dictionary = Data.car(str(list[0].get("car", Data.CARS[0].id)))
+	var bi := 0
+	humans.resize(h)
+	for i in n:
+		var row := i / 2
+		var col := i % 2
+		var c: CarState
+		var hi := human_slots.find(i)
+		if hi >= 0:
+			var entry: Dictionary = list[hi]
+			var human_name := str(entry.get("name", ""))
+			c = CarState.new(i, Data.car(str(entry.get("car", Data.CARS[0].id))), Data.PLAYER_FALLBACK_NAME if human_name.is_empty() else human_name, true, Color.html(Data.DRIVERS[hi].col))
+			humans[hi] = c
+		else:
+			var drv: Dictionary = rivals[bi]
+			c = CarState.new(i, _pick_bot_car(bot_def, bi), drv.name, false, Color.html(drv.col))
+			bi += 1
+		c.progress = -9.0 - row * 9.0 - col * 3.5
+		c.s = track.mod_s(c.progress)
+		c.d = 4.0 if col == 1 else -4.0
+		c.ai.t = 1.0 + rng.randf()
+		c.ai.plan_t = 0.0
+		c.ai.v_t = 0.0
+		c.ai.d_t = c.d
+		c.ai.lane_bias = (rng.randf() - 0.5) * 4.0
+		c.ai.line_amt = 0.6 + rng.randf() * 0.35
+		c.ai.skill = 0.975 + rng.randf() * 0.05
+		c.ai.react = 0.8 + rng.randf() * 0.5
+		cars.append(c)
+	player = humans[0]
 
 
 ## Lockstep desync check (plan 7.1): a digest of everything the next tick

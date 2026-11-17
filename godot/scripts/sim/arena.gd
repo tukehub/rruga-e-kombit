@@ -75,7 +75,7 @@ func _init(p_opt: Dictionary) -> void:
 	for i in roster.size():
 		var is_player := not no_player and i == 0
 		var def: Dictionary = player_def if is_player else Data.CARS[rng.randi() % Data.CARS.size()]
-		var car_name := str(roster[i].name)
+		var car_name := str(roster[i].get("name", Data.PLAYER_FALLBACK_NAME))
 		if is_player and not str(opt.get("player_name", "")).is_empty():
 			car_name = str(opt.player_name)
 		var c := ArenaCar.new(i, def, car_name, is_player, Color.html(str(roster[i].col)))

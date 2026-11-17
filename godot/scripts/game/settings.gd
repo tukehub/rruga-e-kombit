@@ -9,9 +9,13 @@ const PRESENTATION_VERSION := 1
 # choice and keeps the arcade handling it always had. 2 added the rim and
 # livery the player drives with; older files start with the free ones. 3 added
 # the announcer switch and its level; older files start with it on, full. 4
-# added names the player gives the drivers; older files keep the defaults.
-const VERSION := 4
-## Longest name a driver can be given (fits the standings and name cards).
+# added names the player gave the six drivers. 5 replaced the driver choice
+# with one name for the player (the rest are bots); a file before 5 keeps the
+# name its chosen driver raced under.
+const VERSION := 5
+## Names the six selectable drivers had, for upgrading files before 5.
+const LEGACY_DRIVERS := ["Artur", "Ritvan", "Desantin", "Eno", "Erlin", "Flori"]
+## Longest name the player can take (fits the standings and name cards).
 const NAME_MAX := 14
 
 # tilt sensitivity: index into TILT_FULL (degrees for full steer)
@@ -52,8 +56,7 @@ var mirror := false            # rear-view mirror: a second scene render
 var car_id := "benxi"
 var rim_id := "silver"          # Data.RIMS; owned ones only, see Game.cosmetics()
 var livery_id := "none"         # Data.LIVERIES
-var driver := 0
-var driver_names := {}        # driver index (String) -> the player's name for them
+var player_name := ""          # empty: Data.t("player.default_name")
 var city_id := "tirane"
 var env_override := "day"       # daylight for the focused Tirana build
 var presentation_version := 0
@@ -119,13 +122,13 @@ func load_settings(path := PATH) -> void:
 	if file_version >= 2:
 		rim_id = str(cf.get_value("race", "rim", rim_id))
 		livery_id = str(cf.get_value("race", "livery", livery_id))
-	driver = cf.get_value("race", "driver", driver)
-	driver_names = {}
-	if file_version >= 4:
-		var names = cf.get_value("race", "driver_names", {})
-		if names is Dictionary:
-			for k in names:
-				set_driver_name(int(k), str(names[k]))
+	player_name = ""
+	if file_version >= 5:
+		set_player_name(str(cf.get_value("race", "player_name", "")))
+	elif cf.has_section_key("race", "driver"):
+		var old_driver := clampi(int(cf.get_value("race", "driver", 0)), 0, LEGACY_DRIVERS.size() - 1)
+		var names = cf.get_value("race", "driver_names", {}) if file_version >= 4 else {}
+		set_player_name(str(names.get(str(old_driver), LEGACY_DRIVERS[old_driver])) if names is Dictionary else LEGACY_DRIVERS[old_driver])
 	city_id = cf.get_value("race", "city", city_id)
 	env_override = cf.get_value("race", "env", env_override)
 	laps_override = cf.get_value("race", "laps", laps_override)
@@ -162,8 +165,7 @@ func save(path := PATH) -> void:
 	cf.set_value("race", "car", car_id)
 	cf.set_value("race", "rim", rim_id)
 	cf.set_value("race", "livery", livery_id)
-	cf.set_value("race", "driver", driver)
-	cf.set_value("race", "driver_names", driver_names)
+	cf.set_value("race", "player_name", player_name)
 	cf.set_value("race", "city", city_id)
 	cf.set_value("race", "env", env_override)
 	cf.set_value("race", "laps", laps_override)
@@ -192,21 +194,14 @@ static func clean_name(text: String) -> String:
 	return out.strip_edges().left(NAME_MAX).strip_edges()
 
 
-## The name driver `index` races under: the player's, or the default.
-func driver_name(index: int) -> String:
-	var i := clampi(index, 0, Data.DRIVERS.size() - 1)
-	return str(driver_names.get(str(i), Data.DRIVERS[i].name))
+## The name the player races and plays online under.
+func display_name() -> String:
+	return player_name if not player_name.is_empty() else Data.t("player.default_name")
 
 
-## Renames driver `index`; an empty name or the default restores the default.
-func set_driver_name(index: int, text: String) -> void:
-	if index < 0 or index >= Data.DRIVERS.size():
-		return
-	var name := clean_name(text)
-	if name.is_empty() or name == str(Data.DRIVERS[index].name):
-		driver_names.erase(str(index))
-	else:
-		driver_names[str(index)] = name
+## Sets the player's name; empty restores the default.
+func set_player_name(text: String) -> void:
+	player_name = clean_name(text)
 
 
 func input_config() -> Dictionary:

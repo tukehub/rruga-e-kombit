@@ -28,7 +28,6 @@ LINES = {
     "1": "1",
     "go": "go",
     "final_lap": "final_round",
-    "power_up": "power_up",
     "look_out": "war_look_out",
     "target_destroyed": "war_target_destroyed",
     "you_win": "you_win",

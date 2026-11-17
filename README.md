@@ -331,14 +331,14 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     each line a priority, a time-to-live (a late warning is dropped, not
     said late) and a cooldown; lines queue with a 0.25 s gap, at most three
     wait, and countdown/results lines cut in. Hooked up: 3-2-1-Go in both
-    modes, final lap, power-up, "look out" when an unshielded threat turns
+    modes, final lap, "look out" when an unshielded threat turns
     urgent, "target destroyed" for a wreck you caused, win / podium / lose
     at the finish, new lap record on the results, and "hurry up", "time
     over" and win / tie / lose in points rounds. Settings (version 3) add
     the "Komentatori" switch and its slider. The lines are Kenney's CC0
     "Voiceover Pack", male voice (`tools/build_voice.py --voice male|female`);
-    it says "final round", not "final lap", and has no position or power-up
-    name lines. Albanian: record the same keys into `assets/voice/sq/` and
+    it says "final round", not "final lap", and has no position lines.
+    Power-ups are deliberately not announced. Albanian: record the same keys into `assets/voice/sq/` and
     point `Announcer.LANG` at it. Covered by `tests/announcer`.
 4.4 **Mix — groundwork done.** `scripts/game/sfx.gd` builds Master
     (hard limiter at -0.5 dB) ← World (reverb, low-pass, compressor keyed by
@@ -432,14 +432,15 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     for the cup at any time, earning nothing; like every event it is never
     required. Covered by `tests/tutorial`.
 
-6.5 **Driver names — done.** The garage's driver tab has a name field for
-    the chosen driver: up to 14 characters, control characters dropped,
-    spaces collapsed, empty restores the default. Names are kept per driver
-    in `Settings.driver_names` (version 4; older files keep the defaults)
-    and reach the simulation as the `player_name` option of `Race` and
-    `Arena`, so the standings, name cards, feed and results all use it; the
-    rivals are unchanged. It is also the name a player will show in the
-    lobby (7.3). Covered by `tests/driver_names`.
+6.5 **Your name — done.** There is no driver to pick: the player sets
+    only their own name in the garage's "Shoferi" tab (up to 14 characters,
+    control characters dropped, spaces collapsed; empty means "Ti"), and
+    the other five cars are bots with the rival names. `Settings.player_name`
+    (version 5) replaced the driver choice; an older file keeps the name
+    its chosen driver raced under. The name reaches the simulation as the
+    `player_name` option of `Race` and `Arena`, and it is the name shown
+    in an online lobby. `Data.DRIVERS` is now only the grid's six colours.
+    Covered by `tests/player_name`.
 
 ### 7. Online multiplayer (2+ friends from home, bots optional)
 
@@ -463,9 +464,27 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     `sin`/`pow` may differ between ARM phones and x86 desktops; a mismatch
     there is caught by the hash and answered with a state resync from the
     host (7.4), not by trusting it.
-7.2 **Transport:** Godot `ENetMultiplayerPeer`; one player hosts. Add a small
-    relay server (headless Godot, same project, `--server`) for players behind
-    NAT.
+7.2 **Transport — done for direct connections.** `scripts/net/`:
+    `NetProto` (wire format: an input is 10 bytes, a hash 14),
+    `Lockstep` (input delay of 3 ticks = 50 ms, stalls instead of guesses,
+    a hash compared every 30 ticks), `NetSession` (ENet, one reliable
+    ordered channel, UDP port 47651) and `NetRace` (steps a `Race` once
+    every human's input for the tick is in). The host's phone is the hub:
+    clients connect only to it, it relays inputs and hashes, runs the
+    lobby, sends the race settings, and refuses late joiners, a full lobby
+    (6) and other game versions. `Race` takes `humans` ([{name, car}] in
+    lobby order) and `bots`; every peer builds the same grid and `player`
+    is the first human everywhere, so the rubber band and help pickups do
+    not depend on whose phone it is. A dropped player's car turns into a
+    bot on the first tick the host has no input for, the same tick on
+    every phone. `tests/net_session` runs three sessions over real sockets
+    on this machine: same lobby, 20 s of racing with no desync and
+    identical final state, a client leaving at 8 s, version and late-join
+    refusals. Works today where phones can reach the host's IP (same
+    Wi-Fi). From different homes: the relay below.
+    Next: the relay server for internet play (headless Godot `--server`
+    with 6-letter room codes, so nobody needs to forward ports), and a
+    delay that grows with the measured ping instead of a fixed 3 ticks.
 7.3 **Lobby UI** in `menu.gd`: host/join by code, paint pick, ready, bot count
     0..(6 − humans). Remote players fill `CarState` slots in `Race._init()`.
 7.4 **Resilience:** pause/resync on disconnect, bot takeover of a dropped

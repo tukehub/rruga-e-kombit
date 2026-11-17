@@ -74,7 +74,7 @@ const T := {
 	"garage.tab.livery": "Dekori",
 	"garage.tab.driver": "Shoferi",
 	"garage.driver_name": "Emri",
-	"garage.driver_name.hint": "Shkruaj emrin",
+	"player.default_name": "Ti",
 	"garage.fans": "%d fansa",
 	"garage.price": "%d fansa",
 	"garage.preview": "Provë: %s",
@@ -387,13 +387,6 @@ const T := {
 	"pw.ram.desc": "Vetëm në Shesh: 1.6 sekonda sulm i blinduar. Kë prek, e hedh tej me dëm dhe pikë të dyfishta.",
 	"pw.repair.name": "Usta",
 	"pw.repair.desc": "Usta Ramizi ta rregullon makinën. Pa faturë.",
-	# ------------ data: drivers (Data.DRIVERS; the names themselves stay in data.gd)
-	"driver.0.tag": "Gjithmonë me gaz",
-	"driver.1.tag": "Ftohtë si Valbona",
-	"driver.2.tag": "Fren? Ç’është ajo?",
-	"driver.3.tag": "Drift në çdo kthesë",
-	"driver.4.tag": "Godet i pari, pyet më vonë",
-	"driver.5.tag": "Vëllai i vogël i shpejtësisë",
 	# ------------ written, but no screen shows it yet: the city selector (plan 8) and the old tips
 	"city.tirane.region": "Shqipëri",
 	"city.tirane.blurb": "Bulevardi në dritën e ditës: pallate me ngjyra dhe Piramida në krah.",

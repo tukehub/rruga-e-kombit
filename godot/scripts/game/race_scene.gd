@@ -235,8 +235,7 @@ func _build_race() -> void:
 		"brake_assist": Settings.assist,
 		"handling": handling,
 		"tutorial": bool(Game.race_setting("tutorial")),
-		"driver": int(Game.race_opts.driver),
-		"player_name": Settings.driver_name(int(Game.race_opts.driver)),
+		"player_name": Settings.display_name(),
 		"player_car": str(Game.race_opts.car),
 	}
 	race = Race.new(track, opts)
@@ -245,9 +244,9 @@ func _build_race() -> void:
 	if "--auto" in Game.launch_options():
 		player.autopilot = true  # debug: let the AI drive the player car
 	# One line per race in the log (adb logcat -s godot) is enough to replay it.
-	print("RACE seed=%d city=%s reverse=%s env=%s laps=%d diff=%d assist=%s handling=%s car=%s driver=%d" % [
+	print("RACE seed=%d city=%s reverse=%s env=%s laps=%d diff=%d assist=%s handling=%s car=%s" % [
 		seed_value, city_id, str(bool(Game.race_setting("reverse"))), env_id, race.laps, int(Game.race_setting("diff")),
-		str(Settings.assist), handling, str(Game.race_opts.car), int(Game.race_opts.driver)])
+		str(Settings.assist), handling, str(Game.race_opts.car)])
 	for c in race.cars:
 		var cv := CarVisual.new()
 		add_child(cv)
@@ -704,7 +703,6 @@ func _events() -> void:
 				if c == player:
 					hud.animate_pickup(str(e.type), int(e.get("slot", player.slots.size() - 1)))
 					Sfx.play("pickup", "Pickups", -3.0)
-					Announcer.say("power_up")
 					var replaced := str(e.get("replaced", ""))
 					hud.feed((Data.pw_name(replaced) + " → " if not replaced.is_empty() else "+ ") + Data.pw_name(e.type), Color.html(Data.PW[e.type].col), 2.6)
 					if not Settings.seen_pw(e.type):

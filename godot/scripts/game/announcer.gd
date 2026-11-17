@@ -34,7 +34,6 @@ const LINES := {
 	"target_destroyed": {"prio": 3, "ttl": 1.5, "cooldown": 3.0},
 	"new_record": {"prio": 2, "ttl": 5.0, "cooldown": 0.0},
 	"hurry_up": {"prio": 2, "ttl": 3.0, "cooldown": 20.0},
-	"power_up": {"prio": 1, "ttl": 1.0, "cooldown": 8.0},
 }
 
 var _player: AudioStreamPlayer

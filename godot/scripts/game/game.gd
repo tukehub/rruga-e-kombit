@@ -30,7 +30,6 @@ var race_opts := {
 	"reverse": false,   # travel the same circuit in the opposite direction
 	"diff": 1,
 	"car": "benxi",
-	"driver": 0,
 	"mode": "race",        # "race", or "points": the square, by score
 	"event": "",           # a cup event id: its own laps, weather, rivals, direction
 	"tutorial": false,     # set by the tutorial event only
@@ -53,7 +52,6 @@ func _ready() -> void:
 	race_opts.city = Settings.city_id
 	# A saved paint the player no longer owns falls back to the first one.
 	race_opts.car = Settings.car_id if Progress.owns("paint", Settings.car_id) else str(Data.CARS[0].id)
-	race_opts.driver = Settings.driver
 	race_opts.diff = Settings.difficulty
 	race_opts.env = Settings.env_override
 	race_opts.laps = Settings.laps_override
@@ -214,7 +212,6 @@ func start_race() -> void:
 		return
 	Settings.city_id = race_opts.city
 	Settings.car_id = race_opts.car
-	Settings.driver = race_opts.driver
 	Settings.difficulty = race_opts.diff
 	Settings.env_override = race_opts.env
 	Settings.laps_override = race_opts.laps
