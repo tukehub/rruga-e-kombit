@@ -19,3 +19,9 @@ tools/godot.zip
 __pycache__/
 *.pyc
 /*.log
+
+# Raw crowd sources for tools/optimize_crowd.py: large, third-party licensed.
+raw_assets/**/*.fbx
+raw_assets/**/*.glb
+raw_assets/**/*.gltf
+raw_assets/**/*.obj

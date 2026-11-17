@@ -1,12 +1,11 @@
 class_name ArenaSurroundings
 extends Node3D
 ## What stands around the points-mode square: the race's Tirana landmarks in
-## their real bearings from the statue, grandstands of cheering spectators,
+## their real bearings from the statue, grandstands (CrowdSpawner fills them),
 ## flags, lamps and trees. Everything sits outside the wall and the chase
 ## camera's reach; repeated things are MultiMeshes so phones pay a handful of
 ## draw calls for the crowd, flags, lamps and trees together.
 
-const CROWD_SHADER := preload("res://shaders/crowd_cheer.gdshader")
 const FLAG_SHADER := preload("res://shaders/flag_wave.gdshader")
 ## Landmarks of the race's Tirana that stand around Skanderbeg Square.
 const LANDMARK_IDS := ["national_museum", "mosque", "clocktower", "plaza_tower",
@@ -19,30 +18,21 @@ const STAND_GAP := 12.0
 const STAND_ROWS := 3
 const STAND_STEP := 1.5          # depth of a stand row, metres
 const STAND_RISE := 0.55         # height gained per row
-const SEAT_SPACING := 1.05       # metres between spectators along a row
 ## Landmarks keep clear of the wall, the stands and the trees behind them.
 const LANDMARK_CLEARANCE := 34.0
 ## Footprint radius of each landmark (half the diagonal of its model's box).
 const FOOTPRINT := {"national_museum": 56.0, "mosque": 15.0, "clocktower": 6.0,
 	"plaza_tower": 22.0, "international_hotel": 32.0, "eyes_tirana": 26.0,
 	"cathedral": 29.0, "bank_albania": 25.0}
-const SHIRTS := [Color(0.85, 0.08, 0.1), Color(0.08, 0.06, 0.06), Color(0.92, 0.92, 0.9),
-	Color(0.85, 0.08, 0.1), Color(0.15, 0.3, 0.7), Color(0.95, 0.75, 0.15), Color(0.2, 0.55, 0.3),
-	Color(0.85, 0.08, 0.1), Color(0.55, 0.2, 0.55), Color(0.3, 0.3, 0.32)]
-const SKIN := [Color(0.93, 0.76, 0.62), Color(0.82, 0.62, 0.47), Color(0.66, 0.47, 0.34), Color(0.45, 0.31, 0.22)]
-const TROUSERS := [Color(0.12, 0.14, 0.2), Color(0.2, 0.2, 0.22), Color(0.36, 0.3, 0.24), Color(0.25, 0.3, 0.42)]
-
 var rng := RandomNumberGenerator.new()
-var spectators := 0
 var placed_landmarks: Array = []    # [{id, position, radius}]
 
 
 func build(half_x: float, half_z: float, corner: float) -> void:
 	rng.seed = 7071912                # same square every round
 	_landmarks(half_x, half_z)
-	var stands := _stand_segments(half_x, half_z, corner)
+	var stands := stand_segments(half_x, half_z, corner)
 	_stands(stands)
-	_crowd(stands)
 	_flags_and_lamps(stands)
 	_trees(half_x, half_z)
 
@@ -98,7 +88,7 @@ func _clear_of_square(offset: Vector2, radius: float, hx: float, hz: float) -> V
 
 # ------------------------------------------------------------------ stands
 ## Straight runs of grandstand: [origin, along, outward normal, length].
-func _stand_segments(half_x: float, half_z: float, corner: float) -> Array:
+static func stand_segments(half_x: float, half_z: float, corner: float) -> Array:
 	var segments := []
 	var run_x := half_x - corner - 6.0
 	var run_z := half_z - corner - 6.0
@@ -151,24 +141,7 @@ func _box_node(size: Vector3, material: Material) -> MeshInstance3D:
 	return node
 
 
-# ------------------------------------------------------------------ crowd
-func _person_mesh() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# Skin parts are white: the instance colour carries each person's skin tone.
-	var skin := Color.WHITE
-	var trousers: Color = TROUSERS[0]
-	_part(st, Vector3(0, 0.45, 0), Vector3(0.34, 0.9, 0.22), trousers, 4.0)
-	_part(st, Vector3(0, 1.17, 0), Vector3(0.46, 0.56, 0.26), Color.WHITE, 1.0)
-	_part(st, Vector3(0, 1.6, 0), Vector3(0.24, 0.27, 0.24), skin, 0.0)
-	# Arms raised in a V, pivoting at the shoulders in the shader.
-	for side in [-1.0, 1.0]:
-		var arm := Basis(Vector3.BACK, -side * 0.35)
-		var tag := 2.0 if side < 0.0 else 3.0
-		_part(st, Vector3(side * 0.25, 1.38, 0) + arm * Vector3(0, 0.3, 0), Vector3(0.11, 0.6, 0.11), skin, tag, arm)
-	return st.commit()
-
-
+# ------------------------------------------------------------------ shared box helper
 func _part(st: SurfaceTool, c: Vector3, size: Vector3, col: Color, tag: float, basis := Basis.IDENTITY) -> void:
 	var h := size * 0.5
 	var faces := [
@@ -190,53 +163,6 @@ func _part(st: SurfaceTool, c: Vector3, size: Vector3, col: Color, tag: float, b
 			st.add_vertex(c + basis * Vector3(v.x * h.x, v.y * h.y, v.z * h.z))
 
 
-func _crowd(segments: Array) -> void:
-	var density := {"low": 0.4, "medium": 0.6}.get(Quality.preset, 1.0) as float
-	var transforms: Array[Transform3D] = []
-	var customs: Array[Color] = []
-	var skins: Array[Color] = []
-	for s in segments:
-		var origin: Vector3 = s[0]
-		var along: Vector3 = s[1]
-		var out: Vector3 = s[2]
-		var length: float = s[3]
-		var face := Basis(Vector3.UP, atan2(-out.x, -out.z))
-		for row in STAND_ROWS:
-			var count := int(length / SEAT_SPACING)
-			for i in count:
-				if rng.randf() > density * 0.92:
-					continue
-				var p := origin + along * (i + 0.5 + rng.randf_range(-0.2, 0.2)) * SEAT_SPACING
-				p += out * (STAND_STEP * (row + 0.5) + rng.randf_range(-0.2, 0.2))
-				p.y = STAND_RISE * (row + 1)
-				var turn := Basis(Vector3.UP, rng.randf_range(-0.35, 0.35))
-				var size := rng.randf_range(0.88, 1.1)
-				transforms.append(Transform3D((face * turn).scaled(Vector3.ONE * size), p))
-				var shirt: Color = SHIRTS[rng.randi() % SHIRTS.size()]
-				customs.append(Color(shirt.r, shirt.g, shirt.b, rng.randf()))
-				skins.append(SKIN[rng.randi() % SKIN.size()])
-	spectators = transforms.size()
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_custom_data = true
-	mm.use_colors = true
-	mm.mesh = _person_mesh()
-	mm.instance_count = transforms.size()
-	for i in transforms.size():
-		mm.set_instance_transform(i, transforms[i])
-		mm.set_instance_custom_data(i, customs[i])
-		mm.set_instance_color(i, skins[i])
-	var crowd := MultiMeshInstance3D.new()
-	crowd.name = "Crowd"
-	crowd.multimesh = mm
-	var material := ShaderMaterial.new()
-	material.shader = CROWD_SHADER
-	crowd.material_override = material
-	crowd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(crowd)
-
-
-# ------------------------------------------------------------------ flags, lamps
 func _flag_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)

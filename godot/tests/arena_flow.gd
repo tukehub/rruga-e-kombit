@@ -67,7 +67,13 @@ func _ready() -> void:
 		var spot: Vector2 = landmark.position
 		clear = clear and (absf(spot.x) > Arena.HALF_X + 20.0 or absf(spot.y) > Arena.HALF_Z + 20.0)
 	check(landmark_ids.size() >= 6 and "national_museum" in landmark_ids and "eyes_tirana" in landmark_ids and "cathedral" in landmark_ids and clear, "the race's landmarks stand around the square, outside the wall")
-	check(around.spectators > 200 and around.get_node("Crowd") is MultiMeshInstance3D, "a cheering crowd fills the stands")
+	var crowd := scene.get_node("CrowdRoot") as CrowdSpawner
+	var crowd_ok := crowd != null and crowd.spectators >= 60 and crowd.spectators <= 120 and not crowd.models.is_empty()
+	for node in (crowd.models if crowd != null else []):
+		var mmi := node as MultiMeshInstance3D
+		crowd_ok = crowd_ok and mmi.multimesh.use_custom_data and mmi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		crowd_ok = crowd_ok and mmi.multimesh.mesh.get_faces().size() / 3 <= 2200
+	check(crowd_ok, "80-120 optimised spectators, one shadowless MultiMesh per model")
 	check((scene.get_node("Plinth").mesh as BoxMesh).size.z > 18.0, "the plinth is long enough for the whole horse")
 	check(sun != null and sun.shadow_enabled and sun.directional_shadow_max_distance <= 60.0 and sun.rotation_degrees.x > -26.0 and sun.rotation_degrees.x < -19.0, "a low golden-hour sun with tight shadows")
 	check((paving.mesh as PlaneMesh).size.x >= Arena.HALF_X * 2.0 and (paving.mesh as PlaneMesh).size.y >= Arena.HALF_Z * 2.0, "and covers the whole square")
