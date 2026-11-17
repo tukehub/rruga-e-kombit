@@ -38,6 +38,13 @@ var race_opts := {
 var last_result: Dictionary = {}
 var current := ""
 var _root: Node = null
+## The online session (lobby or race), null when playing alone.
+var net: NetSession = null
+## An online race this phone has left the screen of (finished, results up)
+## but still steps with empty input, so the others never wait for it.
+var _net_tail: NetRace = null
+var _net_tail_ticks := 0
+const NET_TAIL_MAX_TICKS := 60 * 240
 var _loading := false
 var frame_ms_avg := 0.0
 var frame_ms_max := 0.0
@@ -59,6 +66,7 @@ func _ready() -> void:
 
 
 func _process(dt: float) -> void:
+	_step_net_tail()
 	# rolling frame time stats for the HUD / milestone reports
 	var ms := dt * 1000.0
 	_ft_acc += ms
@@ -82,29 +90,72 @@ const TRANSITION_FADE_IN := 0.14
 const TRANSITION_FADE_OUT := 0.3
 
 
+## The heavy files a scene loads while it builds, read on loader threads
+## first so the loading ring shows real progress and the build finds them
+## cached instead of blocking on the disk.
+func _warm_paths(name: String) -> Array:
+	var city := "res://assets/cities/%s/" % str(race_opts.city)
+	var paths := []
+	match name:
+		"race":
+			paths = [city + "buildings.glb", city + "roads.glb", city + "splat.png",
+				"res://assets/landmarks/skanderbeg_approx.glb", "res://assets/foliage/tree_small_02_mobile.glb"]
+		"arena":
+			paths = ["res://assets/landmarks/skanderbeg_approx.glb"]
+	return paths.filter(func(p: String) -> bool: return ResourceLoader.exists(p))
+
+
 func goto(name: String) -> void:
 	if _loading or not SCENES.has(name):
 		return
 	_loading = true
+	Announcer.clear()
 	# Constructing and freeing the city can block the main thread. Show a
 	# transition first and give the renderer a frame to present it.
 	var overlay := _transition_overlay(name)
 	add_child(overlay)
-	var cover := overlay.get_child(0) as ColorRect
+	var ring := overlay.find_child("LoadingRing", true, false) as LoadingRing
+	var cover := overlay.get_child(0) as Control
 	cover.modulate.a = 0.0
 	var fade_in := UiTheme.fade(cover, 1.0, TRANSITION_FADE_IN)
 	if fade_in != null:
 		await fade_in.finished
 	await get_tree().process_frame
+	# Read the scene and its heavy files on loader threads (75% of the ring).
+	var paths := [SCENES[name]] + _warm_paths(name)
+	for p in paths:
+		ResourceLoader.load_threaded_request(p, "", true)
+	while true:
+		var total := 0.0
+		var waiting := false
+		for p in paths:
+			var progress := []
+			if ResourceLoader.load_threaded_get_status(p, progress) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+				waiting = true
+				total += float(progress[0]) if not progress.is_empty() else 0.0
+			else:
+				total += 1.0
+		ring.set_progress(0.75 * total / paths.size())
+		if not waiting:
+			break
+		await get_tree().process_frame
+	# Held until the new scene has taken its own references.
+	var held := paths.map(func(p: String) -> Resource: return ResourceLoader.load_threaded_get(p))
+	ring.set_progress(0.8)
 	await get_tree().process_frame
-	Announcer.clear()
 	for c in _root.get_children():
 		c.queue_free()
 	await get_tree().process_frame
-	var ps: PackedScene = load(SCENES[name])
+	var ps := held[0] as PackedScene
+	if ps == null:
+		ps = load(SCENES[name])
+	ring.set_progress(0.85)
+	await get_tree().process_frame
 	var inst := ps.instantiate()
 	_root.add_child(inst)
 	current = name
+	held.clear()
+	ring.set_progress(1.0)
 	await get_tree().process_frame
 	# The new scene is live from here; the cover fades off it without
 	# swallowing touches.
@@ -118,54 +169,111 @@ func goto(name: String) -> void:
 	scene_changed.emit(name)
 
 
-func _transition_overlay(_name: String) -> CanvasLayer:
+## The loading screen: the scene's name top left, a random fact in a card at
+## the bottom left, and the badge in its progress ring in the bottom right
+## corner, the way console and mobile racers keep a loading screen calm.
+func _transition_overlay(name: String) -> CanvasLayer:
 	var layer := CanvasLayer.new()
 	layer.name = "TransitionOverlay"
 	layer.layer = 100
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	var bg := ColorRect.new()
-	bg.color = Color(0.035, 0.06, 0.09, 1.0)
+	var bg := TextureRect.new()
+	bg.name = "Cover"
+	var grad := Gradient.new()
+	grad.set_color(0, Color("12182a"))
+	grad.set_color(1, Color("05070c"))
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.25, 0.2)
+	tex.fill_to = Vector2(1.1, 1.1)
+	bg.texture = tex
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	layer.add_child(bg)
-	# Use a centered, width-constrained stack: long facts can wrap naturally on
-	# narrower phones without covering the title or running off the screen.
-	var content := VBoxContainer.new()
-	content.set_anchors_preset(Control.PRESET_FULL_RECT)
-	content.anchor_left = 0.08
-	content.anchor_right = 0.92
-	content.anchor_top = 0.18
-	content.anchor_bottom = 0.82
-	content.alignment = BoxContainer.ALIGNMENT_CENTER
-	content.add_theme_constant_override("separation", 20)
-	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.add_child(content)
-	var label := Label.new()
+	# The name, huge and faint, fills the empty middle like key art would.
+	var mark := UiTheme.headline(Data.GAME_NAME.to_upper(), 300, Color(1, 1, 1, 0.035), HORIZONTAL_ALIGNMENT_RIGHT)
+	mark.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	mark.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	mark.offset_right = -40
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.add_child(mark)
+	var safe := UiTheme.safe_area(bg)
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 44 if side in ["left", "right"] else 36)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	safe.add_child(margin)
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(column)
+	var label := UiTheme.headline(Data.GAME_NAME.to_upper() if name in ["menu", "results"] else Data.t("loading.title"), 54, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	label.name = "LoadingTitle"
-	label.text = Data.t("loading.title")
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 48)
-	label.add_theme_color_override("font_color", Color.WHITE)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(label)
-	var fact_label := Label.new()
+	column.add_child(label)
+	var accent := ColorRect.new()
+	accent.color = UiTheme.CYAN
+	accent.custom_minimum_size = Vector2(72, 4)
+	accent.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	accent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(accent)
+	var info := UiTheme.label(_loading_info(name), 26, UiTheme.MUTED)
+	info.name = "LoadingInfo"
+	column.add_child(info)
+	var gap := Control.new()
+	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(gap)
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 32)
+	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(bottom)
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UiTheme.flat(Color(1, 1, 1, 0.05), Color(1, 1, 1, 0.1), 16, 1))
+	card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	card.size_flags_vertical = Control.SIZE_SHRINK_END
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom.add_child(card)
+	var inner := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		inner.add_theme_constant_override("margin_" + side, 22)
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(inner)
+	var facts := VBoxContainer.new()
+	facts.add_theme_constant_override("separation", 6)
+	facts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inner.add_child(facts)
+	var fact_label := UiTheme.label(Data.t("loading.fact_heading"), 24, UiTheme.CYAN)
 	fact_label.name = "LoadingFactHeading"
-	fact_label.text = Data.t("loading.fact_heading")
-	fact_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fact_label.add_theme_font_size_override("font_size", 36)
-	fact_label.add_theme_color_override("font_color", Color("b8d9ef"))
-	fact_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(fact_label)
-	var fact := Label.new()
+	facts.add_child(fact_label)
+	var fact := UiTheme.label(_next_loading_fact(), 32, Color.WHITE)
 	fact.name = "LoadingFact"
-	fact.text = _next_loading_fact()
-	fact.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	fact.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	fact.add_theme_font_size_override("font_size", 36)
-	fact.add_theme_color_override("font_color", Color.WHITE)
-	fact.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(fact)
+	fact.custom_minimum_size.x = 640
+	facts.add_child(fact)
+	var push := Control.new()
+	push.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	push.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bottom.add_child(push)
+	var ring := LoadingRing.new(150.0)
+	ring.name = "LoadingRing"
+	ring.size_flags_vertical = Control.SIZE_SHRINK_END
+	bottom.add_child(ring)
 	return layer
+
+
+## What is being loaded, under the title: city, laps and weather, or the
+## square and the round's length.
+func _loading_info(name: String) -> String:
+	match name:
+		"race":
+			var weather := Data.t("env.rainy") if str(race_setting("env")) == "rainy" else Data.t("env.day")
+			return Data.t("loading.race_info", [Data.city_name(str(race_opts.city)), int(race_setting("laps")) if int(race_setting("laps")) > 0 else city_laps(str(race_opts.city)), weather])
+		"arena":
+			return Data.t("loading.arena_info", int(race_opts.points_minutes))
+	return ""
 
 
 func _next_loading_fact() -> String:
@@ -204,6 +312,59 @@ func race_setting(key: String) -> Variant:
 	if not event.is_empty() and event.has(key):
 		return event[key]
 	return race_opts[key]
+
+
+## True while an online race is on (this phone's or the background one).
+func is_online() -> bool:
+	return net != null and net.started
+
+
+## Starts the online race everyone in the lobby agreed on: the host's settings
+## become this phone's race options for the scene.
+func start_online() -> void:
+	if net == null or not net.started:
+		return
+	var c := net.config
+	race_opts.event = ""
+	race_opts.mode = "race"
+	race_opts.city = str(c.get("city", "tirane"))
+	race_opts.laps = int(c.get("laps", 0))
+	race_opts.diff = int(c.get("diff", 1))
+	race_opts.env = str(c.get("env", "day"))
+	race_opts.reverse = bool(c.get("reverse", false))
+	goto("race")
+
+
+## The scene is done with its online race (results up): keep stepping it
+## with empty input until every human has finished, the session closes or
+## four minutes pass, then leave the session.
+func keep_net_race(net_race: NetRace) -> void:
+	_net_tail = net_race
+	_net_tail_ticks = 0
+
+
+## Leaves any online session now.
+func leave_online() -> void:
+	_net_tail = null
+	if net != null:
+		net.close()
+		net = null
+
+
+func _step_net_tail() -> void:
+	if _net_tail == null or net == null:
+		return
+	var closed := false
+	for e in net.poll():
+		closed = closed or e.t == "closed"
+	var empty := CarState.Ctrl.new().pack([])
+	for k in 4:
+		if not _net_tail.step(empty):
+			break
+		_net_tail_ticks += 1
+	var all_done := _net_tail.race.humans.all(func(c: CarState) -> bool: return c.finished or not c.is_player)
+	if closed or all_done or _net_tail_ticks > NET_TAIL_MAX_TICKS:
+		leave_online()
 
 
 func start_race() -> void:

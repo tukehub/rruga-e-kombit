@@ -68,6 +68,9 @@ var paused := false
 var _snd_t := {}
 var _seen_tip := false
 var _tilt_missing_t := 0.0
+## Online race (plan 7.3): the lockstep driver, null when racing alone.
+var net: NetRace = null
+var _net_closed_t := -1.0
 
 
 func _ready() -> void:
@@ -91,6 +94,13 @@ func _begin() -> void:
 	get_tree().paused = false
 	paused = false
 	state = "intro"
+	if net != null:
+		# Online the countdown runs in lockstep ticks from the first frame:
+		# no intro sweep that each phone would finish at its own time.
+		state = "countdown"
+		cd_n = 4
+		hud.center(Data.city_name(city_id), Data.t("online.racing", race.humans.size()), 2.6)
+		return
 	cam.start_intro()
 	hud.center(Data.city_name(city_id), Data.t("race.intro", [Data.env_label(env_id), race.laps]), 2.6)
 
@@ -226,6 +236,9 @@ func _build_race() -> void:
 			laps = maxi(1, int(a.substr(7)))  # debug: short races
 		elif a.begins_with("--handling="):
 			handling = Data.handling_id(a.substr(11))  # debug: replay a logged race
+	if Game.is_online():
+		_build_online_race()
+		return
 	var opts := {
 		"laps": laps,
 		"diff": int(Game.race_setting("diff")),
@@ -247,10 +260,15 @@ func _build_race() -> void:
 	print("RACE seed=%d city=%s reverse=%s env=%s laps=%d diff=%d assist=%s handling=%s car=%s" % [
 		seed_value, city_id, str(bool(Game.race_setting("reverse"))), env_id, race.laps, int(Game.race_setting("diff")),
 		str(Settings.assist), handling, str(Game.race_opts.car)])
+	_build_race_visuals()
+
+
+## Car visuals, pickups and effects for the race just built.
+func _build_race_visuals() -> void:
 	for c in race.cars:
 		var cv := CarVisual.new()
 		add_child(cv)
-		cv.setup(c.def, (Color.html(c.def.color) if c.is_player else c.color), c.is_player, Game.cosmetics() if c.is_player else {})
+		cv.setup(c.def, (Color.html(c.def.color) if c.is_player else c.color), c == player, Game.cosmetics() if c == player else {})
 		cv.set_night(sky.night)
 		cv.apply_state(c, track, DT)
 		cars.append(cv)
@@ -409,6 +427,11 @@ func set_scenery_visible(enabled: bool) -> void:
 func toggle_pause() -> void:
 	if state in ["finish", "results"]:
 		return
+	if net != null:
+		# Nobody can pause an online race: the menu opens over it and the
+		# race goes on underneath.
+		_toggle_online_menu()
+		return
 	paused = not paused
 	get_tree().paused = paused
 	pause_ui.visible = paused
@@ -561,77 +584,80 @@ func _process(dt: float) -> void:
 	input.poll(dt)
 	_recover_missing_tilt(dt)
 	_update_weather(dt)
-	match state:
-		"intro":
-			cam.follow(player, dt)
-			if not cam.intro:
-				state = "countdown"
-				if is_instance_valid(intro_cards):
-					intro_cards.leave()
-				if tutorial_prompt != null:
-					tutorial_prompt.visible = true
-					tutorial_prompt.say(Data.t("tutorial.welcome"))
-				cd_t = 3.2
-				cd_n = 4
-				if not _seen_tip:
-					_seen_tip = true
-					var steering_tip := Data.t("race.tip.touch") if Settings.touch_steer else Data.t("race.tip.tilt")
-					var gas_tip := Data.t("race.tip.auto_gas") if Settings.auto_accel else Data.t("race.tip.manual_gas")
-					hud.feed(Data.t("race.tip", [steering_tip, gas_tip]), UiTheme.AMBER, 5.0)
-		"countdown":
-			cd_t -= dt
-			var n := int(ceil(cd_t))
-			if n != cd_n and n >= 1 and n <= 3:
-				cd_n = n
-				hud.center(str(n), "", 0.9)
-				Sfx.play("beep", "UI", -4.0)
-				Announcer.say(str(n))
-			if cd_t <= 0.0:
-				race.started = true
-				state = "race"
-				hud.center(Data.t("race.go"), "", 1.0)
-				Sfx.play("go", "UI", -2.0)
-				Announcer.say("go")
-				acc = 0.0
-				if not Settings.touch_steer and not input.tilt_ok and not input.is_desktop():
-					_recover_missing_tilt(1.0)
-			_engine_audio(0.12 + (0.25 if input.gas else 0.0), input.gas, true, 0.0, dt)
-			cam.follow(player, dt)
-		"race", "finish":
-			if state == "race":
-				input.apply(player)
-			if state == "finish":
-				elapsed *= finish_time_scale(fin_t)
-			var plan := _timing_plan(acc, elapsed)
-			acc = float(plan.debt)
-			dropped_sim_time += float(plan.dropped)
-			for n in int(plan.steps):
-				for i in race.cars.size():
-					_previous_poses[i] = RenderPose.capture(race.cars[i])
-				race.step(DT)
+	if net != null and state in ["countdown", "race", "finish"]:
+		_online_frame(dt)
+	else:
+		match state:
+			"intro":
+				cam.follow(player, dt)
+				if not cam.intro:
+					state = "countdown"
+					if is_instance_valid(intro_cards):
+						intro_cards.leave()
+					if tutorial_prompt != null:
+						tutorial_prompt.visible = true
+						tutorial_prompt.say(Data.t("tutorial.welcome"))
+					cd_t = 3.2
+					cd_n = 4
+					if not _seen_tip:
+						_seen_tip = true
+						var steering_tip := Data.t("race.tip.touch") if Settings.touch_steer else Data.t("race.tip.tilt")
+						var gas_tip := Data.t("race.tip.auto_gas") if Settings.auto_accel else Data.t("race.tip.manual_gas")
+						hud.feed(Data.t("race.tip", [steering_tip, gas_tip]), UiTheme.AMBER, 5.0)
+			"countdown":
+				cd_t -= dt
+				var n := int(ceil(cd_t))
+				if n != cd_n and n >= 1 and n <= 3:
+					cd_n = n
+					hud.center(str(n), "", 0.9)
+					Sfx.play("beep", "UI", -4.0)
+					Announcer.say(str(n))
+				if cd_t <= 0.0:
+					race.started = true
+					state = "race"
+					hud.center(Data.t("race.go"), "", 1.0)
+					Sfx.play("go", "UI", -2.0)
+					Announcer.say("go")
+					acc = 0.0
+					if not Settings.touch_steer and not input.tilt_ok and not input.is_desktop():
+						_recover_missing_tilt(1.0)
+				_engine_audio(0.12 + (0.25 if input.gas else 0.0), input.gas, true, 0.0, dt)
+				cam.follow(player, dt)
+			"race", "finish":
+				if state == "race":
+					input.apply(player)
 				if state == "finish":
-					finish_speed_limit = maxf(6.0, finish_speed_limit - 8.0 * DT)
-					player.v = minf(player.v, finish_speed_limit)
-			_events()
-			_tutorial_update()
-			input.sync_actions()
-			if state == "race" and not last500:
-				var left := race.laps * race.L - player.progress
-				if player.lap == race.laps - 1 and left > 0.0 and left < 500.0:
-					last500 = true
-					hud.center(Data.t("race.last_500"), "", 2.0)
-					Sfx.play("lap", "UI", -4.0)
-			var player_index := race.cars.find(player)
-			var player_pose := RenderPose.sample(_previous_poses[player_index], player, acc / DT, track.L)
-			if state == "finish":
-				cam.follow_finish(player, dt, player_pose)
-			else:
-				cam.follow(player, dt, player_pose)
-			_engine_audio(absf(player.v) / float(player.def.vmax), player.gas_on, player.wreck_t <= 0.0, player.scrape, dt)
-			if state == "finish":
-				fin_t += dt
-				if fin_t > 4.2:
-					_show_results()
+					elapsed *= finish_time_scale(fin_t)
+				var plan := _timing_plan(acc, elapsed)
+				acc = float(plan.debt)
+				dropped_sim_time += float(plan.dropped)
+				for n in int(plan.steps):
+					for i in race.cars.size():
+						_previous_poses[i] = RenderPose.capture(race.cars[i])
+					race.step(DT)
+					if state == "finish":
+						finish_speed_limit = maxf(6.0, finish_speed_limit - 8.0 * DT)
+						player.v = minf(player.v, finish_speed_limit)
+				_events()
+				_tutorial_update()
+				input.sync_actions()
+				if state == "race" and not last500:
+					var left := race.laps * race.L - player.progress
+					if player.lap == race.laps - 1 and left > 0.0 and left < 500.0:
+						last500 = true
+						hud.center(Data.t("race.last_500"), "", 2.0)
+						Sfx.play("lap", "UI", -4.0)
+				var player_index := race.cars.find(player)
+				var player_pose := RenderPose.sample(_previous_poses[player_index], player, acc / DT, track.L)
+				if state == "finish":
+					cam.follow_finish(player, dt, player_pose)
+				else:
+					cam.follow(player, dt, player_pose)
+				_engine_audio(absf(player.v) / float(player.def.vmax), player.gas_on, player.wreck_t <= 0.0, player.scrape, dt)
+				if state == "finish":
+					fin_t += dt
+					if fin_t > 4.2:
+						_show_results()
 	for i in cars.size():
 		var pose := {}
 		if state in ["race", "finish"]:
@@ -831,7 +857,8 @@ func _events() -> void:
 					input.hide()
 					fin_t = 0.0
 					finish_speed_limit = maxf(6.0, player.v)
-					player.autopilot = true
+					if net == null:
+						player.autopilot = true
 					views.set_view(ChaseCam.View.CHASE)
 					cars[race.cars.find(player)].show_finish_driver()
 					views.view_button.disabled = true
@@ -868,6 +895,8 @@ func _engine_audio(ratio: float, gas_on: bool, alive: bool, scrape: float, dt: f
 func _show_results() -> void:
 	state = "results"
 	Sfx.stop_loops()
+	if net != null:
+		Game.keep_net_race(net)
 	race.estimate()  # projected finishing times for cars still on track
 	var rows := []
 	for c in race.order:
@@ -885,7 +914,7 @@ func _show_results() -> void:
 
 
 func _update_weather(dt: float) -> void:
-	if Settings.dynamic_weather and state == "race":
+	if Settings.dynamic_weather and state == "race" and net == null:
 		_weather_clock += dt
 		if _weather_clock >= 70.0:
 			_weather_clock = 0.0
@@ -898,7 +927,8 @@ func _update_weather(dt: float) -> void:
 		_light_clock = 0.0
 		props.update_lights(track.pos(player.s, player.d), track.tangent(player.s))
 	sky.advance(dt)
-	race.wet = sky.wet > 0.5
+	if net == null:
+		race.wet = sky.wet > 0.5
 	# Material uniforms and car lamps only need a push while the weather moves.
 	var env_now := Vector2(sky.wet, sky.night)
 	if env_now != _env_pushed:
@@ -909,3 +939,90 @@ func _update_weather(dt: float) -> void:
 		props.set_night(sky.night)
 		for car in cars:
 			car.set_night(sky.night)
+
+
+# ------------------------------------------------------------------ online
+## The Race every phone builds from the host's settings; this phone drives
+## its own slot's car.
+func _build_online_race() -> void:
+	var o := NetRace.race_options(Game.net.config)
+	o["wet"] = sky.wet
+	race = Race.new(track, o)
+	race.started = false
+	net = NetRace.new(race, Game.net.lockstep)
+	player = net.local_car()
+	print("RACE online seed=%d humans=%d bots=%d slot=%d" % [int(o.get("seed", 0)), race.humans.size(), int(o.get("bots", 0)), Game.net.slot])
+	_build_race_visuals()
+
+
+## One frame of an online race: network, then as many lockstep ticks as
+## the clock owes and everyone's input allows.
+func _online_frame(dt: float) -> void:
+	for e in Game.net.poll() if Game.net != null else []:
+		match str(e.t):
+			"left":
+				var who := int(e.slot)
+				hud.feed(Data.t("online.left", race.humans[who].name if who < race.humans.size() else "?"), UiTheme.AMBER, 4.0)
+			"closed":
+				_net_closed_t = 0.0
+				hud.center(Data.t("online.host_left"), "", 3.0)
+	if _net_closed_t >= 0.0:
+		_net_closed_t += dt
+		if _net_closed_t > 3.0:
+			Sfx.stop_loops()
+			Game.leave_online()
+			Game.goto("menu")
+		return
+	acc = minf(acc + dt, DT * 8.0)
+	var steps := 0
+	while acc >= DT and steps < 4:
+		for i in race.cars.size():
+			_previous_poses[i] = RenderPose.capture(race.cars[i])
+		var bytes := net.capture(func(car: CarState) -> void: input.apply(car)) if state == "race" else CarState.Ctrl.new().pack([])
+		if not net.step(bytes):
+			break
+		acc -= DT
+		steps += 1
+	if state == "countdown":
+		var n := int(ceil(net.countdown_left()))
+		if n != cd_n and n >= 1 and n <= 3:
+			cd_n = n
+			hud.center(str(n), "", 0.9)
+			Sfx.play("beep", "UI", -4.0)
+			Announcer.say(str(n))
+		if race.started:
+			state = "race"
+			hud.center(Data.t("race.go"), "", 1.0)
+			Sfx.play("go", "UI", -2.0)
+			Announcer.say("go")
+		cam.follow(player, dt)
+		_engine_audio(0.12, false, true, 0.0, dt)
+		return
+	_events()
+	input.sync_actions()
+	if state == "race" and not last500:
+		var left := race.laps * race.L - player.progress
+		if player.lap == race.laps - 1 and left > 0.0 and left < 500.0:
+			last500 = true
+			hud.center(Data.t("race.last_500"), "", 2.0)
+			Sfx.play("lap", "UI", -4.0)
+	var player_pose := RenderPose.sample(_previous_poses[race.cars.find(player)], player, acc / DT, track.L)
+	if state == "finish":
+		cam.follow_finish(player, dt, player_pose)
+		fin_t += dt
+		if fin_t > 4.2:
+			_show_results()
+	else:
+		cam.follow(player, dt, player_pose)
+	_engine_audio(absf(player.v) / float(player.def.vmax), player.gas_on, player.wreck_t <= 0.0, player.scrape, dt)
+
+
+## Online the pause menu is only a way out: the race keeps running under it.
+func _toggle_online_menu() -> void:
+	pause_ui.visible = not pause_ui.visible
+	_controls_ui.hide()
+	_pause_box.show()
+	for b in _pause_box.find_children("*", "Button", true, false):
+		var keep: bool = b.text in [Data.t("pause.resume"), Data.t("pause.quit")]
+		b.visible = keep
+	input.visible = not pause_ui.visible

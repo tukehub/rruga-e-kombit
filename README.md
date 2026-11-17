@@ -383,6 +383,19 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     so the camera move and the 4.2 s to the results are unchanged. Checked
     in `tests/flow_test`.
 
+5.4 **Title and loading screens — done.** The title is laid out like
+    current mobile racers: the car centre stage, a slim top bar (badge and
+    name, your name chip, fans, help, settings) and four large cards along
+    the bottom: Garazhi on the left; Kupa (stars), Online and Garë e lirë
+    (filled, the main action) on the right. The race options moved to the
+    "Garë e lirë" page; credits moved into the settings. The loading screen
+    names what is loading (city, laps, weather), shows one fact in a card
+    at the bottom left and the badge inside a progress ring in the bottom
+    right corner (`LoadingRing`). The ring shows real progress: `Game.goto`
+    reads the scene and its heavy city files (`_warm_paths`) on loader
+    threads first, so the build finds them cached. Covered by
+    `tests/online_flow` and `tests/flow_test`.
+
 ### 6. Progression
 
 6.1 **Fans persist — done.** A finished race passes the player's fans
@@ -485,8 +498,27 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     Next: the relay server for internet play (headless Godot `--server`
     with 6-letter room codes, so nobody needs to forward ports), and a
     delay that grows with the measured ping instead of a fixed 3 ticks.
-7.3 **Lobby UI** in `menu.gd`: host/join by code, paint pick, ready, bot count
-    0..(6 − humans). Remote players fill `CarState` slots in `Race._init()`.
+7.3 **Lobby — done for the same Wi-Fi.** The title's "Online" card opens
+    the lobby: "Krijo lojën" opens a game on this phone and shows its
+    local address (`Menu.local_address()`); the others type it and
+    "Bashkohu". The player list shows each slot in its grid colour, the
+    host picks 0–(6 − humans) bots and starts once two are in; the race
+    takes the host's laps, difficulty, weather, direction and handling.
+    `Game.net` holds the session across scenes, `Game.start_online()`
+    loads the race, and `RaceScene` drives its own slot's car through
+    `NetRace`: local input is captured into a scratch `Ctrl` and only
+    reaches the car through the lockstep, the 3-2-1 countdown runs in ticks
+    so every phone starts on the same tick, nothing local writes race
+    state (weather, finish slow-down and autopilot are skipped online), and
+    the pause menu opens over a race that keeps going. A phone that
+    finishes hands its race to `Game.keep_net_race()`, which keeps
+    stepping it with empty input until everyone is done, so nobody waits
+    for a phone on its results page. If the host leaves, the others see
+    "Hosti doli" and return to the menu. The APK now asks for the Android
+    internet permission. Covered by `tests/online_flow` (the real menu and
+    race scene as host, a scripted second phone over a socket).
+    Not yet: the relay for players in different homes, online points
+    rounds, and an online results screen that waits for everyone.
 7.4 **Resilience:** pause/resync on disconnect, bot takeover of a dropped
     player, 3 s rejoin grace. Test: two headless instances finish a race with
     equal final state hashes.

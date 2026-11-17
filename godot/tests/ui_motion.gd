@@ -155,7 +155,7 @@ func _ready() -> void:
 	Game.goto("menu")
 	var overlay := Game.get_node_or_null("TransitionOverlay")
 	check(overlay != null, "a scene change puts up the cover")
-	var cover := overlay.get_child(0) as ColorRect
+	var cover := overlay.get_child(0) as Control
 	check(is_zero_approx(cover.modulate.a) and cover.mouse_filter == Control.MOUSE_FILTER_STOP, "the cover starts clear and blocks touches while loading")
 	await wait(Game.TRANSITION_FADE_IN * 0.5)
 	check(root.get_child_count() == 0 and cover.modulate.a > 0.0 and cover.modulate.a < 1.0, "the cover fades in before the scene is swapped")

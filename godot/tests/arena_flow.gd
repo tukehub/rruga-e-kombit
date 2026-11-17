@@ -36,9 +36,10 @@ func _ready() -> void:
 	await wait_scene("menu")
 	var menu: Menu = Game._root.get_child(0)
 
-	# The mode is on the title page, in plain sight.
+	# The mode is on the free race page, one tap from the title.
+	menu.show_page("race")
 	var mode: Button = menu._mode
-	check(mode != null and mode.is_visible_in_tree() and mode.text == "Mënyra: Garë" and not mode.disabled, "the title page shows the mode, a race by default")
+	check(mode != null and mode.is_visible_in_tree() and mode.text == "Mënyra: Garë" and not mode.disabled, "the free race page shows the mode, a race by default")
 	mode.pressed.emit()
 	check(str(Game.race_opts.mode) == "points" and int(Game.race_opts.points_minutes) == 2 and mode.text == "Mënyra: Pikë · 2 min", "one tap chooses points for two minutes")
 	check(menu._direction.disabled and menu._weather.disabled and menu._lap_plus.disabled and menu._lap_minus.disabled, "race-only choices are switched off for points")

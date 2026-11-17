@@ -17,16 +17,16 @@ const REFUSE := 8    # host -> client: why (full, started, version)
 const VERSION := 1
 
 
-static func hello(name: String) -> PackedByteArray:
-	return _dict(HELLO, {"name": name, "version": VERSION})
+static func hello(name: String, car := "") -> PackedByteArray:
+	return _dict(HELLO, {"name": name, "car": car, "version": VERSION})
 
 
 static func welcome(slot: int) -> PackedByteArray:
 	return PackedByteArray([WELCOME, slot])
 
 
-static func lobby(names: Array) -> PackedByteArray:
-	return _dict(LOBBY, {"names": names})
+static func lobby(names: Array, cars: Array = []) -> PackedByteArray:
+	return _dict(LOBBY, {"names": names, "cars": cars})
 
 
 static func start(config: Dictionary) -> PackedByteArray:

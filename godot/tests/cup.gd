@@ -92,8 +92,9 @@ func _ready() -> void:
 	add_child(main)
 	await wait_scene("menu")
 	var menu: Menu = Game._root.get_child(0)
-	check(menu.page == "title" and menu._cup_button.is_visible_in_tree() and menu._cup_button.text == "Kupa · 0/%d" % (events.size() * 3), "the title page offers the cup with the stars won so far")
-	check(button(menu, "Nisu!") != null and button(menu, "Nisu!").is_visible_in_tree(), "a free race is still one tap away")
+	check(menu.page == "title" and menu._cup_button.is_visible_in_tree() and (menu._cup_button.get_meta(&"sub") as Label).text == "0/%d yje" % (events.size() * 3), "the title page offers the cup with the stars won so far")
+	var race_card := menu.pages.title.find_child("RaceCard", true, false) as Button
+	check(race_card != null and race_card.is_visible_in_tree(), "a free race is still one tap away")
 	menu._cup_button.pressed.emit()
 	await get_tree().process_frame
 	check(menu.page == "cup" and menu.cup_cards.size() == events.size(), "the cup page shows a card per event")
@@ -179,7 +180,7 @@ func _ready() -> void:
 	check(menu.page == "cup", "after a cup race the menu opens on the cup")
 	check((menu.cup_cards[third_index].find_child("Stars", true, false) as StarRow).earned == 3 and menu._cup_stars.text == "3 / %d" % (events.size() * 3), "the card and the total show the stars")
 	menu.show_page("title")
-	check(menu._cup_button.text == "Kupa · 3/%d" % (events.size() * 3), "the title page's cup button shows them too")
+	check((menu._cup_button.get_meta(&"sub") as Label).text == "3/%d yje" % (events.size() * 3), "the title page's cup card shows them too")
 	# A free race leaves the cup behind.
 	Game.race_opts.mode = "race"
 	button(menu, "Nisu!").pressed.emit()

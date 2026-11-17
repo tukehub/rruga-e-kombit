@@ -7,6 +7,9 @@ extends RefCounted
 ## everyone else's, so every phone simulates identical numbers.
 
 const DT := 1.0 / 60.0
+## The countdown runs in ticks too, so the race starts on the same tick on
+## every phone however long each one took to load.
+const COUNTDOWN_TICKS := 192
 
 var race: Race
 var lockstep: Lockstep
@@ -31,6 +34,25 @@ func local_car() -> CarState:
 	return race.humans[lockstep.local]
 
 
+## Seconds of countdown left (0 once racing).
+func countdown_left() -> float:
+	return maxf(0.0, float(COUNTDOWN_TICKS - lockstep.tick) * DT)
+
+
+## Runs `apply` (which writes the touch/tilt state into a car's Ctrl, like
+## RaceInput.apply) against a scratch Ctrl of the local car and returns it
+## packed. The car's real Ctrl only ever receives input through the lockstep,
+## on the tick everyone applies it.
+func capture(apply: Callable) -> PackedByteArray:
+	var car := local_car()
+	var real := car.ctrl
+	car.ctrl = CarState.Ctrl.new()
+	apply.call(car)
+	var bytes := car.ctrl.pack(car.slots)
+	car.ctrl = real
+	return bytes
+
+
 ## Simulates one tick if everyone's input for it is here. `local_ctrl` is
 ## this phone's Ctrl.pack() for the tick DELAY ahead.
 func step(local_ctrl: PackedByteArray) -> bool:
@@ -40,6 +62,10 @@ func step(local_ctrl: PackedByteArray) -> bool:
 		return false
 	var t := lockstep.tick
 	var row := lockstep.take()
+	if t < COUNTDOWN_TICKS:
+		return true
+	if t == COUNTDOWN_TICKS:
+		race.started = true
 	for s in row.size():
 		var car: CarState = race.humans[s]
 		if lockstep.is_bot(s, t):

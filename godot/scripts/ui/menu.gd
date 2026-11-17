@@ -23,6 +23,24 @@ var cup_cards: Array[Button] = []
 const MODES := [{"mode": "race", "minutes": 0}, {"mode": "points", "minutes": 2}, {"mode": "points", "minutes": 3}]
 var _lap_plus: Button
 var _drv_name: LineEdit
+var _name_chip: Button
+var _lobby_status: Label
+var _lobby_idle: VBoxContainer
+var _lobby_room: VBoxContainer
+var _lobby_address: LineEdit
+var _lobby_ip: Label
+var _lobby_bots_row: HBoxContainer
+var _lobby_bots_value: Label
+var _lobby_start: Button
+var _lobby_count: Label
+var _lobby_rows: Array[Label] = []
+var _lobby_bots := 2
+var _lobby_note := ""
+var _fans_chip: Button
+const ICON_PERSON := preload("res://assets/ui/icons/person.svg")
+const ICON_STAR := preload("res://assets/ui/icons/star.svg")
+const ICON_GEAR := preload("res://assets/ui/icons/gear.svg")
+const ICON_HELP := preload("res://assets/ui/icons/help.svg")
 var _fans_label: Label
 var _buy_btn: Button
 var _garage_tabs: HBoxContainer
@@ -98,6 +116,7 @@ func _build_garage() -> void:
 	cam.look_at(Vector3(0.0, 0.65, 0.0))
 	cam.fov = 38
 	cam.current = true
+	_garage_cam = cam
 	_set_garage_car(str(Game.race_opts.car))
 
 
@@ -112,6 +131,10 @@ func _set_garage_car(id: String) -> void:
 
 
 func _process(dt: float) -> void:
+	_poll_lobby()
+	garage_pivot.position.x = move_toward(garage_pivot.position.x, _car_x, dt * 6.0)
+	if _garage_cam != null:
+		_garage_cam.fov = move_toward(_garage_cam.fov, float(CAR_FOV.get(page, CAR_FOV_DEFAULT)), dt * 30.0)
 	_garage_t += dt
 	garage_pivot.rotation.y = _garage_t * 0.25
 	if garage_car:
@@ -127,6 +150,8 @@ func _build_ui() -> void:
 	ui = UiTheme.safe_area(layer)
 	ui.theme = UiTheme.theme()
 	pages.title = _page_title()
+	pages.race = _page_race()
+	pages.online = _page_online()
 	pages.car = _page_car()
 	pages.cup = _page_cup()
 	pages.settings = _page_settings()
@@ -152,14 +177,34 @@ func show_page(name: String) -> void:
 		_refresh_settings()
 	if name in ["cup", "title"]:
 		_refresh_cup()
-	if name == "title":
+	if name in ["title", "race"]:
 		_refresh_city()
+	if name == "title":
+		_refresh_title()
+	if name == "online":
+		_refresh_lobby()
+	_place_car(name)
 	if name == "car":
 		_refresh_car()
 	elif not _preview.is_empty():
 		# Leaving the garage puts back what the player owns.
 		_preview = {}
 		_set_garage_car(str(Game.race_opts.car))
+
+
+## Where the garage car stands for each page: centre stage on the title,
+## to the right of the panels elsewhere.
+const CAR_X := {"title": 0.6, "online": 1.3}
+const CAR_X_DEFAULT := 4.0
+var _car_x := CAR_X_DEFAULT
+## The title frames the car closer than the pages with panels.
+const CAR_FOV := {"title": 30.0}
+const CAR_FOV_DEFAULT := 38.0
+var _garage_cam: Camera3D
+
+
+func _place_car(name: String) -> void:
+	_car_x = float(CAR_X.get(name, CAR_X_DEFAULT))
 
 
 func _page(shade_a: float) -> Control:
@@ -225,7 +270,204 @@ func _seg_set(h: HBoxContainer, idx: int) -> void:
 
 
 # ------------------------------------------------------------------ title
+## The home screen, laid out the way big mobile racers do it: the car is the
+## picture, a slim bar on top carries the badge, who you are, your fans and
+## the settings, and the modes are three large cards in the corner your
+## thumb rests on. Everything else lives one tap deeper.
 func _page_title() -> Control:
+	var c := _page(0.0)
+	c.add_child(_title_gradient())
+	var mc := _margin(c, 30)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 0)
+	mc.add_child(column)
+	# --- top bar
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 14)
+	column.add_child(top)
+	var badge := TextureRect.new()
+	badge.texture = LoadingRing.LOGO
+	badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	badge.custom_minimum_size = Vector2(68, 68)
+	var mask := ShaderMaterial.new()
+	mask.shader = LoadingRing.MASK
+	badge.material = mask
+	top.add_child(badge)
+	var brand := VBoxContainer.new()
+	brand.add_theme_constant_override("separation", -6)
+	brand.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(brand)
+	brand.add_child(UiTheme.headline(Data.GAME_NAME.to_upper(), 46, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	brand.add_child(_eyebrow(Data.t("menu.eyebrow")))
+	var grow := Control.new()
+	grow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(grow)
+	_name_chip = _chip(ICON_PERSON, "", UiTheme.TEXT)
+	_name_chip.name = "NameChip"
+	_name_chip.pressed.connect(func(): Sfx.ui_click(); show_page("car"); _show_garage_tab("driver"))
+	top.add_child(_name_chip)
+	_fans_chip = _chip(ICON_STAR, "", UiTheme.AMBER)
+	_fans_chip.name = "FansChip"
+	_fans_chip.pressed.connect(func(): Sfx.ui_click(); show_page("car"))
+	top.add_child(_fans_chip)
+	var help := _round_button(ICON_HELP, "")
+	help.name = "HelpButton"
+	help.pressed.connect(func(): Sfx.ui_click(); back_to = "title"; show_page("help"))
+	top.add_child(help)
+	var gear := _round_button(ICON_GEAR, "")
+	gear.name = "SettingsButton"
+	gear.pressed.connect(func(): Sfx.ui_click(); back_to = "title"; show_page("settings"))
+	top.add_child(gear)
+	# --- the car shows through the middle
+	var middle := Control.new()
+	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(middle)
+	# --- bottom: garage on the left, modes on the right
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 14)
+	column.add_child(bottom)
+	var garage := _mode_card(Data.t("menu.card.garage"), Data.t("menu.card.garage_sub"), UiTheme.VIOLET, false)
+	garage.name = "GarageCard"
+	garage.custom_minimum_size = Vector2(230, 150)
+	garage.size_flags_vertical = Control.SIZE_SHRINK_END
+	garage.pressed.connect(func(): Sfx.ui_click(); show_page("car"))
+	bottom.add_child(garage)
+	var spread := Control.new()
+	spread.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom.add_child(spread)
+	_cup_button = _mode_card(Data.t("menu.cup"), "", UiTheme.AMBER, false)
+	_cup_button.name = "CupButton"
+	_cup_button.pressed.connect(func(): Sfx.ui_click(); show_page("cup"))
+	bottom.add_child(_cup_button)
+	var online := _mode_card(Data.t("menu.card.online"), Data.t("menu.card.online_sub"), UiTheme.PINK, false)
+	online.name = "OnlineCard"
+	online.pressed.connect(func(): Sfx.ui_click(); show_page("online"))
+	bottom.add_child(online)
+	var race := _mode_card(Data.t("menu.card.race"), Data.t("menu.card.race_sub"), UiTheme.CYAN, true)
+	race.name = "RaceCard"
+	race.pressed.connect(func(): Sfx.ui_click(); show_page("race"))
+	bottom.add_child(race)
+	return c
+
+
+## A soft dark fade behind the top bar and the cards, so text reads over any
+## paint without boxing the car in.
+func _title_gradient() -> TextureRect:
+	var grad := Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 0.22, 0.6, 1.0])
+	grad.colors = PackedColorArray([Color(0.02, 0.03, 0.06, 0.75), Color(0.02, 0.03, 0.06, 0.0), Color(0.02, 0.03, 0.06, 0.0), Color(0.02, 0.03, 0.06, 0.8)])
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill_from = Vector2(0.5, 0.0)
+	tex.fill_to = Vector2(0.5, 1.0)
+	var r := TextureRect.new()
+	r.texture = tex
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_SCALE
+	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+
+## A big tappable mode card: title, one line under it, an accent bar.
+## `primary` fills it with the accent, for the one mode most people want.
+func _mode_card(title: String, sub: String, accent: Color, primary: bool) -> Button:
+	var card := Button.new()
+	card.custom_minimum_size = Vector2(290 if primary else 210, 150)
+	card.size_flags_vertical = Control.SIZE_SHRINK_END
+	var bg := accent.darkened(0.55) if primary else Color(0.03, 0.05, 0.09, 0.82)
+	card.add_theme_stylebox_override("normal", UiTheme.flat(bg, Color(accent, 0.9 if primary else 0.35), 18))
+	card.add_theme_stylebox_override("hover", UiTheme.flat(bg.lightened(0.08), accent, 18))
+	card.add_theme_stylebox_override("pressed", UiTheme.flat(bg.darkened(0.2), accent, 18))
+	card.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	card.button_down.connect(func(): UiTheme.press(card))
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 18)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(m)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_child(v)
+	var bar := ColorRect.new()
+	bar.color = accent
+	bar.custom_minimum_size = Vector2(34, 4)
+	bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(bar)
+	var push := Control.new()
+	push.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	push.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(push)
+	var t := UiTheme.headline(title.to_upper(), 40 if primary else 34, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(t)
+	var l := UiTheme.label(sub, 20, UiTheme.TEXT if primary else UiTheme.MUTED)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(l)
+	card.set_meta(&"sub", l)
+	return card
+
+
+## A pill in the top bar: icon and a value.
+func _chip(icon: Texture2D, text: String, col: Color) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.icon = icon
+	b.add_theme_constant_override("icon_max_width", 26)
+	b.add_theme_constant_override("h_separation", 10)
+	b.add_theme_font_size_override("font_size", 24)
+	b.add_theme_color_override("font_color", col)
+	b.custom_minimum_size = Vector2(0, 54)
+	for st in ["normal", "hover", "pressed"]:
+		b.add_theme_stylebox_override(st, _pill(Color(0.03, 0.05, 0.09, 0.78 if st == "normal" else 0.95)))
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return b
+
+
+func _pill(bg: Color) -> StyleBoxFlat:
+	var st := UiTheme.flat(bg, Color(1, 1, 1, 0.14), 27, 1)
+	st.content_margin_left = 18
+	st.content_margin_right = 20
+	return st
+
+
+## A round icon button for the top bar (settings, help).
+func _round_button(icon: Texture2D, text: String) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.icon = icon
+	b.expand_icon = icon != null
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.add_theme_font_size_override("font_size", 28)
+	b.custom_minimum_size = Vector2(54, 54)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var st := UiTheme.flat(Color(0.03, 0.05, 0.09, 0.78), Color(1, 1, 1, 0.14), 27, 1)
+	st.content_margin_left = 13
+	st.content_margin_right = 13
+	st.content_margin_top = 13
+	st.content_margin_bottom = 13
+	for state in ["normal", "hover", "pressed"]:
+		b.add_theme_stylebox_override(state, st)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	return b
+
+
+func _refresh_title() -> void:
+	if _name_chip != null:
+		_name_chip.text = Settings.display_name()
+	if _fans_chip != null:
+		_fans_chip.text = str(Progress.fans)
+
+
+# ------------------------------------------------------------------ free race setup
+## Everything a free race can be set to, one tap behind the race card.
+func _page_race() -> Control:
 	var c := _page(0.15)
 	var panel := UiTheme.panel(24)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
@@ -237,12 +479,10 @@ func _page_title() -> Control:
 	c.add_child(panel)
 	var v := VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 12)
+	v.add_theme_constant_override("separation", 14)
 	panel.add_child(v)
-	v.add_child(_eyebrow(Data.t("menu.eyebrow")))
-	v.add_child(UiTheme.headline(Data.GAME_NAME.to_upper(), 96, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
-	var tag := UiTheme.label(Data.t("menu.tagline"), 26, UiTheme.TEXT)
-	v.add_child(tag)
+	v.add_child(_eyebrow(Data.t("menu.card.race")))
+	v.add_child(UiTheme.headline(Data.city_name("tirane"), 64, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
 	v.add_child(UiTheme.spacer(4))
 	var lap_row := HBoxContainer.new()
 	lap_row.add_theme_constant_override("separation", 8)
@@ -306,17 +546,18 @@ func _page_title() -> Control:
 		b.custom_minimum_size = Vector2(150, 50)
 		_diff_btns.append(b)
 	v.add_child(difficulty)
-	# The cup and a free race share the main row.
-	var play_row := HBoxContainer.new()
-	play_row.add_theme_constant_override("separation", 10)
-	_cup_button = UiTheme.button(Data.t("menu.cup"), UiTheme.AMBER.darkened(0.5))
-	_cup_button.name = "CupButton"
-	_cup_button.custom_minimum_size.y = 70
-	_cup_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_cup_button.add_theme_font_size_override("font_size", 28)
-	_cup_button.pressed.connect(func(): Sfx.ui_click(); show_page("cup"))
-	play_row.add_child(_cup_button)
+	var grow := Control.new()
+	grow.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(grow)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	v.add_child(row)
+	var back := UiTheme.button(Data.t("common.back"))
+	back.custom_minimum_size = Vector2(170, 70)
+	back.pressed.connect(func(): Sfx.ui_back(); show_page("title"))
+	row.add_child(back)
 	var play := UiTheme.button(Data.t("menu.start"), UiTheme.CYAN.darkened(0.45))
+	play.name = "StartRace"
 	play.custom_minimum_size.y = 70
 	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	play.add_theme_font_size_override("font_size", 34)
@@ -325,24 +566,246 @@ func _page_title() -> Control:
 		Game.race_opts.city = "tirane"
 		Game.race_opts.event = ""
 		Game.start_race())
-	play_row.add_child(play)
-	v.add_child(play_row)
-	var customize := UiTheme.button(Data.t("menu.customize"))
-	customize.custom_minimum_size.y = 52
-	customize.pressed.connect(func(): Sfx.ui_click(); show_page("car"))
-	v.add_child(customize)
+	row.add_child(play)
+	return c
+
+
+# ------------------------------------------------------------------ online lobby
+## Racing friends on the same Wi-Fi (plan 7.3). One phone creates the game
+## and shows its address; the others type it and join. The host picks how
+## many bots fill the grid and starts; the race uses the host's settings.
+func _page_online() -> Control:
+	var c := _page(0.35)
+	var panel := UiTheme.panel(24)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	panel.offset_left = 28
+	panel.offset_right = 640
+	panel.offset_top = 24
+	panel.offset_bottom = -24
+	panel.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.025, 0.055, 0.09, 0.92), Color(1, 1, 1, 0.16), 24))
+	c.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	panel.add_child(v)
+	v.add_child(_eyebrow(Data.t("online.eyebrow")))
+	v.add_child(UiTheme.headline(Data.t("online.title"), 64, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	_lobby_status = UiTheme.label("", 24, UiTheme.MUTED)
+	_lobby_status.name = "LobbyStatus"
+	_lobby_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_lobby_status)
+	# Not in a game yet: create one or join one.
+	_lobby_idle = VBoxContainer.new()
+	_lobby_idle.add_theme_constant_override("separation", 12)
+	v.add_child(_lobby_idle)
+	var host := UiTheme.button(Data.t("online.host"), UiTheme.PINK.darkened(0.45))
+	host.name = "HostButton"
+	host.custom_minimum_size.y = 64
+	host.add_theme_font_size_override("font_size", 28)
+	host.pressed.connect(func(): Sfx.ui_click(); lobby_host())
+	_lobby_idle.add_child(host)
+	var join_row := HBoxContainer.new()
+	join_row.add_theme_constant_override("separation", 10)
+	_lobby_idle.add_child(join_row)
+	_lobby_address = LineEdit.new()
+	_lobby_address.name = "HostAddress"
+	_lobby_address.placeholder_text = Data.t("online.address_hint")
+	_lobby_address.custom_minimum_size = Vector2(0, 60)
+	_lobby_address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lobby_address.add_theme_font_size_override("font_size", 24)
+	_lobby_address.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
+	_lobby_address.text_submitted.connect(func(_t: String) -> void: lobby_join())
+	join_row.add_child(_lobby_address)
+	var join := UiTheme.button(Data.t("online.join"), UiTheme.CYAN.darkened(0.45))
+	join.name = "JoinButton"
+	join.custom_minimum_size = Vector2(170, 60)
+	join.pressed.connect(func(): Sfx.ui_click(); lobby_join())
+	join_row.add_child(join)
+	var hint := UiTheme.label(Data.t("online.hint"), 20, UiTheme.MUTED)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lobby_idle.add_child(hint)
+	# In a game: the address to share, bots, start.
+	_lobby_room = VBoxContainer.new()
+	_lobby_room.add_theme_constant_override("separation", 12)
+	v.add_child(_lobby_room)
+	_lobby_ip = UiTheme.headline("", 40, UiTheme.CYAN, HORIZONTAL_ALIGNMENT_LEFT)
+	_lobby_ip.name = "LobbyAddress"
+	_lobby_room.add_child(_lobby_ip)
+	_lobby_bots_row = HBoxContainer.new()
+	_lobby_bots_row.add_theme_constant_override("separation", 8)
+	_lobby_room.add_child(_lobby_bots_row)
+	var bots_title := UiTheme.label(Data.t("online.bots"), 25, UiTheme.TEXT)
+	bots_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bots_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_lobby_bots_row.add_child(bots_title)
+	var minus := UiTheme.button("−")
+	minus.custom_minimum_size = Vector2(52, 48)
+	minus.pressed.connect(func(): Sfx.ui_click(); _lobby_bots -= 1; _refresh_lobby())
+	_lobby_bots_row.add_child(minus)
+	_lobby_bots_value = UiTheme.headline("", 30, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_lobby_bots_value.custom_minimum_size = Vector2(42, 48)
+	_lobby_bots_row.add_child(_lobby_bots_value)
+	var plus := UiTheme.button("+")
+	plus.custom_minimum_size = Vector2(52, 48)
+	plus.pressed.connect(func(): Sfx.ui_click(); _lobby_bots += 1; _refresh_lobby())
+	_lobby_bots_row.add_child(plus)
+	var grow := Control.new()
+	grow.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(grow)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
-	for pair in [[Data.t("help.title"), "help"], [Data.t("settings.title"), "settings"], [Data.t("credits.button"), "credits"]]:
-		var b := UiTheme.button(pair[0])
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.custom_minimum_size.y = 50
-		b.add_theme_font_size_override("font_size", 22)
-		var target: String = pair[1]
-		b.pressed.connect(func(): Sfx.ui_click(); back_to = "title"; show_page(target))
-		row.add_child(b)
+	var back := UiTheme.button(Data.t("common.back"))
+	back.name = "LobbyBack"
+	back.custom_minimum_size = Vector2(170, 70)
+	back.pressed.connect(func(): Sfx.ui_back(); Game.leave_online(); show_page("title"))
+	row.add_child(back)
+	_lobby_start = UiTheme.button(Data.t("menu.start"), UiTheme.CYAN.darkened(0.45))
+	_lobby_start.name = "LobbyStart"
+	_lobby_start.custom_minimum_size.y = 70
+	_lobby_start.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lobby_start.add_theme_font_size_override("font_size", 34)
+	_lobby_start.pressed.connect(func(): Sfx.ui_click(); lobby_start())
+	row.add_child(_lobby_start)
+	# The grid, on the right.
+	var list_panel := UiTheme.panel(24)
+	list_panel.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+	list_panel.offset_left = -440
+	list_panel.offset_right = -28
+	list_panel.offset_top = 24
+	list_panel.offset_bottom = -24
+	list_panel.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.025, 0.055, 0.09, 0.92), Color(1, 1, 1, 0.16), 24))
+	c.add_child(list_panel)
+	var lv := VBoxContainer.new()
+	lv.add_theme_constant_override("separation", 10)
+	list_panel.add_child(lv)
+	_lobby_count = _eyebrow("")
+	lv.add_child(_lobby_count)
+	_lobby_rows.clear()
+	for i in NetSession.MAX_PLAYERS:
+		var r := UiTheme.label("", 28, UiTheme.TEXT)
+		r.name = "Slot%d" % i
+		r.custom_minimum_size.y = 52
+		r.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lv.add_child(r)
+		_lobby_rows.append(r)
 	return c
+
+
+## Opens a game on this phone.
+func lobby_host(port := NetSession.PORT) -> void:
+	Game.leave_online()
+	var session := NetSession.new()
+	if session.host(Settings.display_name(), port, str(Game.race_opts.car)) != OK:
+		_lobby_note = Data.t("online.cannot_host")
+	else:
+		Game.net = session
+		_lobby_note = ""
+	_refresh_lobby()
+
+
+## Joins the game at the typed address.
+func lobby_join(port := NetSession.PORT) -> void:
+	var address := _lobby_address.text.strip_edges()
+	if address.is_empty():
+		_lobby_note = Data.t("online.need_address")
+		_refresh_lobby()
+		return
+	Game.leave_online()
+	var session := NetSession.new()
+	if session.join(Settings.display_name(), address, port, str(Game.race_opts.car)) != OK:
+		_lobby_note = Data.t("online.cannot_join")
+	else:
+		Game.net = session
+		_lobby_note = Data.t("online.connecting", address)
+	_refresh_lobby()
+
+
+## Host only: everyone races with this phone's settings and the bots chosen.
+func lobby_start() -> void:
+	if Game.net == null or not Game.net.is_host or Game.net.names.size() < 2:
+		return
+	Game.net.start({
+		"seed": randi() % 1000000, "city": "tirane", "laps": Game.city_laps("tirane"),
+		"diff": int(Game.race_opts.diff), "env": str(Game.race_opts.env), "reverse": bool(Game.race_opts.reverse),
+		"bots": clampi(_lobby_bots, 0, NetSession.MAX_PLAYERS - Game.net.names.size()),
+		"assist": Settings.assist, "brake_assist": Settings.assist, "handling": Data.handling_id(Settings.handling),
+	})
+	Game.net.poll()
+	Game.start_online()
+
+
+## This phone's address on the local network, for the host to read out.
+static func local_address() -> String:
+	for a in IP.get_local_addresses():
+		if a.begins_with("192.168.") or a.begins_with("10.") or (a.begins_with("172.") and int(a.get_slice(".", 1)) >= 16 and int(a.get_slice(".", 1)) <= 31):
+			return a
+	return ""
+
+
+## Pumps the lobby while this page is up; joins the race when it starts.
+func _poll_lobby() -> void:
+	if Game.net == null or Game.net.started and Game.net.is_host:
+		return
+	var changed := false
+	for e in Game.net.poll():
+		changed = true
+		match str(e.t):
+			"joined":
+				_lobby_note = ""
+			"refused":
+				_lobby_note = {"full": Data.t("online.refused.full"), "started": Data.t("online.refused.started"),
+					"version": Data.t("online.refused.version")}.get(str(e.why), Data.t("online.closed"))
+				Game.leave_online()
+			"closed":
+				_lobby_note = Data.t("online.closed")
+				Game.leave_online()
+			"start":
+				Game.start_online()
+				return
+	if changed:
+		_refresh_lobby()
+
+
+func _refresh_lobby() -> void:
+	if _lobby_status == null:
+		return
+	var s := Game.net
+	var in_game := s != null
+	_lobby_idle.visible = not in_game
+	_lobby_room.visible = in_game
+	var humans := s.names.size() if in_game else 0
+	_lobby_bots = clampi(_lobby_bots, 0, NetSession.MAX_PLAYERS - maxi(humans, 1))
+	_lobby_bots_value.text = str(_lobby_bots)
+	_lobby_bots_row.visible = in_game and s.is_host
+	_lobby_start.visible = in_game and s.is_host
+	_lobby_start.disabled = not in_game or humans < 2
+	if in_game and s.is_host:
+		var ip := local_address()
+		_lobby_ip.text = ip if not ip.is_empty() else Data.t("online.no_address")
+		_lobby_ip.visible = true
+	else:
+		_lobby_ip.visible = false
+	var status := _lobby_note
+	if status.is_empty():
+		if not in_game:
+			status = Data.t("online.as", Settings.display_name())
+		elif s.is_host:
+			status = Data.t("online.hosting") if humans < 2 else Data.t("online.ready_to_start")
+		else:
+			status = Data.t("online.waiting") if s.slot >= 0 else Data.t("online.connecting", "")
+	_lobby_status.text = status
+	_lobby_count.text = Data.t("online.players", [humans, NetSession.MAX_PLAYERS])
+	for i in _lobby_rows.size():
+		var row: Label = _lobby_rows[i]
+		if i < humans:
+			row.text = "%d  %s%s" % [i + 1, str(s.names[i]), Data.t("online.you_mark") if i == s.slot else ""]
+			row.add_theme_color_override("font_color", Color.html(Data.DRIVERS[i].col))
+		elif i < humans + _lobby_bots and in_game:
+			row.text = "%d  %s" % [i + 1, Data.t("online.bot")]
+			row.add_theme_color_override("font_color", UiTheme.MUTED)
+		else:
+			row.text = "%d  —" % (i + 1)
+			row.add_theme_color_override("font_color", Color(1, 1, 1, 0.25))
 
 
 # ------------------------------------------------------------------ cup
@@ -447,7 +910,7 @@ func _refresh_cup() -> void:
 	if _cup_stars != null:
 		_cup_stars.text = "%d / %d" % [earned, possible]
 	if _cup_button != null:
-		_cup_button.text = Data.t("menu.cup_stars", [earned, possible])
+		(_cup_button.get_meta(&"sub") as Label).text = Data.t("menu.cup_stars", [earned, possible])
 
 
 func mode_index() -> int:
@@ -747,6 +1210,10 @@ func _page_settings() -> Control:
 		Sfx.apply_volumes()
 		show_page(back_to))
 	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	var credits := UiTheme.button(Data.t("credits.button"), Color(0, 0, 0, 0), 180)
+	credits.pressed.connect(func(): Sfx.ui_click(); Settings.save(); Sfx.apply_volumes(); back_to = "settings"; show_page("credits"))
+	h.add_child(credits)
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(sp)
