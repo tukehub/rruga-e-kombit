@@ -645,6 +645,10 @@ func _process(dt: float) -> void:
 	if sky.wet > 0.01:
 		sky.set_rain_ground(track.pos(player.s, player.d), track.tangent(player.s))
 	Sfx.listener_pos = cam.global_position
+	if state in ["race", "finish"]:
+		Sfx.set_mix(Sfx.danger_of(player), Sfx.space_near(cam.global_position, props.landmarks))
+	else:
+		Sfx.set_mix(0.0, 0.0)
 
 
 func _recover_missing_tilt(dt: float) -> void:
@@ -712,7 +716,7 @@ func _events() -> void:
 						"shock": "zap", "nitro": "nitro", "shield": "shield", "repair": "repair"}.get(e.type, "fire_bolt")
 					Sfx.play_at(snd, _wpos(c.s, c.d, 0.8), "Pickups", _vol_db(vol))
 				if c == player:
-					Sfx.haptic(25)
+					Sfx.haptic("fire")
 			"hit":
 				var col := Color.html(Data.PW[e.kind].col) if Data.PW.has(e.kind) else Color.WHITE
 				var softened := bool(e.get("recovering", false))
@@ -722,7 +726,7 @@ func _events() -> void:
 					if not softened or _limited("chain_feedback", 0.35):
 						hud.flash(Color(1.0, 0.88, 0.23, 1.0) if e.kind == "shock" else Color(0.9, 0.12, 0.12, 1.0), 0.16 if softened else 0.5)
 						cam.add_kick(e.get("dir", Vector2.ZERO), 0.12 if softened else (1.2 if e.kind == "eagle" else 0.6))
-						Sfx.haptic(15 if softened else 60)
+						Sfx.haptic("hit_soft" if softened else ("hit_heavy" if e.kind == "eagle" else "hit"))
 					if not softened or _limited("chain_hit", 0.8):
 						hud.feed(Data.t("race.hit_softened") if softened else "%s → %s" % [e.by.name if e.by else "?", player.name], col)
 				elif e.by == player:
@@ -764,7 +768,8 @@ func _events() -> void:
 					hud.center(Data.t("race.wrecked.title"), Data.t("race.wrecked.sub"), 2.2)
 					hud.flash(Color(1.0, 0.47, 0.12), 1.0)
 					cam.add_kick(e.get("dir", Vector2.ZERO), 1.6)
-					Sfx.haptic(120)
+					Sfx.haptic("wreck")
+					Music.duck(0.3, 2.0)
 				elif e.by == player:
 					hud.feed(Data.t("race.wrecked_by_you", [c.name, int(Race.FANS.wreck)]), UiTheme.AMBER)
 					hud.pop(Data.t("race.ko", int(Race.FANS.wreck)))
@@ -779,7 +784,7 @@ func _events() -> void:
 				if c == player and _limited("wall", 0.45):
 					Sfx.play("wall_impact", "Impacts", _vol_db(clampf(float(e.imp) / 20.0, 0.3, 1.0)))
 					cam.add_kick(Vector2(-float(e.side), 0.0), minf(0.15, float(e.imp) / 120.0))
-					Sfx.haptic(15)
+					Sfx.haptic("wall")
 			"bump":
 				if (e.a == player or e.b == player) and _limited("bump", 0.22):
 					Sfx.play("impact_soft", "Impacts", -3.0)
@@ -826,6 +831,7 @@ func _events() -> void:
 					cars[race.cars.find(player)].show_finish_driver()
 					views.view_button.disabled = true
 					Sfx.play("finish", "UI", -2.0)
+					Music.duck(0.45, 2.5)
 					hud.flash(Color(1.0, 0.71, 0.28), 0.7)
 					hud.finish_place(Data.ordinal(player.place) + "!", Game.fmt_time(player.finish_time))
 

@@ -325,11 +325,28 @@ work. An item below that needs a Forward+-only feature is desktop-only.
 4.2 **Engine:** replace the two-loop crossfade in `RaceScene._engine_audio()`
     with idle/low/mid/high layers plus fake gears (pitch ramp, shift one-shot)
     and an off-throttle layer; the nearest two bots get 3D engine loops.
-4.3 **Announcer (Albanian):** countdown, final lap, position changes, power-up
-    names, new record; priority queue with a minimum gap, its own bus, a
-    settings toggle.
-4.4 **Mix:** reverb send under landmarks/tunnels, low-pass while
-    stunned/wrecked, haptic patterns per event instead of one buzz.
+4.3 **Announcer (English first, Albanian later):** countdown, final lap,
+    position changes, power-up names, new record; priority queue with a
+    minimum gap, on the "Voice" bus (already ducks World and Music), a
+    settings toggle. Lines are keyed per language under
+    `assets/voice/<lang>/` so Albanian recordings drop in later without code
+    changes.
+4.4 **Mix — groundwork done.** `scripts/game/sfx.gd` builds Master
+    (hard limiter at -0.5 dB) ← World (reverb, low-pass, compressor keyed by
+    Voice) ← Engine / Tyres / Impacts / Pickups / Ambience, plus UI, Music
+    (compressor keyed by Voice) and Voice straight to Master. Scenes call
+    `Sfx.set_mix(danger, space)` each frame: danger (`Sfx.danger_of(car)`:
+    1 wrecked, 0.6 stunned) sweeps the World low-pass from 20 kHz to 650 Hz;
+    space (`Sfx.space_near()`, within ~75 m of a landmark; a constant 0.35 on
+    the walled square) sets the reverb. Both ease in fast and out slow, and
+    each effect is switched off while it would do nothing. One-shots get a
+    small pitch/level spread per bus and pick among `<name>_2.wav` ...
+    `<name>_6.wav` when they exist, never the same one twice in a row.
+    Haptics are named patterns with strength (`Sfx.HAPTICS`: hit, hit_heavy,
+    wreck, ...), a weaker one never cutting into a stronger one. Music ducks
+    on the player's wreck and on the finish. Covered by `tests/audio_mix`.
+    Remaining: an Ambience bed (city, crowd at the arena), tyre sound per
+    surface, and recorded variants for impacts in `tools/build_sfx.py`.
 
 ### 5. Controls and UI
 

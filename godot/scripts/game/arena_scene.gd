@@ -13,6 +13,7 @@ const MAX_STEPS := 3
 const WALL_HEIGHT := 1.5
 const OVER_TIME := 3.2           # seconds between time up and the results
 const STATUE_SCALE := 2.4        # the bronze, larger than life on the square
+const ARENA_SPACE := 0.35        # reverb amount (Sfx.set_mix) inside the walled square
 const STATUE_PLINTH := 4.0
 ## The bronze is ~7.7 x 17.7 m at STATUE_SCALE (long along z): the plinth holds
 ## all four hooves, on a broad step that still fits inside Arena.ISLAND.
@@ -384,6 +385,8 @@ func _process(dt: float) -> void:
 	_follow_camera(dt)
 	_engine_audio()
 	Sfx.listener_pos = cam.global_position
+	# The walled square and its grandstands give a constant, modest echo.
+	Sfx.set_mix(Sfx.danger_of(player) if state != "over" else 0.0, ARENA_SPACE)
 
 
 # ------------------------------------------------------------------ weapons
@@ -567,19 +570,20 @@ func _events() -> void:
 					hud.pop("+%d" % int(e.pts))
 					hud.feed(Data.t("arena.hit", [victim.name, int(e.pts)]) + (" ×%d" % int(e.combo) if int(e.combo) > 1 else ""), Data.pw_col("ram") if bool(e.ram) else UiTheme.AMBER)
 					_kick_camera(-(e.dir as Vector2), 0.35)
-					Sfx.haptic(30)
+					Sfx.haptic("score")
 				elif victim == player:
 					hud.flash(UiTheme.RED, 0.3)
 					hud.feed(Data.t("arena.hit_by", c.name), UiTheme.RED)
 					_kick_camera(e.dir, 0.9 if bool(e.ram) else 0.6)
-					Sfx.haptic(60)
+					Sfx.haptic("hit")
 			"wreck":
 				Sfx.play_at("wreck", _at(e), "Impacts", 0.0)
 				var by: ArenaCar = e.by
 				if c == player:
 					hud.center(Data.t("race.wrecked.title"), Data.t("race.wrecked.sub"), 2.0)
 					hud.flash(Color(1.0, 0.47, 0.12), 0.5)
-					Sfx.haptic(120)
+					Sfx.haptic("wreck")
+					Music.duck(0.3, 2.0)
 				elif by == player:
 					hud.pop("+%d" % int(e.pts))
 					hud.feed(Data.t("arena.wrecked", [c.name, int(e.pts)]), UiTheme.AMBER)
@@ -595,12 +599,12 @@ func _events() -> void:
 					"bolt": "fire_bolt", "cluster": "fire_bolt", "barge": "barge", "mine": "mine_drop", "oil": "mine_drop", "shock": "zap"}.get(str(e.type), "fire_bolt")
 				Sfx.play_at(sound, _at(e), "Pickups", -2.0)
 				if c == player:
-					Sfx.haptic(25)
+					Sfx.haptic("fire")
 			"wall":
 				if c == player and _limited("wall", 0.4):
 					Sfx.play("wall_impact", "Impacts", -4.0)
 					_kick_camera(e.dir, minf(0.5, float(e.imp) / 40.0))
-					Sfx.haptic(15)
+					Sfx.haptic("wall")
 			"bump":
 				if (e.a == player or e.b == player) and _limited("bump", 0.2):
 					Sfx.play("impact_soft", "Impacts", -6.0)
@@ -618,7 +622,7 @@ func _events() -> void:
 					hud.flash(UiTheme.RED, 0.3)
 					hud.feed(Data.t("arena.weapon_hit_you", [by.name if by != null else "?", Data.pw_name(str(e.kind))]), UiTheme.RED)
 					_kick_camera(e.dir, 0.6)
-					Sfx.haptic(50)
+					Sfx.haptic("hit")
 				elif by == player and int(e.pts) > 0:
 					hud.pop("+%d" % int(e.pts))
 					hud.feed(Data.t("arena.weapon_hit", [Data.pw_name(str(e.kind)), c.name, int(e.pts)]), Data.pw_col(str(e.kind)))
