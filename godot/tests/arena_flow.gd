@@ -59,6 +59,16 @@ func _ready() -> void:
 	var paving_material := paving.material_override as ShaderMaterial
 	check(paving_material != null and paving_material.shader.resource_path == "res://shaders/skanderbeg_tiles.gdshader" and paving_material.get_shader_parameter("albedo_tex") is Texture2D and paving_material.get_shader_parameter("normal_tex") is Texture2D, "the ground is the square's PBR limestone slabs")
 	var sun := scene.get_node("Sun") as DirectionalLight3D
+	var around := scene.get_node("Surroundings") as ArenaSurroundings
+	var landmark_ids := []
+	var clear := true
+	for landmark in around.placed_landmarks:
+		landmark_ids.append(landmark.id)
+		var spot: Vector2 = landmark.position
+		clear = clear and (absf(spot.x) > Arena.HALF_X + 20.0 or absf(spot.y) > Arena.HALF_Z + 20.0)
+	check(landmark_ids.size() >= 6 and "national_museum" in landmark_ids and "eyes_tirana" in landmark_ids and "cathedral" in landmark_ids and clear, "the race's landmarks stand around the square, outside the wall")
+	check(around.spectators > 200 and around.get_node("Crowd") is MultiMeshInstance3D, "a cheering crowd fills the stands")
+	check((scene.get_node("Plinth").mesh as BoxMesh).size.z > 18.0, "the plinth is long enough for the whole horse")
 	check(sun != null and sun.shadow_enabled and sun.directional_shadow_max_distance <= 60.0 and sun.rotation_degrees.x > -26.0 and sun.rotation_degrees.x < -19.0, "a low golden-hour sun with tight shadows")
 	check((paving.mesh as PlaneMesh).size.x >= Arena.HALF_X * 2.0 and (paving.mesh as PlaneMesh).size.y >= Arena.HALF_Z * 2.0, "and covers the whole square")
 	var include := FileAccess.get_file_as_string("res://shaders/square_paving.gdshaderinc")

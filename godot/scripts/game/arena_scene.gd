@@ -14,6 +14,13 @@ const WALL_HEIGHT := 1.5
 const OVER_TIME := 3.2           # seconds between time up and the results
 const STATUE_SCALE := 2.4        # the bronze, larger than life on the square
 const STATUE_PLINTH := 4.0
+## The bronze is ~7.7 x 17.7 m at STATUE_SCALE (long along z): the plinth holds
+## all four hooves, on a broad step that still fits inside Arena.ISLAND.
+const PLINTH_SIZE := Vector2(10.6, 20.8)
+const STEP_SIZE := Vector2(13.6, 24.4)
+const STEP_HEIGHT := 0.6
+const CORNICE := 0.4
+const SURROUNDINGS := 280.0      # paving beyond the wall, out to the landmarks
 
 var arena: Arena
 var player: ArenaCar
@@ -138,7 +145,7 @@ func _build_world() -> void:
 	# The square's paving, with room outside the wall so the horizon is not a cliff.
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2((Arena.HALF_X + 60.0) * 2.0, (Arena.HALF_Z + 60.0) * 2.0)
+	plane.size = Vector2((Arena.HALF_X + SURROUNDINGS) * 2.0, (Arena.HALF_Z + SURROUNDINGS) * 2.0)
 	ground.mesh = plane
 	# Honed limestone slabs, each turned and toned on its own, damp in patches.
 	var paving := ShaderMaterial.new()
@@ -168,21 +175,34 @@ func _build_world() -> void:
 	stone.uv1_scale = Vector3(0.17, 0.17, 0.17)
 	island.material_override = stone
 	add_child(island)
-	# Skanderbeg on a tall plinth, well above the cars, the landmark of the square.
-	var plinth := MeshInstance3D.new()
-	var plinth_box := BoxMesh.new()
-	plinth_box.size = Vector3(12.0, STATUE_PLINTH, 8.0)
-	plinth.mesh = plinth_box
-	plinth.position.y = 1.0 + STATUE_PLINTH * 0.5
-	plinth.material_override = stone
-	add_child(plinth)
+	# Skanderbeg on a tall plinth, well above the cars, the landmark of the square:
+	# a broad step, the block, and a cornice the horse stands on.
+	var top := 1.0
+	for part in [[STEP_SIZE, STEP_HEIGHT, "PlinthStep"], [PLINTH_SIZE, STATUE_PLINTH, "Plinth"],
+			[PLINTH_SIZE + Vector2(0.8, 0.8), CORNICE, "PlinthCornice"]]:
+		var size: Vector2 = part[0]
+		var height: float = part[1]
+		var block := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(size.x, height, size.y)
+		block.mesh = box
+		block.name = part[2]
+		block.position.y = top + height * 0.5
+		block.material_override = stone
+		add_child(block)
+		top += height
 	var statue_scene: PackedScene = load("res://assets/landmarks/skanderbeg_approx.glb")
 	if statue_scene != null:
 		statue = statue_scene.instantiate() as Node3D
 		statue.name = "Skanderbeg"
-		statue.position.y = 1.0 + STATUE_PLINTH
+		statue.position.y = top
 		statue.scale = Vector3.ONE * STATUE_SCALE
 		add_child(statue)
+	# Landmarks, grandstands, the crowd, flags, lamps and trees outside the wall.
+	var surroundings := ArenaSurroundings.new()
+	surroundings.name = "Surroundings"
+	add_child(surroundings)
+	surroundings.build(Arena.HALF_X, Arena.HALF_Z, Arena.CORNER)
 
 
 ## The barrier: the rounded rectangle of Arena.wall(), as a striped band.
