@@ -4,7 +4,11 @@ extends Node3D
 ## the Arena simulation. States: countdown -> play -> over -> results.
 
 const DT := 1.0 / 60.0
-const GROUND_SHADER := preload("res://shaders/square_ground.gdshader")
+const GROUND_SHADER := preload("res://shaders/skanderbeg_tiles.gdshader")
+const TILE_DIR := "res://assets/textures/skanderbeg_tiles/"
+const SLAB_SIZE := 1.0           # metres per paving slab; a car is about 4.4 m
+const TILE_GRID := 5.0           # slabs along each side of the tile texture
+const SHADOW_DIST := 55.0        # tight cascade: crisp contact shadows on phones
 const MAX_STEPS := 3
 const WALL_HEIGHT := 1.5
 const OVER_TIME := 3.2           # seconds between time up and the results
@@ -81,37 +85,69 @@ func _build_world() -> void:
 	var environment := Environment.new()
 	var sky := Sky.new()
 	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color(0.2, 0.42, 0.78)
-	sky_material.sky_horizon_color = Color(0.72, 0.8, 0.88)
-	sky_material.ground_horizon_color = Color(0.62, 0.64, 0.66)
-	sky_material.ground_bottom_color = Color(0.3, 0.3, 0.32)
+	# Golden hour: deep blue overhead, warm haze at the horizon. The polished
+	# slabs reflect this sky, so it is what gives the stone its sheen.
+	sky_material.sky_top_color = Color(0.22, 0.4, 0.72)
+	sky_material.sky_horizon_color = Color(0.84, 0.72, 0.6)
+	sky_material.sky_curve = 0.12
+	sky_material.ground_horizon_color = Color(0.74, 0.66, 0.56)
+	sky_material.ground_bottom_color = Color(0.32, 0.3, 0.28)
+	sky_material.sun_angle_max = 20.0
+	sky_material.sun_curve = 0.1
 	sky.sky_material = sky_material
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
 	# Mostly warm fill, a little of the sky's blue: the stone keeps its colours.
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.86, 0.85, 0.84)
-	environment.ambient_light_sky_contribution = 0.3
-	environment.ambient_light_energy = 0.9
+	environment.ambient_light_color = Color(0.84, 0.8, 0.76)
+	environment.ambient_light_sky_contribution = 0.35
+	environment.ambient_light_energy = 0.75
+	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	# Depth fog: nothing on the cars, the far paving melts into the warm horizon.
+	environment.fog_enabled = true
+	environment.fog_mode = Environment.FOG_MODE_DEPTH
+	environment.fog_light_color = Color(0.78, 0.7, 0.62)
+	environment.fog_light_energy = 1.0
+	environment.fog_density = 0.55
+	environment.fog_depth_begin = 90.0
+	environment.fog_depth_end = 420.0
+	environment.fog_depth_curve = 1.4
+	environment.fog_sky_affect = 0.25
+	environment.fog_aerial_perspective = 0.35
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.glow_enabled = bool(Quality.p.glow)
 	var world := WorldEnvironment.new()
 	world.environment = environment
 	add_child(world)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-48.0, 38.0, 0.0)
-	sun.light_energy = 1.25
+	sun.name = "Sun"
+	# Low, warm sun (22 degrees up): long shadows and a glancing sheen on the slabs.
+	sun.rotation_degrees = Vector3(-22.0, 38.0, 0.0)
+	sun.light_color = Color(1.0, 0.84, 0.66)
+	sun.light_energy = 1.45
+	sun.light_specular = 0.8
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = float(Quality.p.shadow_dist)
+	Quality.apply_sun(sun)
+	# Two splits at most on phones; one orthographic map on the lower presets.
+	sun.directional_shadow_mode = (DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+		if int(Quality.p.shadow_splits) >= 2 else DirectionalLight3D.SHADOW_ORTHOGONAL)
+	sun.directional_shadow_split_1 = 0.3
+	sun.directional_shadow_blend_splits = false
+	sun.directional_shadow_max_distance = SHADOW_DIST
 	add_child(sun)
 	# The square's paving, with room outside the wall so the horizon is not a cliff.
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2((Arena.HALF_X + 60.0) * 2.0, (Arena.HALF_Z + 60.0) * 2.0)
 	ground.mesh = plane
-	# Rows of stone slabs in mixed colours, as the real square is paved.
+	# Honed limestone slabs, each turned and toned on its own, damp in patches.
 	var paving := ShaderMaterial.new()
 	paving.shader = GROUND_SHADER
+	paving.set_shader_parameter("albedo_tex", load(TILE_DIR + "skanderbeg_tiles_diff_1k.jpg"))
+	paving.set_shader_parameter("roughness_tex", load(TILE_DIR + "skanderbeg_tiles_rough_1k.jpg"))
+	paving.set_shader_parameter("normal_tex", load(TILE_DIR + "skanderbeg_tiles_nor_gl_1k.jpg"))
+	paving.set_shader_parameter("sub_grid_divisions", TILE_GRID)
+	paving.set_shader_parameter("tile_scale", 1.0 / (SLAB_SIZE * TILE_GRID))
 	ground.material_override = paving
 	ground.name = "SquarePaving"
 	add_child(ground)

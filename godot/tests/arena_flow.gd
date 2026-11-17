@@ -57,7 +57,9 @@ func _ready() -> void:
 	check(scene.cars.size() == 6 and scene.pads.size() == Arena.PADS.size(), "every car and every pickup pad is drawn")
 	var paving := scene.get_node("SquarePaving") as MeshInstance3D
 	var paving_material := paving.material_override as ShaderMaterial
-	check(paving_material != null and paving_material.shader.resource_path == "res://shaders/square_ground.gdshader", "the ground is the square's own slab paving")
+	check(paving_material != null and paving_material.shader.resource_path == "res://shaders/skanderbeg_tiles.gdshader" and paving_material.get_shader_parameter("albedo_tex") is Texture2D and paving_material.get_shader_parameter("normal_tex") is Texture2D, "the ground is the square's PBR limestone slabs")
+	var sun := scene.get_node("Sun") as DirectionalLight3D
+	check(sun != null and sun.shadow_enabled and sun.directional_shadow_max_distance <= 60.0 and sun.rotation_degrees.x > -26.0 and sun.rotation_degrees.x < -19.0, "a low golden-hour sun with tight shadows")
 	check((paving.mesh as PlaneMesh).size.x >= Arena.HALF_X * 2.0 and (paving.mesh as PlaneMesh).size.y >= Arena.HALF_Z * 2.0, "and covers the whole square")
 	var include := FileAccess.get_file_as_string("res://shaders/square_paving.gdshaderinc")
 	check(include.contains("square_paving(") and FileAccess.get_file_as_string("res://shaders/terrain.gdshader").contains("square_paving("), "the race's square uses the same paving")
