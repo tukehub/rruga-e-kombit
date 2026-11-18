@@ -119,6 +119,17 @@ func poll() -> Array:
 	return out
 
 
+## Round trip to the host (a client) or to the slowest player (the host), in
+## milliseconds; 0 with nobody to measure.
+func ping_ms() -> int:
+	var worst := 0
+	var peers: Array = _peers.keys() if is_host else ([_server] if _server != null else [])
+	for peer in peers:
+		if (peer as ENetPacketPeer).get_state() == ENetPacketPeer.STATE_CONNECTED:
+			worst = maxi(worst, int((peer as ENetPacketPeer).get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME)))
+	return worst
+
+
 ## Leaves: tells the others (ENet notices) and frees the socket.
 func close() -> void:
 	if _enet == null:

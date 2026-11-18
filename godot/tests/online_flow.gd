@@ -118,10 +118,17 @@ func _ready() -> void:
 	check(scene.state == "race" and scene.race.started and other != null and other.race.started, "both left the countdown together")
 	check(scene.net.lockstep.desync_tick < 0 and other != null and other.lockstep.desync_tick < 0, "no desync")
 	check(other != null and scene.race.humans[1].progress > 20.0, "the other phone's car moves on the host's screen")
+	check(scene._net_badge != null and scene._net_badge.is_visible_in_tree() and scene._net_badge.text.contains("ms"), "a badge shows the connection: %s" % (scene._net_badge.text if scene._net_badge else "none"))
+	check(scene.input.control_rect("steer").size.y >= RaceInput.STEER_HEIGHT * 0.85, "the steering pad is the taller one")
 	# Same tick, same race.
 	if other != null:
 		var tick := mini(scene.net.lockstep.tick, other.lockstep.tick)
 		check(tick > NetRace.COUNTDOWN_TICKS, "both are racing")
+
+	# --- the other phone stops sending: the race waits and says for whom
+	for i in 60:
+		await get_tree().process_frame
+	check(scene._net_badge.text == Data.t("online.badge.waiting", "Ben"), "a silent phone is named while the race waits: %s" % scene._net_badge.text)
 
 	# --- the other phone leaves; a bot takes its car
 	client.close()

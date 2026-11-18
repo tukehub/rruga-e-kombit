@@ -78,6 +78,16 @@ func can_step() -> bool:
 	return true
 
 
+## Slots whose input for the current tick has not arrived yet.
+func waiting_for() -> Array:
+	var row: Array = _inputs.get(tick, [])
+	var out := []
+	for p in players:
+		if (row.is_empty() or row[p] == null) and not is_bot(p, tick) and p != local:
+			out.append(p)
+	return out
+
+
 ## True when slot `p`'s car is driven by a bot on tick `t`.
 func is_bot(p: int, t: int) -> bool:
 	return gone.has(p) and t >= int(gone[p])

@@ -68,9 +68,18 @@ var paused := false
 var _snd_t := {}
 var _seen_tip := false
 var _tilt_missing_t := 0.0
+## Key in Settings.seen_pws for the one-time "hold to drop" tip.
+const DISCARD_TIP := "_discard_tip"
 ## Online race (plan 7.3): the lockstep driver, null when racing alone.
 var net: NetRace = null
 var _net_closed_t := -1.0
+## How long no tick could run for want of someone's input, and the badge
+## that tells the player how the connection is.
+var _net_stall_t := 0.0
+var _net_badge: Label
+var _net_badge_t := 0.0
+## Stalls in the last few seconds make the connection read as weak.
+var _net_recent_stall := 0.0
 
 
 func _ready() -> void:
@@ -734,6 +743,10 @@ func _events() -> void:
 					if not Settings.seen_pw(e.type):
 						hud.feed(Data.pw_desc(e.type), Color.html(Data.PW[e.type].col), 4.5)
 						Settings.mark_pw(e.type)
+					# Once, the first time the inventory is full: how to make room.
+					if player.slots.size() >= 3 and not Settings.seen_pw(DISCARD_TIP):
+						hud.feed(Data.t("race.discard_tip"), UiTheme.CYAN, 6.0)
+						Settings.mark_pw(DISCARD_TIP)
 				else:
 					Sfx.play_at("pickup", _wpos(c.s, c.d, 1.0), "Pickups", -10.0)
 			"fire":
@@ -983,6 +996,13 @@ func _online_frame(dt: float) -> void:
 			break
 		acc -= DT
 		steps += 1
+	if steps == 0 and acc >= DT:
+		_net_stall_t += dt
+		_net_recent_stall = 3.0
+	else:
+		_net_stall_t = 0.0
+	_net_recent_stall = maxf(0.0, _net_recent_stall - dt)
+	_update_net_badge(dt)
 	if state == "countdown":
 		var n := int(ceil(net.countdown_left()))
 		if n != cd_n and n >= 1 and n <= 3:
@@ -1015,6 +1035,37 @@ func _online_frame(dt: float) -> void:
 	else:
 		cam.follow(player, dt, player_pose)
 	_engine_audio(absf(player.v) / float(player.def.vmax), player.gas_on, player.wreck_t <= 0.0, player.scrape, dt)
+
+
+## Connection, top right under the map: green while all is well, amber
+## when the ping is high or the race has had to wait recently, red naming
+## who it is waiting for once a wait passes half a second.
+func _update_net_badge(dt: float) -> void:
+	if _net_badge == null:
+		_net_badge = UiTheme.label("", 20, UiTheme.GREEN)
+		_net_badge.name = "NetBadge"
+		_net_badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		_net_badge.offset_left = -320
+		_net_badge.offset_right = -16
+		_net_badge.offset_top = 214
+		_net_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_net_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hud.add_child(_net_badge)
+	_net_badge_t -= dt
+	if _net_badge_t > 0.0 and _net_stall_t <= 0.5:
+		return
+	_net_badge_t = 0.25
+	var ms := Game.net.ping_ms() if Game.net != null else 0
+	if _net_stall_t > 0.5:
+		var who: Array = net.lockstep.waiting_for().map(func(s: int) -> String: return race.humans[s].name)
+		_net_badge.text = Data.t("online.badge.waiting", ", ".join(who) if not who.is_empty() else "?")
+		_net_badge.add_theme_color_override("font_color", UiTheme.RED)
+	elif _net_recent_stall > 0.0 or ms > 120:
+		_net_badge.text = Data.t("online.badge.weak", ms)
+		_net_badge.add_theme_color_override("font_color", UiTheme.AMBER)
+	else:
+		_net_badge.text = Data.t("online.badge.ok", ms)
+		_net_badge.add_theme_color_override("font_color", UiTheme.GREEN)
 
 
 ## Online the pause menu is only a way out: the race keeps running under it.

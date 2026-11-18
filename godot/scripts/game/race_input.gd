@@ -10,6 +10,8 @@ signal inventory_hold_changed(index: int, fraction: float)
 
 const Rules = preload("res://scripts/sim/combat_rules.gd")
 const DISCARD_HOLD := 0.65
+## Height of the touch steering pad before the size setting (was 128).
+const STEER_HEIGHT := 180.0
 
 const DEAD_DEG := 2.2
 const TILT_SMOOTH := 14.0
@@ -240,8 +242,10 @@ func control_rect(zone: String) -> Rect2:
 		"back":
 			rect = Rect2(Vector2(size.x - inset - rear.x, size.y - bottom - pedal.y - gap - rear.y), rear)
 		"steer":
+			# Taller than wide-and-flat: the thumb rests low but often drifts
+			# up while steering, so the pad reaches higher than it used to.
 			var width := minf(360.0 * scale, maxf(0.0, size.x * 0.5 - STEER_SLOT_CLEARANCE - inset))
-			rect = Rect2(Vector2(inset, size.y - bottom - 128.0 * scale), Vector2(width, 128.0 * scale))
+			rect = Rect2(Vector2(inset, size.y - bottom - STEER_HEIGHT * scale), Vector2(width, STEER_HEIGHT * scale))
 	if Settings.left_handed and rect.has_area():
 		rect.position.x = size.x - rect.end.x
 	return rect
