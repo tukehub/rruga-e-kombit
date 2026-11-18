@@ -166,7 +166,7 @@ const T := {
 	"online.title": "Lobi",
 	"online.host": "Krijo lojën",
 	"online.join": "Bashkohu",
-	"online.address_hint": "Adresa e hostit",
+	"online.address_hint": "Adresa e hostit (ose vetëm numri i fundit)",
 	"online.hint": "Të gjithë në të njëjtin Wi-Fi. Kush krijon lojën sheh adresën e vet këtu; të tjerët e shkruajnë.",
 	"online.as": "Luan si %s.",
 	"online.hosting": "Thuaju miqve këtë adresë. Pret lojtarët…",

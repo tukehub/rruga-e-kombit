@@ -70,6 +70,14 @@ func _ready() -> void:
 	check((ov.find_child("LoadingInfo", true, false) as Label).text.contains(Data.city_name("tirane")), "it says what is loading")
 	ov.queue_free()
 
+	# --- typing the host's address on a phone keyboard
+	check(Menu.normalize_address("192,168,1,20", "") == "192.168.1.20", "commas count as dots")
+	check(Menu.normalize_address(" 192 168 1 20 ", "") == "192.168.1.20", "so do spaces")
+	check(Menu.normalize_address("192..168.1.20.", "") == "192.168.1.20", "stray dots are tidied")
+	check(Menu.normalize_address("20", "192.168.1.7") == "192.168.1.20", "the last number alone is enough on the same Wi-Fi")
+	check(Menu.normalize_address("20", "") == "20", "without a network of our own it is left alone")
+	check(Menu.normalize_address("127.0.0.1", "10.0.0.5") == "127.0.0.1", "a full address is kept")
+
 	# --- hosting
 	menu.show_page("online")
 	check(menu._lobby_idle.visible and not menu._lobby_start.visible, "the lobby offers to create or join a game")

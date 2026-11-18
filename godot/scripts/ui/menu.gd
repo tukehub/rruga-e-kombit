@@ -612,7 +612,9 @@ func _page_online() -> Control:
 	_lobby_address.custom_minimum_size = Vector2(0, 60)
 	_lobby_address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_lobby_address.add_theme_font_size_override("font_size", 24)
-	_lobby_address.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
+	# The number pad of many phones has a comma or nothing where the dot
+	# should be; the URL keyboard always has digits and a dot.
+	_lobby_address.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_URL
 	_lobby_address.text_submitted.connect(func(_t: String) -> void: lobby_join())
 	join_row.add_child(_lobby_address)
 	var join := UiTheme.button(Data.t("online.join"), UiTheme.CYAN.darkened(0.45))
@@ -705,7 +707,8 @@ func lobby_host(port := NetSession.PORT) -> void:
 
 ## Joins the game at the typed address.
 func lobby_join(port := NetSession.PORT) -> void:
-	var address := _lobby_address.text.strip_edges()
+	var address := normalize_address(_lobby_address.text, local_address())
+	_lobby_address.text = address
 	if address.is_empty():
 		_lobby_note = Data.t("online.need_address")
 		_refresh_lobby()
@@ -732,6 +735,21 @@ func lobby_start() -> void:
 	})
 	Game.net.poll()
 	Game.start_online()
+
+
+## A typed host address made usable: commas, spaces and dashes count as
+## dots, and a lone last number ("20") is completed with this phone's own
+## network ("192.168.1." + "20"), since everyone is on the same Wi-Fi.
+static func normalize_address(text: String, own: String) -> String:
+	var a := text.strip_edges()
+	for sep in [",", " ", "-", ";", ":", "·", "/"]:
+		a = a.replace(sep, ".")
+	while a.contains(".."):
+		a = a.replace("..", ".")
+	a = a.trim_prefix(".").trim_suffix(".")
+	if a.is_valid_int() and own.get_slice_count(".") == 4:
+		a = "%s.%s.%s.%s" % [own.get_slice(".", 0), own.get_slice(".", 1), own.get_slice(".", 2), a]
+	return a
 
 
 ## This phone's address on the local network, for the host to read out.
