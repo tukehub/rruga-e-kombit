@@ -123,9 +123,18 @@ func goto(name: String) -> void:
 	await get_tree().process_frame
 	# Read the scene and its heavy files on loader threads (75% of the ring).
 	var paths := [SCENES[name]] + _warm_paths(name)
-	for p in paths:
-		ResourceLoader.load_threaded_request(p, "", true)
-	while true:
+	# The headless renderer used by the tests cannot create textures from
+	# several threads; there the files load on this thread, one per frame.
+	var threaded := DisplayServer.get_name() != "headless"
+	if threaded:
+		for p in paths:
+			ResourceLoader.load_threaded_request(p)
+	else:
+		for i in paths.size():
+			ResourceLoader.load(paths[i])
+			ring.set_progress(0.75 * float(i + 1) / paths.size())
+			await get_tree().process_frame
+	while threaded:
 		var total := 0.0
 		var waiting := false
 		for p in paths:
@@ -140,7 +149,7 @@ func goto(name: String) -> void:
 			break
 		await get_tree().process_frame
 	# Held until the new scene has taken its own references.
-	var held := paths.map(func(p: String) -> Resource: return ResourceLoader.load_threaded_get(p))
+	var held := paths.map(func(p: String) -> Resource: return ResourceLoader.load_threaded_get(p) if threaded else load(p))
 	ring.set_progress(0.8)
 	await get_tree().process_frame
 	for c in _root.get_children():
