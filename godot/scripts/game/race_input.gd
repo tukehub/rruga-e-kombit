@@ -29,6 +29,13 @@ const WHEEL_TEXTURE := preload("res://assets/ui/controls/steering_wheel.png")
 const BOOST_FADE := 6.0
 ## The HUD feed (top 330, two wrapped lines) ends above this: the wheel stays below.
 const FEED_CLEARANCE := 418.0
+## Rotate mode: closer to the hub than this (in wheel radii) the finger's
+## angle is meaningless, so the sideways move steers instead.
+const WHEEL_ANGLE_MIN_R := 0.3
+## A turn bigger than this between two touch events is a jump across the
+## hub, not a rotation.
+const WHEEL_MAX_STEP_DEG := 80.0
+const STEER_DEADZONE := 0.06
 
 const DEAD_DEG := 2.2
 const TILT_SMOOTH := 14.0
@@ -159,6 +166,10 @@ var _touches := {}
 var _pad_steer := 0.0
 var _steer_finger := -1
 var _steer_origin := 0.0
+## Rotate mode: steering built up from the finger's turns about the hub, and
+## where the finger was at the last event.
+var _wheel_acc := 0.0
+var _steer_last := Vector2.ZERO
 var _desktop := false
 var _cycle := false
 var _driving_enabled := false
@@ -321,6 +332,53 @@ func zone_at(local_position: Vector2) -> String:
 	if Settings.touch_steer and on_wheel(local_position):
 		return "steer"
 	return ""
+
+
+## Thumb travel for full lock when sliding, and on the hub in rotate mode.
+func steer_travel() -> float:
+	return minf(control_rect("steer").size.x * 0.5, float(Settings.TOUCH_TRAVEL[Settings.touch_sens]) * float(Settings.CONTROL_SCALES[Settings.control_size]))
+
+
+## Steering for the held finger now at `local`.
+##
+## Rotate (default): the wheel follows the finger round its hub. Each move
+## adds only the small angle turned since the last event, wrapped to
+## -180..180, so there is no seam where full left and full right meet (at 9
+## and 3 o'clock an absolute angle would flip from one to the other). The
+## total is clamped at full lock, so pushing on past the limit stores
+## nothing and turning back answers at once. Near the hub, or on a jump
+## across it, the angle means nothing and the sideways move steers instead.
+##
+## Slide: the sideways distance from where the finger landed; past full
+## lock that anchor is dragged along, again so nothing has to be undone.
+func steer_from_drag(local: Vector2) -> float:
+	var full := maxf(1.0, steer_travel())
+	var out := 0.0
+	if Settings.steer_mode == "slide":
+		var offset := local.x - _steer_origin
+		if absf(offset) > full:
+			_steer_origin = local.x - signf(offset) * full
+		out = clampf((local.x - _steer_origin) / full, -1.0, 1.0)
+	else:
+		_wheel_acc = clampf(_wheel_acc + wheel_delta(_steer_last, local), -1.0, 1.0)
+		out = _wheel_acc
+	_steer_last = local
+	return 0.0 if absf(out) < STEER_DEADZONE else out
+
+
+## The steering change for a finger moving from `from` to `to` in rotate mode:
+## clockwise is right, full lock at Settings.TOUCH_TRAVEL degrees (sensitivity).
+func wheel_delta(from: Vector2, to: Vector2) -> float:
+	var pad := control_rect("steer")
+	var hub := pad.get_center()
+	var a := from - hub
+	var b := to - hub
+	var near := pad.size.x * 0.5 * WHEEL_ANGLE_MIN_R
+	if a.length() >= near and b.length() >= near:
+		var turned := wrapf(b.angle() - a.angle(), -PI, PI)
+		if absf(turned) <= deg_to_rad(WHEEL_MAX_STEP_DEG):
+			return turned / deg_to_rad(float(Settings.TOUCH_TRAVEL[Settings.touch_sens]))
+	return (to.x - from.x) / maxf(1.0, steer_travel())
 
 
 ## True inside the generous circle around the steering wheel's hub.
@@ -573,6 +631,8 @@ func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 			elif zone == "steer":
 				_steer_finger = touch.index
 				_steer_origin = local.x
+				_steer_last = local
+				_wheel_acc = 0.0
 				_pad_steer = 0.0
 		else:
 			if not _touches.has(touch.index):
@@ -612,10 +672,7 @@ func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 		if not _touches.has(drag.index):
 			return false
 		if drag.index == _steer_finger:
-			var full := minf(control_rect("steer").size.x * 0.5, float(Settings.TOUCH_TRAVEL[Settings.touch_sens]) * float(Settings.CONTROL_SCALES[Settings.control_size]))
-			_pad_steer = clampf((local.x - _steer_origin) / maxf(1.0, full), -1.0, 1.0)
-			if absf(_pad_steer) < 0.06:
-				_pad_steer = 0.0
+			_pad_steer = steer_from_drag(local)
 			_update_marker()
 		var zone: String = _touches[drag.index].zone
 		if zone.begins_with("slot") and not control_rect(zone).grow(16).has_point(local):

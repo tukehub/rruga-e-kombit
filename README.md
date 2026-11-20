@@ -396,6 +396,25 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     threads first, so the build finds them cached. Covered by
     `tests/online_flow` and `tests/flow_test`.
 
+5.6 **Wheel steering and lighter corner assist — done.** Touch steering
+    defaults to rotating the wheel, as in mobile racers with an on-screen
+    wheel (CarX and the like): `RaceInput.steer_from_drag()` adds up the
+    small angle the finger turns about the hub at each move (wrapped, so
+    there is no seam at 9 or 3 o'clock where full left and full right
+    meet), clamps the total at full lock (nothing builds up past the limit,
+    so turning back answers at once) and uses the sideways move near the
+    hub or for a jump across it. Full lock takes 125/100/75 degrees of
+    finger turn by sensitivity. "Rrëshqit" in the controls keeps the
+    sideways drag, with its anchor dragged along past the limit for the
+    same reason. Settings version 6 saves `steer_mode`; older files get the
+    wheel. The corner brake assist now plans like an arcade racer: higher
+    expected cornering grip (1.4), 1.5 m/s of overspeed left alone, a short
+    braking zone (planned at 16 m/s²), a light 1.6 m/s² trim, and nothing
+    once the bend opens up. On Tirana's five tightest bends from 160 km/h it
+    acts over 58 m before the apex instead of 105 m and 2 m after instead
+    of 22 m, about 20 km/h faster at the apex. Covered by
+    `tests/wheel_steering`, `tests/tirana_turns`, `tests/handling`.
+
 5.5 **Race HUD declutter — done.** Steering is a flat-bottomed supercar
     wheel sprite (`assets/ui/controls/steering_wheel.png`, 512 px, drawn by
     `tools/build_steering_wheel.py`: carbon top, perforated leather grips,

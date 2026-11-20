@@ -49,6 +49,8 @@ func turn(race: Race, c: CarState, drifting: bool) -> CarState:
 	return c
 
 ## The slowest speed over one second approaching Tirana's tightest bend.
+var trim_peak := 0.0
+
 func bend_trim(race: Race) -> float:
 	var track := race.track
 	var worst_s := 0.0
@@ -64,14 +66,15 @@ func bend_trim(race: Race) -> float:
 	p.s = track.mod_s(p.progress)
 	p.v = 40.0
 	p.ctrl.gas = true
-	var slowest := INF
+	# The speed on arriving, and (in trim_peak) the fastest it got on the way.
+	trim_peak = 0.0
 	for i in 60:
 		p.d = 0.0
 		p.yaw = 0.0
 		p.lat_v = 0.0
 		race.physics(p, STEP)
-		slowest = minf(slowest, p.v)
-	return slowest
+		trim_peak = maxf(trim_peak, p.v)
+	return p.v
 
 func snapshot(race: Race) -> Array:
 	var out := []
@@ -161,12 +164,13 @@ func _ready() -> void:
 
 	# Corner brake assist: pro trims less than arcade and more than no assist.
 	var trim_arcade := bend_trim(new_race(RaceTrack.load_city("tirane"), {"brake_assist": true}))
+	var cut_arcade := trim_peak - trim_arcade
 	var trim_pro := bend_trim(new_race(RaceTrack.load_city("tirane"), {"brake_assist": true, "handling": "pro"}))
+	var cut_pro := trim_peak - trim_pro
 	var trim_off := bend_trim(new_race(RaceTrack.load_city("tirane"), {"brake_assist": false, "handling": "pro"}))
-	check(trim_arcade < 40.0 and trim_pro > trim_arcade + 0.3, "pro trims less speed before the bend")
+	check(trim_pro > trim_arcade + 0.2, "pro trims less speed before the bend: %.2f vs %.2f" % [trim_pro, trim_arcade])
 	check(trim_pro < trim_off - 0.3, "pro still trims when the corner assist is on")
-	var expected := 40.0 - Race.CORNER_ASSIST_DECEL * float(pro.brake_assist)
-	check(absf(trim_pro - expected) < 0.2, "pro trim follows the brake_assist scale")
+	check(cut_arcade > 0.3 and absf(cut_pro - cut_arcade * float(pro.brake_assist)) < 0.15, "pro trim follows the brake_assist scale: %.2f vs %.2f" % [cut_pro, cut_arcade])
 	var zero := new_race(RaceTrack.load_city("tirane"), {"brake_assist": true})
 	zero.handling = only("brake_assist", 0.0)
 	zero.take_events()

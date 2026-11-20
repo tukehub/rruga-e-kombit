@@ -3,8 +3,9 @@ extends Node
 func _ready() -> void:
 	_check_finish_assist()
 	# Corner assist: held on the centreline with the gas down, the assisted car
-	# should get a gentle speed trim rather than heavy automatic braking.
+	# gets a short, light speed trim close to the bend, not a long slowdown.
 	# The driver remains responsible for stronger braking in a tight bend.
+	var end_speed := {}
 	for assisted in [true, false]:
 		var bend_track := RaceTrack.load_city("tirane")
 		var bend_race := Race.new(bend_track, {"seed": 13, "brake_assist": assisted})
@@ -27,6 +28,7 @@ func _ready() -> void:
 		p.ctrl.steer = 0.0
 		var peak := 0.0
 		var slowest := INF
+		var first_trim := -1
 		for i in 60:
 			p.d = 0.0
 			p.yaw = 0.0
@@ -34,14 +36,19 @@ func _ready() -> void:
 			var before_speed := p.v
 			bend_race.physics(p, 1.0 / 60.0)
 			assert(p.v >= before_speed - 2.1 / 60.0, "automatic corner braking must remain gentle per tick")
+			if first_trim < 0 and p.braking:
+				first_trim = i
 			peak = maxf(peak, p.v * p.v * absf(bend_track.curv(p.s)))
 			slowest = minf(slowest, p.v)
 		var grip_accel := float(p.def.grip) * 29.0
+		end_speed[assisted] = p.v
 		if assisted:
-			assert(slowest >= 37.9 and slowest < 40.0, "corner assist should trim at most about 7 km/h over one second")
+			assert(slowest >= 37.9, "corner assist should take off only a few km/h")
+			assert(first_trim >= 10, "corner assist must start close to the bend, not 40 m out (tick %d)" % first_trim)
 			assert(slowest >= Race.CORNER_ASSIST_MIN_SPEED - 0.01, "corner assist must never slow the car to a crawl")
 		else:
-			assert(peak > grip_accel * 1.5, "without the assist the same run must arrive too fast")
+			assert(first_trim < 0 and peak > grip_accel * 1.5, "without the assist the same run must arrive too fast")
+	assert(end_speed[true] < end_speed[false] - 2.0, "the assist still takes speed off before the bend")
 	# With no bends ahead the assist must change nothing at all.
 	var flat_track := RaceTrack.load_city("tirane")
 	flat_track.K.fill(0.0)

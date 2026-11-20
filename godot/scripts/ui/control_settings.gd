@@ -14,6 +14,7 @@ func _ready() -> void:
 	_choice("auto_accel", Data.t("controls.acceleration"), [Data.t("controls.acceleration.manual"), Data.t("controls.acceleration.auto")], [false, true])
 	_choice("touch_steer", Data.t("controls.steering"), [Data.t("controls.steering.tilt"), Data.t("controls.steering.touch")], [false, true])
 	_choice("left_handed", Data.t("controls.hand"), [Data.t("controls.hand.left"), Data.t("controls.hand.right")], [false, true])
+	_choice("steer_mode", Data.t("controls.steer_mode"), [Data.t("controls.steer_mode.wheel"), Data.t("controls.steer_mode.slide")], ["wheel", "slide"])
 	_choice("touch_sens", Data.t("controls.touch_sensitivity"), levels, [0, 1, 2])
 	_choice("control_size", Data.t("controls.size"), [Data.t("controls.size.small"), Data.t("controls.size.normal"), Data.t("controls.size.large")], [0, 1, 2])
 	_slider("control_opacity", Data.t("controls.opacity"), 0.45, 1.0)
@@ -107,7 +108,7 @@ func refresh() -> void:
 		var entry: Dictionary = _choices[key]
 		var pick: OptionButton = entry.node
 		pick.select(maxi(0, entry.values.find(Settings.get(key))))
-		pick.disabled = (key == "touch_sens" and not Settings.touch_steer) or (key in ["tilt_sens", "tilt_invert"] and Settings.touch_steer)
+		pick.disabled = (key in ["touch_sens", "steer_mode"] and not Settings.touch_steer) or (key in ["tilt_sens", "tilt_invert"] and Settings.touch_steer)
 	for key in _sliders:
 		var entry: Dictionary = _sliders[key]
 		(entry.node as HSlider).set_value_no_signal(float(Settings.get(key)))

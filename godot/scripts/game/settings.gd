@@ -11,8 +11,9 @@ const PRESENTATION_VERSION := 1
 # the announcer switch and its level; older files start with it on, full. 4
 # added names the player gave the six drivers. 5 replaced the driver choice
 # with one name for the player (the rest are bots); a file before 5 keeps the
-# name its chosen driver raced under.
-const VERSION := 5
+# name its chosen driver raced under. 6 added the touch steering mode; older
+# files get the rotating wheel, which matches the wheel they now see.
+const VERSION := 6
 ## Names the six selectable drivers had, for upgrading files before 5.
 const LEGACY_DRIVERS := ["Artur", "Ritvan", "Desantin", "Eno", "Erlin", "Flori"]
 ## Longest name the player can take (fits the standings and name cards).
@@ -29,6 +30,7 @@ var touch_steer := true         # visible touch pad; tilt remains selectable
 var auto_accel := true
 var left_handed := false
 var touch_sens := 1
+var steer_mode := "wheel"       # touch steering: "wheel" (rotate it) | "slide" (drag sideways)
 var control_size := 1
 var control_opacity := 0.9
 var control_offset_x := 0.0
@@ -206,7 +208,7 @@ func set_player_name(text: String) -> void:
 
 func input_config() -> Dictionary:
 	var values := {}
-	for key in ["tilt_sens", "tilt_invert", "touch_steer", "auto_accel", "left_handed", "touch_sens", "control_size", "control_opacity", "control_offset_x", "control_offset_y", "tilt_center"]:
+	for key in ["tilt_sens", "tilt_invert", "touch_steer", "steer_mode", "auto_accel", "left_handed", "touch_sens", "control_size", "control_opacity", "control_offset_x", "control_offset_y", "tilt_center"]:
 		values[key] = get(key)
 	return values
 
@@ -214,6 +216,7 @@ func input_config() -> Dictionary:
 func load_input_config(values: Dictionary) -> void:
 	for key in ["tilt_invert", "touch_steer", "auto_accel", "left_handed"]:
 		set(key, bool(values.get(key, get(key))))
+	steer_mode = "slide" if str(values.get("steer_mode", steer_mode)) == "slide" else "wheel"
 	for key in ["tilt_sens", "touch_sens", "control_size"]:
 		set(key, clampi(int(values.get(key, get(key))), 0, 2))
 	for key in ["control_opacity", "control_offset_x", "control_offset_y", "tilt_center"]:

@@ -40,7 +40,7 @@ const T := {
 	# ------------ tutorial (the first cup event)
 	"tutorial.skip": "Kalo",
 	"tutorial.welcome": "Mirë se erdhe! Kjo garë të mëson lojën. Rivalët sot nuk gjuajnë.",
-	"tutorial.steer.touch": "Rrëshqit gishtin mbi timonin poshtë majtas për të kthyer.",
+	"tutorial.steer.touch": "Kap timonin poshtë majtas dhe rrotulloje për të kthyer.",
 	"tutorial.steer.tilt": "Anoje telefonin majtas e djathtas për të kthyer.",
 	"tutorial.pedals.auto": "Gazi është automatik. Mbaj FRENËN poshtë djathtas për të ngadalësuar.",
 	"tutorial.pedals.manual": "Mbaj GAZIN poshtë djathtas; FRENA është pranë tij.",
@@ -115,7 +115,7 @@ const T := {
 	# ------------ help
 	"help.title": "Si luhet",
 	"help.goal": "[b]Qëllimi:[/b] mblidh fuqitë me simbole, godit rivalët dhe mbërri i pari.",
-	"help.steering": "[b]Timoni:[/b] prek bllokun majtas dhe rrëshqit nga pika ku vendose gishtin. Gazi është automatik; [color=%s]FRENA[/color] djathtas e ndal gazin. Frena + kthesë = drift.",
+	"help.steering": "[b]Timoni:[/b] kap timonin poshtë majtas dhe rrotulloje si një timon të vërtetë (te Kontrollet mund të zgjedhësh Rrëshqit). Gazi është automatik; [color=%s]FRENA[/color] djathtas e ndal gazin. Frena + kthesë = drift.",
 	"help.setup": "[b]Përshtatja:[/b] te Cilësimet ose Pauzë → Kontrollet zgjidh pedale manuale, timon me anim, anën e timonit, madhësinë, dukshmërinë dhe vendosjen. Për anim, mbaje telefonin si gjatë lojës dhe prek Kalibro animin.",
 	"help.powers": "[b]Fuqitë:[/b] butonat mbi frenën tregojnë veprimin e fuqisë së zgjedhur. Prek fuqinë në inventar për ta zgjedhur. [color=%s]NITRO[/color] përshpejton; [color=%s]FRENO NITRO[/color] e harxhon për frenim të menjëhershëm.",
 	"help.inventory": "[b]Inventari:[/b] fuqia me kornizë të kaltër është e zgjedhur. Mbaj një slot derisa të mbushet vija për ta lëshuar. Kur je plot, një fuqi e dobishme nga pista mund të zëvendësojë Ustën me shëndet plot ose Stuhinë kur je i pari, vetëm në rezervë. Fuqia e zgjedhur ruhet.",
@@ -140,6 +140,9 @@ const T := {
 	"controls.hand.left": "Majtas",
 	"controls.hand.right": "Djathtas",
 	"controls.touch_sensitivity": "Ndjeshmëria e prekjes",
+	"controls.steer_mode": "Timoni me prekje",
+	"controls.steer_mode.wheel": "Rrotullo",
+	"controls.steer_mode.slide": "Rrëshqit",
 	"controls.size": "Madhësia e butonave",
 	"controls.size.small": "E vogël",
 	"controls.size.normal": "Normale",
@@ -281,7 +284,7 @@ const T := {
 	# ------------ race: announcements and feed
 	"race.intro": "%s · %d xhiro",
 	"race.tip": "%s · %s · Pauzë → Kontrollet",
-	"race.tip.touch": "Prek timonin dhe rrëshqit",
+	"race.tip.touch": "Kap timonin dhe rrotulloje",
 	"race.tip.tilt": "Anoje telefonin për të kthyer",
 	"race.tip.auto_gas": "gazi automatik · freno për drift",
 	"race.tip.manual_gas": "mbaj GAZ për të përshpejtuar",

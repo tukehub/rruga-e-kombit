@@ -28,9 +28,16 @@ var handling: Dictionary = Data.HANDLING[Data.HANDLING_DEFAULT]
 var tutorial := false
 # 1.0 is what the tyres hold on the centreline; the wide road lets a driver
 # cut the bend, so a little more still clears the walls.
-const CORNER_ASSIST_GRIP := 1.15
-const CORNER_ASSIST_PLAN_DECEL := 9.0
-const CORNER_ASSIST_DECEL := 2.0
+## Corner brake assist, tuned like an arcade racer's: it expects the car to
+## take a corner fast (generous grip), lets a few km/h of extra speed through,
+## only starts close to the corner (planned as if braking hard, so the zone is
+## short) and then trims lightly. Earlier it planned a long, gentle slowdown
+## it never finished, so it kept braking through the bend and out of it.
+const CORNER_ASSIST_GRIP := 1.4
+const CORNER_ASSIST_PLAN_DECEL := 16.0
+const CORNER_ASSIST_DECEL := 1.6
+## Overspeed (m/s) left alone; the steering assist and drift absorb it.
+const CORNER_ASSIST_TOLERANCE := 1.5
 const CORNER_ASSIST_MIN_SPEED := 10.0
 const FINISH_ASSIST_OFF_DISTANCE := 150.0
 const UNASSISTED_STEERING_DAMPING := 0.9
@@ -496,8 +503,12 @@ func physics(c: CarState, dt: float) -> void:
 	var trim := CORNER_ASSIST_DECEL * float(handling.brake_assist)
 	if brake_assist and trim > 0.0 and not near_finish and started and c.is_player and not c.autopilot and c.v > 8.0:
 		var corner_grip: float = def.grip * (29.0 if tirana_driver else 22.0) * (0.93 if wet else 1.0) * CORNER_ASSIST_GRIP
-		var v_corner := maxf(CORNER_ASSIST_MIN_SPEED, corner_speed(c.s, corner_grip, CORNER_ASSIST_PLAN_DECEL, c.v * c.v / (2.0 * CORNER_ASSIST_PLAN_DECEL) + 12.0))
-		if c.v > v_corner:
+		var v_corner := maxf(CORNER_ASSIST_MIN_SPEED, corner_speed(c.s, corner_grip, CORNER_ASSIST_PLAN_DECEL, c.v * c.v / (2.0 * CORNER_ASSIST_PLAN_DECEL) + 8.0))
+		# On the way out of a bend (it opens up ahead) there is nothing left
+		# to brake for: let the driver power out.
+		var here := absf(track.curv(c.s))
+		var exiting := here > 1e-4 and absf(track.curv(c.s + 6.0)) < here * 0.9 and absf(track.curv(c.s + 12.0)) < here * 0.8
+		if c.v > v_corner + CORNER_ASSIST_TOLERANCE and not exiting:
 			if c.v - v_corner > 0.5:
 				# Brake lights and tyre noise show that the assist is working.
 				c.braking = true
@@ -506,7 +517,7 @@ func physics(c: CarState, dt: float) -> void:
 					emit({"t": "assist_brake", "car": c})
 			# Trim speed gently even with gas or nitro held; manual braking
 			# remains available when the driver wants a stronger slowdown.
-			c.v = maxf(v_corner, minf(c.v, v_before) - trim * dt)
+			c.v = maxf(v_corner + CORNER_ASSIST_TOLERANCE, minf(c.v, v_before) - trim * dt)
 	# steering
 	var rate := 12.0 if (c.is_player and not c.autopilot) else 8.0
 	c.steer += clampf(steer_in - c.steer, -rate * dt, rate * dt)
