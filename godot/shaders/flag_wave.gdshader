@@ -5,19 +5,24 @@ render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specula
 
 uniform vec3 cloth : source_color = vec3(0.78, 0.06, 0.08);
 uniform vec3 emblem : source_color = vec3(0.05, 0.04, 0.04);
+// When set, the cloth is this texture (LandmarkKit.albanian_flag) instead of
+// the flat colour and diamond.
+uniform sampler2D flag_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform bool use_tex = false;
+uniform float wave = 1.0;
 
 void vertex() {
 	float t = TIME * 3.2 + INSTANCE_CUSTOM.a * 6.2832;
 	float free_edge = UV.x;
-	VERTEX.z += sin(UV.x * 7.0 - t) * 0.22 * free_edge;
-	VERTEX.y -= free_edge * free_edge * 0.12;
+	VERTEX.z += sin(UV.x * 7.0 - t) * 0.22 * free_edge * wave;
+	VERTEX.y -= free_edge * free_edge * 0.12 * wave;
 }
 
 void fragment() {
 	// A dark diamond in the middle stands in for the eagle at this distance.
 	vec2 d = abs(UV - vec2(0.5));
 	float mark = step(d.x * 1.1 + d.y * 1.5, 0.28);
-	ALBEDO = mix(cloth, emblem, mark);
+	ALBEDO = use_tex ? texture(flag_tex, UV).rgb : mix(cloth, emblem, mark);
 	ROUGHNESS = 0.8;
 	SPECULAR = 0.2;
 }

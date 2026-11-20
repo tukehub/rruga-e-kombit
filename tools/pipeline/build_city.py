@@ -38,6 +38,8 @@ BUILD_RADIUS = 2300.0
 BUILD_NEAR = 650.0
 PROP_RADIUS = 1500.0
 
+SEAFRONT_PASTELS = [(0.96, 0.95, 0.92), (0.95, 0.94, 0.90), (0.97, 0.96, 0.94), (0.95, 0.80, 0.80),
+                    (0.97, 0.90, 0.62), (0.80, 0.90, 0.86), (0.78, 0.86, 0.95), (0.96, 0.85, 0.72)]
 PALETTES = {
     'tirana': [(0.93, 0.55, 0.20), (0.95, 0.80, 0.25), (0.35, 0.62, 0.85), (0.45, 0.72, 0.42), (0.92, 0.50, 0.62),
                (0.85, 0.82, 0.76), (0.78, 0.76, 0.72), (0.60, 0.62, 0.66), (0.90, 0.88, 0.80), (0.55, 0.60, 0.70)],
@@ -730,6 +732,9 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
         top = base + height
         seed_c = rnd(bid, 2)
         col = pal[int(seed_c * len(pal)) % len(pal)]
+        if override is not None:
+            # Lungomare's blocks: mostly white, some in seaside pastels.
+            col = SEAFRONT_PASTELS[int(seed_c * len(SEAFRONT_PASTELS)) % len(SEAFRONT_PASTELS)]
         shade = 0.85 + 0.3 * rnd(bid, 3)
         col = tuple(min(1.0, c * shade) for c in col)
         # Seaside high-rises are plastered apartment blocks, not glass towers.
@@ -951,13 +956,24 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf,
     if seafront_props:
         mask = blloku_building_mask(os.path.join(os.path.dirname(out_json), 'buildings.glb'))
         idx, side = seafront_props['idx'], seafront_props['side']
-        cafes += cafe_strip_anchors(ref, hw, terrain_sample, zones, mask, idx, (-side,), seafront.CAFE_SPACING)
-        palms = seafront_props['palms']
+        sea_cafes = cafe_strip_anchors(ref, hw, terrain_sample, zones, mask, idx, (-side,), seafront.CAFE_SPACING, parasols=True)
+        cafes += sea_cafes
+        # A second row of palms along the land-side pavement, between terraces.
+        land_palms = seafront.palms(ref, hw, idx, -side, *seafront_props['water'], terrain_sample, seafront_props['surface'], rnd,
+                                    offset=2.6, avoid=[(c[0], c[2]) for c in sea_cafes], seed=500)
+        palms = seafront_props['palms'] + land_palms
         # The promenade has its palms; drop mapped trees that would crowd them.
         trees = [t for t in trees if min((t[0] - q[0]) ** 2 + (t[2] - q[2]) ** 2 for q in palms) > 36.0] if palms else trees
     data = {'lamps': lamps, 'track_lamps': track_lamps, 'trees': trees, 'landmarks': landmarks, 'cafes': cafes}
     if palms:
         data['palms'] = palms
+    if seafront_props:
+        def in_building(x, z, r=1.5):
+            square = [np.array([x + dx, z + dz]) for dx in (-r, r) for dz in (-r, r)]
+            return blloku_building_overlap(square, mask)
+        line = seafront.promenade(ref, hw, seafront_props['idx'], seafront_props['side'], *seafront_props['water'],
+                                  terrain_sample, in_building)
+        data['seafront'] = {'hw': hw, 'line': line}
     save_json(out_json, data)
     if palms or seafront_props:
         log(f'  seafront: {len(palms)} palms, {len(cafes)} café terraces')
@@ -1031,7 +1047,7 @@ def blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones, walls=None):
     return cafe_strip_anchors(ref, hw, terrain_sample, zones, walls, list(range(first, last)), (-1.0, 1.0), 48.0)
 
 
-def cafe_strip_anchors(ref, hw, terrain_sample, zones, walls, idx, sides, every):
+def cafe_strip_anchors(ref, hw, terrain_sample, zones, walls, idx, sides, every, parasols=False):
     """Terraces along the track samples `idx` on the given sides (+1 = +normal).
 
     Keep the whole terrace, not just its centre, outside all track sections.
@@ -1060,7 +1076,7 @@ def cafe_strip_anchors(ref, hw, terrain_sample, zones, walls, idx, sides, every)
                 ground = float(terrain_sample([pos[0]], [pos[1]])[0])
                 anchors.append([round(float(pos[0]), 1), round(ground, 1),
                                 round(float(pos[1]), 1), round(yaw, 3),
-                                int(side), round(float(ref.y[j]), 2)])
+                                int(side), round(float(ref.y[j]), 2)] + ([1] if parasols else []))
                 break
     return anchors
 
@@ -1202,7 +1218,7 @@ def build(cid, route_only=False):
         side = seafront.sea_side(ref, hw, idx, mask, wnm)
         surface = load_json(os.path.join(out, 'terrain.json'))['water']['surface']
         height_fn = seafront.frontage_height(cfg, idx, side, rnd)
-        seafront_props = {'idx': idx, 'side': side,
+        seafront_props = {'idx': idx, 'side': side, 'water': (mask, wnm), 'surface': surface,
                           'palms': seafront.palms(ref, hw, idx, side, mask, wnm, terrain_sample, surface, rnd)}
         log(f'  seafront: {len(idx) * SAMPLE:.0f} m of road, sea on the {"+" if side > 0 else "-"} normal side')
     build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()), landmark_clearance_zones(city, proj), height_fn)

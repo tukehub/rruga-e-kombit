@@ -76,6 +76,7 @@ func build(cafes: Array) -> void:
 	var windows: Array[Transform3D] = []
 	var posts: Array[Transform3D] = []
 	var furniture: Array[Transform3D] = []
+	var parasols: Array[Transform3D] = []
 	for i in cafes.size():
 		var cafe = cafes[i]
 		if cafe.size() < 4:
@@ -90,7 +91,13 @@ func build(cafes: Array) -> void:
 		base.origin.y += deck_height
 		var style := i % 3
 		var outside := float(cafe[4]) if cafe.size() >= 5 else (1.0 if i % 2 == 0 else -1.0)
-		awnings[style].append(base * Transform3D(Basis.from_scale(Vector3(5.0, 0.18, 2.5)), Vector3(0, 2.5, 0)))
+		# Seafront terraces (7th field = 1) sit under white parasols instead
+		# of a fixed awning, as along Vlorë's Lungomare.
+		if cafe.size() >= 7 and int(cafe[6]) == 1:
+			for x in [-1.45, 1.45]:
+				parasols.append(base * Transform3D(Basis.IDENTITY, Vector3(x, 0, -outside * 0.2)))
+		else:
+			awnings[style].append(base * Transform3D(Basis.from_scale(Vector3(5.0, 0.18, 2.5)), Vector3(0, 2.5, 0)))
 		# Each terrace faces a different small shop outside the racing barriers.
 		walls[style].append(base * Transform3D(Basis.from_scale(Vector3(5.5, 3.2, 0.2)), Vector3(0, 1.6, outside * 1.4)))
 		windows.append(base * Transform3D(Basis.from_scale(Vector3(3.1, 1.8, 0.08)), Vector3(0, 1.65, outside * 1.25)))
@@ -119,3 +126,31 @@ func build(cafes: Array) -> void:
 	supports.size = Vector3.ONE
 	_group(supports, posts, Color("474a48"))
 	_add_furniture(furniture)
+	if not parasols.is_empty():
+		var canopy := CylinderMesh.new()
+		canopy.top_radius = 0.06
+		canopy.bottom_radius = 1.55
+		canopy.height = 0.55
+		canopy.radial_segments = 8
+		canopy.rings = 1
+		var valance := CylinderMesh.new()
+		valance.top_radius = 1.56
+		valance.bottom_radius = 1.56
+		valance.height = 0.24
+		valance.radial_segments = 8
+		valance.rings = 1
+		valance.cap_top = false
+		valance.cap_bottom = false
+		var pole := CylinderMesh.new()
+		pole.top_radius = 0.04
+		pole.bottom_radius = 0.04
+		pole.height = 2.6
+		pole.radial_segments = 6
+		var lift := func(list: Array[Transform3D], y: float) -> Array[Transform3D]:
+			var out: Array[Transform3D] = []
+			for t in list:
+				out.append(t * Transform3D(Basis.IDENTITY, Vector3(0, y, 0)))
+			return out
+		_group(canopy, lift.call(parasols, 2.62), Color("f2f0ea"))
+		_group(valance, lift.call(parasols, 2.26), Color("e8822e"))
+		_group(pole, lift.call(parasols, 1.3), Color("d9d6cf"))

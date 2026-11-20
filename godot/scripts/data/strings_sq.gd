@@ -381,6 +381,8 @@ const T := {
 	"city.shkoder.name": "Shkodër",
 	"city.tetove.name": "Tetovë",
 	"sign.blloku": "BLLOKU",
+	"sign.flamurtari": "FLAMURTARI",
+	"sign.independence_year": "1912",
 	# ------------ data: paints (Data.CARS)
 	"car.benxi.name": "E kuqe",
 	"car.uragani.name": "Blu",

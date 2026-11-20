@@ -80,13 +80,18 @@ def frontage_height(cfg, idx, side, rnd):
     return override
 
 
-def palms(ref, hw, idx, side, mask, nm, terrain_sample, surface, rnd_fn):
-    """Palms on the sea-side promenade: on dry ground, clear of the road."""
+def palms(ref, hw, idx, side, mask, nm, terrain_sample, surface, rnd_fn, offset=PALM_OFFSET, avoid=(), seed=0):
+    """A row of palms `offset` metres beyond the road edge on `side`: on dry
+    ground, clear of the road and of the points in `avoid` (café terraces)."""
     out = []
     step = max(1, int(round(PALM_SPACING / float(np.median(np.linalg.norm(np.diff(ref.xz, axis=0), axis=1))))))
+    avoid = np.asarray(avoid, float).reshape(-1, 2)
     for k, i in enumerate(idx[::step]):
-        p = ref.xz[i] + side * (hw + PALM_OFFSET) * ref.nrm[i]
-        if is_water(mask, nm, *p) or ref.nearest(*p)[0] < hw + 4.0:
+        k += seed
+        p = ref.xz[i] + side * (hw + offset) * ref.nrm[i]
+        if len(avoid) and np.min(np.hypot(*(avoid - p).T)) < 4.5:
+            continue
+        if is_water(mask, nm, *p) or ref.nearest(*p)[0] < hw + min(4.0, offset - 0.5):
             continue
         y = float(terrain_sample([p[0]], [p[1]])[0])
         if y < surface + 0.4:
@@ -94,3 +99,31 @@ def palms(ref, hw, idx, side, mask, nm, terrain_sample, surface, rnd_fn):
         out.append([round(float(p[0]), 1), round(y, 2), round(float(p[1]), 1),
                     round(0.85 + 0.35 * rnd_fn(k, 11), 2), round(rnd_fn(k, 12) * math.tau, 2)])
     return out
+
+
+def promenade(ref, hw, idx, side, mask, nm, terrain_sample, blocked=None, every=4.0, beach=22.0, reach=55.0):
+    """The seafront outline for the game: centreline samples with their
+    normals; on the sea side, how far from the centreline the promenade and
+    lawns may run before the beach (keeping `beach` metres of sand); on the
+    land side, how far the pavement may run. Both stop at buildings
+    (`blocked(x, z)`)."""
+    spacing = float(np.median(np.linalg.norm(np.diff(ref.xz, axis=0), axis=1)))
+    step = max(1, int(round(every / spacing)))
+    blocked = blocked or (lambda x, z: False)
+    line = []
+    for i in idx[::step]:
+        c, n = ref.xz[i], ref.nrm[i] * side
+        edge = hw + 1.0
+        for r in np.arange(hw + 2.0, hw + reach, 2.0):
+            p = c + n * r
+            if is_water(mask, nm, *(c + n * (r + beach))) or blocked(*p):
+                break
+            edge = r
+        land = hw + 1.0
+        for r in np.arange(hw + 2.0, hw + 9.5, 1.5):
+            if blocked(*(c - n * r)):
+                break
+            land = r
+        line.append([round(float(c[0]), 2), round(float(ref.y[i]), 2), round(float(c[1]), 2),
+                     round(float(n[0]), 4), round(float(n[1]), 4), round(float(edge), 1), round(float(land), 1)])
+    return line

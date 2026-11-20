@@ -99,12 +99,26 @@ CITIES = {
             (40.4595, 19.4957),  # Rruga Sulejman Delvina
         ],
         'landmarks': [
-            {'id': 'independence', 'll': (40.47067, 19.49066), 'yaw': 0},
-            {'id': 'flagpole_big', 'll': (40.47100, 19.49100), 'yaw': 0},
+            # Independence Monument at its OSM node, "1912" and the group
+            # facing the circuit; the park's scattered trees keep clear.
+            {'id': 'independence', 'll': (40.47067, 19.49066), 'yaw': -44.3,
+             'clear_half': (14, 14)},
+            # The great flag stands beside it on the square (placed, not mapped).
+            {'id': 'flagpole_big', 'll': (40.470543, 19.49083), 'yaw': -44.3,
+             'clear_half': (8, 8)},
             {'id': 'mosque', 'll': (40.46907, 19.49087), 'yaw': 0},
-            {'id': 'flamurtari', 'll': (40.45593, 19.48885), 'yaw': 0},
-            {'id': 'independence_museum', 'll': (40.45218, 19.48528), 'yaw': 0},
+            # Centre spot of the mapped pitch; the main stand's facade faces
+            # west across its plaza to the boulevard (OSM axis 96.8 deg).
+            {'id': 'flamurtari', 'll': (40.456086, 19.488786), 'yaw': -6.8},
+            # The Independence House stands 139 m from the road across its
+            # park; a racing adaptation brings it 75 m closer, still in the
+            # park, front toward the circuit, oriented with its OSM outline.
+            {'id': 'independence_museum', 'll': (40.45218, 19.48528), 'yaw': -62.4,
+             'offset_x': 57.4, 'offset_z': -48.4, 'clear_half': (24, 24)},
         ],
+        # OSM outlines replaced by the dedicated models: the four stands and
+        # the museum house.
+        'landmark_buildings': [1237374187, 1237374188, 1237374189, 1237374190, 1003616059],
         # Lungomare: from Sheshi Pavarsia past the museum to the end of the
         # promenade. Sea on one side (palms), cafés and 10-15 storey blocks on the other.
         'seafront': {'from': (40.4530, 19.4865), 'to': (40.4462, 19.4943),

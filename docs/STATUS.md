@@ -74,5 +74,5 @@ page's city picker, with an open-water bay (baked shore mask, one opaque wave
 plane, sand beach and foam). Its 7.35 km route runs from Flag Square down the
 boulevard past the stadium and the Independence Museum, along Lungomare (palms
 on the sea side, cafés and 10–15 storey blocks on the land side) and back over
-the hills. The monument, stadium and museum still use placeholder models. The other four cities stay out of
+the hills. The Independence Monument, the Flamurtari stadium's main facade, the Independence House and the great flag are procedural interpretations after photographs; none has been checked on a phone yet. The other four cities stay out of
 the APK until their datasets are reworked.

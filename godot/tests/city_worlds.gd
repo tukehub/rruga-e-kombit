@@ -106,6 +106,30 @@ func _ready() -> void:
 				assert(at.y > scene.terrain.water_surface, "palms stand above the sea")
 			assert(scene.props.get_node_or_null("BllokuCafes") != null, "Lungomare needs its café terraces")
 			print("LUNGOMARE: ", mm.instance_count, " palms")
+			var ground := scene.props.get_node_or_null("SeafrontPromenade/PromenadeGround") as MeshInstance3D
+			assert(ground != null and ground.mesh != null and ground.mesh.get_surface_count() == 1, "Lungomare needs its paving and lawns")
+			# The landmarks: each model loads, stands off the road, and is in
+			# sight of it (within 70 m of the race line).
+			var marks: Node = null
+			for child in scene.props.get_children():
+				if child is Landmarks:
+					marks = child
+			var expected := {"flamurtari": "FlamurtariStadium", "independence": "IndependenceMonument",
+				"independence_museum": "IndependenceHouse", "flagpole_big": "GreatFlag"}
+			for id: String in expected:
+				var root := marks.get_node(id) as Node3D
+				assert(root.get_node_or_null(str(expected[id])) != null, "Vlorë landmark model missing: " + id)
+			var facade := marks.get_node("flamurtari/FlamurtariStadium/MainFacade") as Node3D
+			var front := facade.global_transform * Vector3(FlamurtariStadium.FRONT, 0, 0)
+			var gap := scene.track.dist_to(front.x, front.z)
+			assert(gap > scene.track.half_w + 30.0 and gap < 70.0, "the stadium facade faces the boulevard across its plaza")
+			for id in ["independence", "independence_museum", "flagpole_big"]:
+				var at := (marks.get_node(id) as Node3D).global_position
+				var d := scene.track.dist_to(at.x, at.z)
+				assert(d > scene.track.half_w + 20.0 and d < 70.0, "landmark off the road and in sight of it: " + id)
+			var flag := marks.get_node("flagpole_big/GreatFlag") as MeshInstance3D
+			assert((flag.material_override as ShaderMaterial).get_shader_parameter("use_tex"), "the great flag shows the eagle")
+			print("VLORE LANDMARKS: stadium facade ", snappedf(gap, 0.1), " m from the race line")
 		else:
 			assert(scene.sea == null, "inland cities have no sea")
 		await get_tree().process_frame

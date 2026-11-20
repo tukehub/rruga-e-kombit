@@ -184,6 +184,20 @@ func load_anchors(anchors: Array) -> void:
 			var plaza := preload("res://scripts/world/plaza_tower.gd").new()
 			plaza.name = "PlazaTower"
 			root.add_child(plaza)
+		elif str(anchor.id) == "flamurtari":
+			var stadium := FlamurtariStadium.new()
+			stadium.name = "FlamurtariStadium"
+			root.add_child(stadium)
+		elif str(anchor.id) == "independence":
+			var monument := IndependenceMonument.new()
+			monument.name = "IndependenceMonument"
+			root.add_child(monument)
+		elif str(anchor.id) == "independence_museum":
+			var house := IndependenceHouse.new()
+			house.name = "IndependenceHouse"
+			root.add_child(house)
+		elif str(anchor.id) == "flagpole_big":
+			_great_flag(root)
 		elif str(anchor.id) in ["national_museum", "prime_minister"]:
 			var civic := preload("res://scripts/world/civic_landmarks.gd").new()
 			civic.name = "CivicLandmark"
@@ -399,12 +413,6 @@ func build(root: Node3D, id: String) -> void:
 					for x in range(-7, 8, 3):
 						_box(root, Vector3(x, 5.5, side * 9.05), Vector3(2, 6, 0.15), Color("b76a4f"))
 						_box(root, Vector3(x, 6, side * 9.15), Vector3(1, 3, 0.15), Color("4c8788"))
-		"independence":
-			_box(root, Vector3(0, 1, 0), Vector3(18, 2, 12), stone)
-			for i in 5:
-				_column(root, Vector3(i * 2 - 4, 4.5, 0), 0.8, 5, bronze)
-			_column(root, Vector3(0, 11, 0), 1, 16, bronze)
-			_box(root, Vector3(2, 17, 0), Vector3(4, 3, 0.2), Color("a4282e"))
 		"mother_teresa":
 			_box(root, Vector3(0, 0.2, 0), Vector3(80, 0.4, 55), stone)
 			for side in [-1.0, 1.0]:
@@ -427,3 +435,28 @@ func build(root: Node3D, id: String) -> void:
 		_:
 			_column(root, Vector3(0, 9, 0), 0.15, 18, stone)
 			_box(root, Vector3(2, 16, 0), Vector3(4, 2.5, 0.1), Color("b3272e"))
+
+
+## The great flag on Sheshi i Flamurit: a 32 m mast flying the national flag.
+func _great_flag(root: Node3D) -> void:
+	var st := LandmarkKit.begin()
+	LandmarkKit.box(st, Vector3(0, -0.6, 0), Vector3(3.2, 1.6, 3.2), Color(0.78, 0.76, 0.72))
+	LandmarkKit.tube(st, Vector3(0, 0, 0), Vector3(0, 32.0, 0), 0.32, 0.16, Color(0.75, 0.76, 0.77), 10)
+	LandmarkKit.sphere(st, Vector3(0, 32.2, 0), Vector3(0.3, 0.3, 0.3), Color(0.8, 0.65, 0.25))
+	root.add_child(LandmarkKit.mesh_node(st, LandmarkKit.material(0.4, 0.6), "FlagMast", 2500.0))
+	var cloth := QuadMesh.new()
+	cloth.size = Vector2(10.0, 7.0)
+	cloth.subdivide_width = 16
+	cloth.subdivide_depth = 6
+	var flag := MeshInstance3D.new()
+	flag.name = "GreatFlag"
+	flag.mesh = cloth
+	flag.position = Vector3(5.2, 27.8, 0)
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://shaders/flag_wave.gdshader")
+	mat.set_shader_parameter("use_tex", true)
+	mat.set_shader_parameter("flag_tex", LandmarkKit.albanian_flag())
+	mat.set_shader_parameter("wave", 4.0)
+	flag.material_override = mat
+	flag.visibility_range_end = 2500.0
+	root.add_child(flag)

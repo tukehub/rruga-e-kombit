@@ -52,6 +52,15 @@ func load_city(city_id: String, terrain: Terrain) -> void:
 		var grove := Palms.new()
 		add_child(grove)
 		grove.build(palms)
+	# Lungomare's paving and lawns.
+	var front: Dictionary = p.get("seafront", {})
+	if not front.is_empty():
+		var promenade := SeafrontPromenade.new()
+		add_child(promenade)
+		var clear := []
+		for anchor in landmarks:
+			clear.append([float(anchor.x), float(anchor.z)])
+		promenade.build(front, terrain, clear)
 	_build_lamps(p.get("lamps", []), track_lamps)
 	_build_trees(p.get("trees", []), terrain, city_id)
 	light_slots = int(Quality.p.lamp_lights)

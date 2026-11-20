@@ -596,8 +596,25 @@ sea side, read from the water mask, gets a promenade of procedural palms
 (`scripts/world/palms.gd`); the land side gets café terraces and 10–15 storey
 plastered apartment blocks where OSM has no heights. When every Overpass
 endpoint is down, `fetch_osm.py` tiles the main OSM API instead
-(`fetch_osm_api.py`). Still to come: dedicated models for the monument, the
-stadium and the museum (their anchors are in place).
+(`fetch_osm_api.py`).
+
+Vlorë's landmarks are procedural interpretations after photographs, built
+from the shared `scripts/world/landmark_kit.gd` (vertex-coloured boxes, tubes
+and spheres; the Albanian flag texture, eagle included, is generated):
+`flamurtari_stadium.gd` (the main stand's facade: red cladding behind grey
+louvres, `shaders/louvre_facade.gdshader`, a mirror-glass centre with
+staggered red bars, the lettering and striped shield, floodlights, stands and
+pitch; the facade faces the boulevard across its real plaza),
+`independence_monument.gd` (dark stone pylon with "1912", bronze flag-bearer
+and the group at its foot), `independence_house.gd` (yellow two-storey house,
+terracotta hip roof, wooden shutters and balcony on white columns, hanging
+flags, gravel square with palms, well and bust; moved 75 m toward the road
+inside its park so it reads at racing speed) and the great flag on Flag Square.
+Lungomare also has both palm rows, white parasols with orange valances over
+the land-side terraces, pastel 10–15 storey blocks, and stone paving with
+lawns cut by diagonal paths down to the beach (`seafront_promenade.gd`,
+`shaders/seafront_ground.gdshader`). Rendered check:
+`godot --path godot --rendering-method mobile res://tests/vlore_landmarks_visual.tscn`.
 
 8.1 Re-run `tools/pipeline/build_all.py` for the five datasets; fix side-road
     and terrain clearance failures; add per-city landmarks via
