@@ -68,6 +68,32 @@ func _ready() -> void:
 			assert(batches > 1 and crowns == count_expected)
 		else:
 			assert(planted.is_empty(), "the Tirana pilot must not change other cities")
+		if FileAccess.file_exists("res://assets/cities/%s/water_near.bin" % city.id):
+			# Open water: under the whole road and every edge of it, seabed
+			# beneath it, land above it.
+			assert(scene.sea != null and scene.sea.get_parent() == scene, "a city with baked water needs its sea")
+			var surface := scene.terrain.water_surface
+			assert(is_equal_approx(scene.sea.position.y, surface))
+			for i in range(0, scene.track.M, 4):
+				var x := scene.track.X[i]
+				var z := scene.track.Z[i]
+				assert(scene.track.Y[i] > surface + 0.3, "the road must stay above the sea")
+				for side in [-1.0, 1.0]:
+					var ex: float = x + scene.track.NX[i] * side * (scene.track.half_w + 8.0)
+					var ez: float = z + scene.track.NZ[i] * side * (scene.track.half_w + 8.0)
+					assert(not scene.terrain.is_water(ex, ez), "no open water beside the road")
+					assert(scene.terrain.height_at(ex, ez) > surface, "the road's ground must stay dry")
+			var wet := 0
+			for k in scene.terrain.water_mask.size():
+				if scene.terrain.water_mask[k] >= 128:
+					wet += 1
+					assert(scene.terrain.near_h[k] <= surface - 2.9, "seabed must sit well under the surface")
+				else:
+					assert(scene.terrain.near_h[k] >= surface + 0.24, "land must stay above the surface")
+			assert(wet > 0)
+			print("SEA: ", city.id, " surface ", surface, " m, ", wet, " water cells")
+		else:
+			assert(scene.sea == null, "inland cities have no sea")
 		await get_tree().process_frame
 		print("CITY WORLD: ", city.id, " loaded with six cars")
 		Sfx.stop_all()

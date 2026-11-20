@@ -83,7 +83,7 @@ func _ready() -> void:
 	assert(c.v < 24.0 and c.v > 22.0, "Tirana driver must brake progressively while steering, even when gas is held")
 	assert(c.braking and not c.gas_on, "visuals and sound must follow braking priority during a turn")
 	# Compare the exact same isolated steering input at the same speed. The
-	# relaxed response is limited to human control in Tirana.
+	# relaxed response is the human player's in every city, never the bots'.
 	c.ctrl.gas = false
 	c.ctrl.brake = false
 	c.ctrl.steer = 1.0
@@ -100,7 +100,18 @@ func _ready() -> void:
 	c.lat_v = 0.0
 	track.id = "vlore"
 	race.physics(c, 1.0 / 60.0)
-	assert(tirana_yaw > c.yaw * 1.2, "extra cornering authority must be confined to Tirana")
+	# The second step inherits a little smoothed state from the first (~2%);
+	# the old Tirana-only tune differed by more than 20%.
+	assert(absf(tirana_yaw - c.yaw) <= 0.05 * tirana_yaw, "the player's cornering response must be the same in every city")
+	c.v = 25.0
+	c.d = 0.0
+	c.yaw = 0.0
+	c.lat_v = 0.0
+	c.autopilot = true
+	race.physics(c, 1.0 / 60.0)
+	c.autopilot = false
+	track.id = "tirane"
+	assert(tirana_yaw > c.yaw * 1.2, "extra cornering authority must be confined to the human player")
 	print("TIRANA TURNS: steering response and simultaneous gas/brake passed")
 	get_tree().quit()
 

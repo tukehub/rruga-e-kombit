@@ -33,8 +33,14 @@ slabs in mixed colours (`shaders/square_paving.gdshaderinc`, procedural, no
 texture), also used for the square beside the Tirana circuit. The simulation is `scripts/sim/arena.gd` (node-free,
 deterministic, a port of the legacy `src/035_arena.js` plus oil), drawn by
 `scripts/game/arena_scene.gd` with the race's touch controls; covered by
-`tests/arena_sim` and `tests/arena_flow`. Other city datasets remain in the
-repository for later review; they are not offered in this focused menu.
+`tests/arena_sim` and `tests/arena_flow`. The race page's city picker
+(‹ name ›) steps through every city the build carries; Tirana is always open
+and the others open with Tirana cup stars (Vlorë 4, Berat 7, Gjirokastër 10,
+Shkodër 13, Tetovë 16, `stars` in `Data.CITIES`), announced on the results
+page. A locked city shows its price and cannot start; points rounds and the
+cup stay on Tirana. Only Tirana and Vlorë are in the APK for now; the other
+four are left out by `godot/export_presets.cfg` until their datasets are
+reworked (8.1), and the picker hides a city whose data the build lacks.
 Existing installs receive a one-time daylight/touch-control settings migration.
 See [current status and validation](docs/STATUS.md).
 
@@ -122,7 +128,7 @@ processed track, terrain, buildings, side roads and props belong in
 The builder rejects routes that double back, and terrain validation fails if the
 ground intersects the road. No data is fabricated if access fails.
 
-Pipeline regression test: `python3 tools/pipeline/test_terrain.py`.
+Pipeline regression tests: `python3 tools/pipeline/test_terrain.py`, `python3 tools/pipeline/test_water.py`.
 
 Car source: Car Concept © 2024 Darmstadt Graphics Group GmbH and Eric Chadwick, CC BY 4.0; conversion instructions are in `tools/import_carconcept.py`. SFX: `python3 tools/gen_sfx.py`.
 The central lists and model paths live in `godot/scripts/data/data.gd`; every
@@ -566,13 +572,26 @@ work. An item below that needs a Forward+-only feature is desktop-only.
 
 ### 8. Other cities
 
+Done: the city picker and star unlock chain (8.3, single player), the
+player's handling tune in every city instead of only Tirana, café terraces
+from any city's props, Vlorë in the APK, and open water. `tools/pipeline/water.py`
+bakes `water_near.bin` (a signed shore distance per near-grid cell) for sea and
+lake cities: water is the low ground reached from the open sea or mapped OSM
+water without crossing a mapped road or the track corridor, because the DEM
+gives both the bay and the lowered road ground about 0 m. `scripts/world/sea.gd`
+draws one opaque plane under every road with analytic waves, a turquoise shelf
+and shore foam; the terrain drops the seabed under it and paints a sand beach.
+Covered by `tests/city_worlds`, `tools/pipeline/test_water.py` and the rendered
+`tests/sea_visual.tscn`. `build_city.py` runs the bake itself; run it alone on
+an existing dataset with `python3 tools/pipeline/water.py vlore`.
+
 8.1 Re-run `tools/pipeline/build_all.py` for the five datasets; fix side-road
     and terrain clearance failures; add per-city landmarks via
     `scripts/world/landmarks.gd`.
 8.2 Remove the city exclusions from `godot/export_presets.cfg`; keep the APK
     under ~150 MB (compress heightmaps/meshes) or use Play Asset Delivery.
-8.3 City unlock chain through cup stars; the multiplayer host may pick any
-    unlocked city.
+8.3 City unlock chain through cup stars (done); the multiplayer host races
+    the city on its race page — the lobby still needs a city row of its own.
 
 ### 9. Release polish
 

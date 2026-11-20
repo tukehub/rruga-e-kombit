@@ -65,6 +65,27 @@ func _ready() -> void:
 	check(not FileAccess.file_exists(FILE + ".tmp"), "saving leaves no temporary file behind")
 	p.free()
 
+	# Cities open with cup stars: the threshold, not the explicit list, decides.
+	var stars_p: Node = ProgressScript.new()
+	stars_p.path = "user://progress_stars_test.cfg"
+	stars_p.load_progress()
+	stars_p.cities.assign([ProgressScript.HOME_CITY])
+	stars_p.cup_stars = {}
+	check(stars_p.city_open(ProgressScript.HOME_CITY) and not stars_p.city_open("vlore"), "with no stars only the home city is open")
+	check(not stars_p.city_open("atlantis"), "an unknown city never opens")
+	var vlore_stars := int(Data.city("vlore").stars)
+	stars_p.cup_stars = {"tirana_1": ProgressScript.MAX_STARS, "tirana_2": vlore_stars - ProgressScript.MAX_STARS}
+	check(stars_p.total_stars() == vlore_stars and stars_p.city_open("vlore") and not stars_p.city_open("tetove"), "the star threshold opens a city and no further one")
+	var opened: Array[String] = stars_p.unlock_earned_cities()
+	check(opened == ["vlore"] and stars_p.has_city("vlore"), "reaching a threshold records the city once")
+	check(stars_p.unlock_earned_cities().is_empty(), "a city is announced only the first time")
+	var last := 0
+	for c: Dictionary in Data.CITIES:
+		check(int(c.stars) >= last and int(c.stars) <= 6 * ProgressScript.MAX_STARS, "thresholds rise and stay reachable: " + str(c.id))
+		last = int(c.stars)
+	stars_p.free()
+	DirAccess.remove_absolute("user://progress_stars_test.cfg")
+
 	# Everything above comes back from the file.
 	p = fresh()
 	check(p.fans == 150 and p.has_paint("gold") and p.has_city("vlore") and p.stars("tirana.sprint") == 2 and p.total_stars() == 5, "progress persists across a restart")

@@ -56,7 +56,8 @@ var _ft_t := 0.0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	race_opts.city = Settings.city_id
+	# A saved city this build lacks, or one still locked, falls back to home.
+	race_opts.city = Settings.city_id if Data.city_available(Settings.city_id) and Progress.city_open(Settings.city_id) else Progress.HOME_CITY
 	# A saved paint the player no longer owns falls back to the first one.
 	race_opts.car = Settings.car_id if Progress.owns("paint", Settings.car_id) else str(Data.CARS[0].id)
 	race_opts.diff = Settings.difficulty
@@ -312,6 +313,8 @@ func start_event(id: String) -> void:
 		return
 	race_opts.event = id
 	race_opts.mode = "race"
+	# The cup is Tirana's, whatever city the race page shows.
+	race_opts.city = Progress.HOME_CITY
 	goto("race")
 
 
@@ -408,6 +411,7 @@ func finish_race(result: Dictionary) -> void:
 		result["stars_before"] = Progress.stars(event.id)
 		result["goal_met"] = Data.cup_goal_met(event, result)
 		Progress.set_stars(event.id, int(result.stars))
+		result["cities_unlocked"] = Progress.unlock_earned_cities().filter(func(id: String): return Data.city_available(id))
 	Settings.record_result(result.get("city", ""), int(result.get("place", 6)), float(result.get("best_lap", INF)))
 	goto("results")
 

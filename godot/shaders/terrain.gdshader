@@ -15,6 +15,17 @@ uniform bool skanderbeg_square = false;
 // Second, coarser texture scale that hides tiling in the distance.
 uniform bool two_scale = true;
 uniform float sea_level = -50.0;
+// A real water surface (Sea) covers open water: the ground under it is seabed,
+// and a sand beach rises out of it instead of painted water.
+uniform bool sea_surface = false;
+uniform float water_surface = -50.0;
+// Signed shore distance on the near grid (tools/pipeline/water.py): below 0.5
+// is land, its distance to the water 0..beach_span metres as 127/255..0.
+uniform sampler2D shore_tex : filter_linear, repeat_disable;
+uniform vec2 shore_origin = vec2(-4500.0);
+uniform float shore_size = 9000.0;
+uniform float beach_span = 60.0;
+uniform vec3 sand_color : source_color = vec3(0.80, 0.72, 0.58);
 uniform float wetness : hint_range(0.0, 1.0) = 0.0;
 uniform float snow : hint_range(0.0, 1.0) = 0.0;
 uniform float night : hint_range(0.0, 1.0) = 0.0;
@@ -112,6 +123,24 @@ void fragment() {
 
 	// water
 	float water_w = max(smoothstep(0.3, 0.8, sp.b), 1.0 - smoothstep(-1.5, 0.5, wpos.y - sea_level));
+	if (sea_surface) {
+		// Seabed under the surface; a sand beach along the shore, wet at the
+		// waterline, never over roads or up a cliff.
+		float above = wpos.y - water_surface;
+		vec2 shore_uv = (wpos.xz - shore_origin) / shore_size;
+		float on_grid = step(0.0, shore_uv.x) * step(shore_uv.x, 1.0) * step(0.0, shore_uv.y) * step(shore_uv.y, 1.0);
+		float code = texture(shore_tex, clamp(shore_uv, 0.0, 1.0)).r * 255.0;
+		float to_water = clamp((127.0 - code) / 127.0, 0.0, 1.0) * beach_span;
+		float beach = (1.0 - smoothstep(16.0, 34.0, to_water)) * on_grid;
+		float sand_w = beach * (1.0 - road_w) * (1.0 - smoothstep(3.0, 6.0, above)) * smoothstep(0.75, 0.9, wnrm.y);
+		float wet_sand = 1.0 - smoothstep(0.0, 0.6, above);
+		base = mix(base, sand_color * (1.0 - 0.35 * wet_sand), sand_w);
+		rough = mix(rough, mix(0.9, 0.45, wet_sand), sand_w);
+		nrm = mix(nrm, vec3(0.5, 0.5, 1.0), sand_w * 0.6);
+		// Mapped rivers and ponds keep their painted water above the sea.
+		water_w = smoothstep(0.3, 0.8, sp.b) * step(0.3, above);
+		base = mix(base, sand_color * 0.4, 1.0 - step(0.0, above));
+	}
 	base = mix(base, water_color, water_w);
 	rough = mix(rough, 0.05, water_w);
 	nrm = mix(nrm, vec3(0.5, 0.5, 1.0), water_w);

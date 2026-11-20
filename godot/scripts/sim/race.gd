@@ -414,7 +414,8 @@ func _near_finish(c: CarState) -> bool:
 func physics(c: CarState, dt: float) -> void:
 	var T := track
 	var def := c.def
-	var tirana_driver := c.is_player and not c.autopilot and T.id == "tirane"
+	# The player's tuned response (firmer grip, brake beats gas), in every city.
+	var human_driver := c.is_player and not c.autopilot
 	var near_finish := _near_finish(c)
 	c.invuln_t = maxf(0.0, c.invuln_t - dt)
 	c.recovery_t = maxf(0.0, c.recovery_t - dt)
@@ -472,10 +473,10 @@ func physics(c: CarState, dt: float) -> void:
 	c.brake_force = move_toward(c.brake_force, 1.0 if brake else 0.0, dt * 5.0)
 	var drifting := brake and absf(c.steer) > 0.35 and c.v > 18.0
 	c.drift = minf(1.0, c.drift + dt * 4.0) if drifting else maxf(0.0, c.drift - dt * 3.0)
-	c.braking = brake and (not drifting or tirana_driver) and c.v > 1.0
-	c.gas_on = gas and not (brake and tirana_driver)
+	c.braking = brake and (not drifting or human_driver) and c.v > 1.0
+	c.gas_on = gas and not (brake and human_driver)
 	# On the Tirana pilot, braking takes priority even with both pedals held.
-	if gas and not (brake and (tirana_driver or not drifting)):
+	if gas and not (brake and (human_driver or not drifting)):
 		if c.v < vmax:
 			var r := c.v / vmax
 			c.v = minf(vmax, c.v + acc * (1.0 - 0.8 * r * r) * dt)
@@ -490,7 +491,7 @@ func physics(c: CarState, dt: float) -> void:
 		if drifting:
 			# Steering while braking should still slow the car decisively; retain
 			# the pressure ramp so there is no one-frame braking jolt.
-			if tirana_driver:
+			if human_driver:
 				c.v = maxf(0.0, c.v - 7.5 * c.brake_force * dt)
 			else:
 				c.v -= 4.5 * dt
@@ -502,7 +503,7 @@ func physics(c: CarState, dt: float) -> void:
 		c.v -= (c.v - vmax) * 1.5 * dt
 	var trim := CORNER_ASSIST_DECEL * float(handling.brake_assist)
 	if brake_assist and trim > 0.0 and not near_finish and started and c.is_player and not c.autopilot and c.v > 8.0:
-		var corner_grip: float = def.grip * (29.0 if tirana_driver else 22.0) * (0.93 if wet else 1.0) * CORNER_ASSIST_GRIP
+		var corner_grip: float = def.grip * (29.0 if human_driver else 22.0) * (0.93 if wet else 1.0) * CORNER_ASSIST_GRIP
 		var v_corner := maxf(CORNER_ASSIST_MIN_SPEED, corner_speed(c.s, corner_grip, CORNER_ASSIST_PLAN_DECEL, c.v * c.v / (2.0 * CORNER_ASSIST_PLAN_DECEL) + 8.0))
 		# On the way out of a bend (it opens up ahead) there is nothing left
 		# to brake for: let the driver power out.
@@ -526,7 +527,7 @@ func physics(c: CarState, dt: float) -> void:
 	# The dense Tirana street circuit has several very tight junctions. Give
 	# the human driver a little more arcade cornering authority there while
 	# keeping the existing speed and lateral-displacement bounds intact.
-	var grip_accel := 29.0 if tirana_driver else 22.0
+	var grip_accel := 29.0 if human_driver else 22.0
 	var human := c.is_player and not c.autopilot
 	var drift_grip := 0.5 * (float(handling.drift_grip) if human else 1.0)
 	var a_lat: float = def.grip * grip_accel * (1.0 + c.drift * drift_grip) * (1.8 if c.hbrake_t > 0.0 else 1.0) * (0.93 if wet else 1.0)

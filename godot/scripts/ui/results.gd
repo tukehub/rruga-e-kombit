@@ -64,6 +64,14 @@ func _ready() -> void:
 		goal.name = "EventGoal"
 		goal.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		place_row.add_child(goal)
+	var unlocked: Array = r.get("cities_unlocked", [])
+	if not unlocked.is_empty():
+		var names := PackedStringArray()
+		for id: Variant in unlocked:
+			names.append(Data.city_name(str(id)))
+		var opened := UiTheme.label(Data.t("results.city_unlocked", ", ".join(names)), 24, UiTheme.CYAN)
+		opened.name = "CityUnlocked"
+		v.add_child(opened)
 	var msg := UiTheme.label(Data.place_msg(place, n), 25, UiTheme.MUTED)
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(msg)

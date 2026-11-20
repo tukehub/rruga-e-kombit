@@ -508,7 +508,7 @@ func apply_state(c: CarState, track: RaceTrack, dt: float, pose: Dictionary = {}
 	ground.y += 0.025
 	contact_shadow.global_transform = Transform3D(Basis.from_euler(Vector3(asin(clampf(t.y, -0.5, 0.5)), yaw_g, 0.0)), ground)
 	contact_shadow.transparency = clampf(float(pose.get("hop", c.hop)) / 1.5, 0.0, 1.0)
-	_animate(c, dt, c.def.grip * (29.0 if c.is_player and not c.autopilot and track.id == "tirane" else 22.0) * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0))
+	_animate(c, dt, c.def.grip * (29.0 if c.is_player and not c.autopilot else 22.0) * (1.0 + c.drift * 0.5) * (1.8 if c.hbrake_t > 0.0 else 1.0))
 
 
 ## Place the car on flat ground at a world position and heading (points

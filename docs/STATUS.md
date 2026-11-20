@@ -67,4 +67,11 @@ Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.
 Phone review should check smooth racing, the mirror on/off, the landmark views,
-tree detail, loading feedback and touch controls. Other cities remain deferred.
+tree detail, loading feedback and touch controls.
+
+Vlorë is now in the build, opened by four Tirana cup stars through the race
+page's city picker, with an open-water bay (baked shore mask, one opaque wave
+plane, sand beach and foam). Its route is still the old placeholder loop
+around Flag Square; Lungomare, the Flamurtari stadium and the Independence
+Museum need a new route and landmark work. The other four cities stay out of
+the APK until their datasets are reworked.

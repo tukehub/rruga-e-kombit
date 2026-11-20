@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from common import CACHE, OUT, Proj, ensure_dir, load_json, log, save_json  # noqa: E402
 from cities import CITIES, ROAD_WIDTH, ROUTABLE, ROUTE_COST  # noqa: E402
 from glb import GLB, earcut  # noqa: E402
+from water import process_city as build_water_mask  # noqa: E402
 import fetch_dem  # noqa: E402
 from side_roads import build_side_roads
 
@@ -457,7 +458,8 @@ class TrackRef:
         self.grid = {}
         for i, (x, z) in enumerate(xz):
             self.grid.setdefault((int(x // self.cell), int(z // self.cell)), []).append(i)
-        self.coarse = xz[::8]
+
+        self.coarse = xz[::8]
 
     def coarse_dist(self, x, z):
         return float(np.min(np.hypot(self.coarse[:, 0] - x, self.coarse[:, 1] - z)))
@@ -1149,6 +1151,8 @@ def build(cid, route_only=False):
     build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()), landmark_clearance_zones(city, proj))
     build_side_roads(osm, ref, hw, terrain_sample, os.path.join(out, 'roads.glb'))
     build_splat(osm, ref, hw, os.path.join(out, 'splat.png'))
+    if sea:
+        build_water_mask(cid, os.path.dirname(out))
     build_props(osm, ref, hw, terrain_sample, city, proj, os.path.join(out, 'props.json'), None)
     debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_map.png'))
     debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_zoom.png'), span=1800, size=1800)

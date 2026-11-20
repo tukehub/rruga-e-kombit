@@ -22,6 +22,12 @@ var cup_cards: Array[Button] = []
 ## The choices the mode button steps through: a race, or points for 2 or 3 minutes.
 const MODES := [{"mode": "race", "minutes": 0}, {"mode": "points", "minutes": 2}, {"mode": "points", "minutes": 3}]
 var _lap_plus: Button
+## Race page city picker: name, arrows, and why a locked city cannot start.
+var _city_title: Label
+var _city_prev: Button
+var _city_next: Button
+var _city_note: Label
+var _play: Button
 var _drv_name: LineEdit
 var _name_chip: Button
 var _lobby_status: Label
@@ -164,7 +170,6 @@ func _build_ui() -> void:
 func show_page(name: String) -> void:
 	if name == "city":
 		name = "title"
-	Game.race_opts.city = "tirane"
 	var changed := page != name
 	page = name
 	for k in pages:
@@ -482,7 +487,29 @@ func _page_race() -> Control:
 	v.add_theme_constant_override("separation", 14)
 	panel.add_child(v)
 	v.add_child(_eyebrow(Data.t("menu.card.race")))
-	v.add_child(UiTheme.headline(Data.city_name("tirane"), 64, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT))
+	var city_row := HBoxContainer.new()
+	city_row.name = "CityPicker"
+	city_row.add_theme_constant_override("separation", 8)
+	_city_prev = UiTheme.button("‹")
+	_city_prev.name = "CityPrev"
+	_city_prev.custom_minimum_size = Vector2(52, 64)
+	_city_prev.pressed.connect(func(): step_city(-1))
+	city_row.add_child(_city_prev)
+	_city_title = UiTheme.headline("", 56, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_city_title.name = "CityName"
+	_city_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_city_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	city_row.add_child(_city_title)
+	_city_next = UiTheme.button("›")
+	_city_next.name = "CityNext"
+	_city_next.custom_minimum_size = Vector2(52, 64)
+	_city_next.pressed.connect(func(): step_city(1))
+	city_row.add_child(_city_next)
+	v.add_child(city_row)
+	_city_note = UiTheme.label("", 20, UiTheme.MUTED, false, HORIZONTAL_ALIGNMENT_CENTER)
+	_city_note.name = "CityNote"
+	_city_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_city_note)
 	v.add_child(UiTheme.spacer(4))
 	var lap_row := HBoxContainer.new()
 	lap_row.add_theme_constant_override("separation", 8)
@@ -557,13 +584,15 @@ func _page_race() -> Control:
 	back.pressed.connect(func(): Sfx.ui_back(); show_page("title"))
 	row.add_child(back)
 	var play := UiTheme.button(Data.t("menu.start"), UiTheme.CYAN.darkened(0.45))
+	_play = play
 	play.name = "StartRace"
 	play.custom_minimum_size.y = 70
 	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	play.add_theme_font_size_override("font_size", 34)
 	play.pressed.connect(func():
+		if not race_city_open():
+			return
 		Sfx.ui_click()
-		Game.race_opts.city = "tirane"
 		Game.race_opts.event = ""
 		Game.start_race())
 	row.add_child(play)
@@ -727,8 +756,10 @@ func lobby_join(port := NetSession.PORT) -> void:
 func lobby_start() -> void:
 	if Game.net == null or not Game.net.is_host or Game.net.names.size() < 2:
 		return
+	# The host's race-page city, if it is open to them.
+	var city := race_city() if Progress.city_open(race_city()) else Progress.HOME_CITY
 	Game.net.start({
-		"seed": randi() % 1000000, "city": "tirane", "laps": Game.city_laps("tirane"),
+		"seed": randi() % 1000000, "city": city, "laps": Game.city_laps(city),
 		"diff": int(Game.race_opts.diff), "env": str(Game.race_opts.env), "reverse": bool(Game.race_opts.reverse),
 		"bots": clampi(_lobby_bots, 0, NetSession.MAX_PLAYERS - Game.net.names.size()),
 		"assist": Settings.assist, "brake_assist": Settings.assist, "handling": Data.handling_id(Settings.handling),
@@ -876,7 +907,6 @@ func _cup_card(number: int, event: Dictionary) -> Button:
 	card.add_theme_stylebox_override("normal", UiTheme.flat(Color(0.03, 0.06, 0.1, 0.85), Color(1, 1, 1, 0.18), 14))
 	card.pressed.connect(func():
 		Sfx.ui_click()
-		Game.race_opts.city = "tirane"
 		Game.start_event(str(event.id)))
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -946,7 +976,21 @@ func _refresh_city() -> void:
 	_weather.disabled = points
 	_direction.text = Data.t("menu.direction.reverse") if bool(Game.race_opts.reverse) else Data.t("menu.direction.normal")
 	_weather.text = Data.t("menu.weather.rain") if str(Game.race_opts.env) == "rainy" else Data.t("menu.weather.sun")
-	var laps := Game.city_laps("tirane")
+	var city := race_city()
+	var open := race_city_open()
+	_city_title.text = Data.city_name(Progress.HOME_CITY if points else city)
+	var cities := Data.available_cities()
+	_city_prev.disabled = points or cities.size() < 2
+	_city_next.disabled = points or cities.size() < 2
+	_city_title.modulate = Color(1, 1, 1, 1.0 if open or points else 0.45)
+	if points:
+		_city_note.text = Data.t("menu.city.points")
+	elif open:
+		_city_note.text = Data.t("city.%s.blurb" % city)
+	else:
+		_city_note.text = Data.t("menu.city.locked", [int(Data.city(city).stars), Progress.total_stars()])
+	_play.disabled = not open and not points
+	var laps := Game.city_laps(city)
 	_lap_value.text = str(laps)
 	_lap_minus.disabled = laps <= 1 or points
 	_lap_plus.disabled = laps >= 9 or points
@@ -959,7 +1003,30 @@ func _refresh_city() -> void:
 
 func _change_laps(amount: int) -> void:
 	Sfx.ui_click()
-	Game.race_opts.laps = clampi(Game.city_laps("tirane") + amount, 1, 9)
+	Game.race_opts.laps = clampi(Game.city_laps(race_city()) + amount, 1, 9)
+	_refresh_city()
+
+
+## The city the race page has chosen; one this build lacks reads as home.
+func race_city() -> String:
+	var id := str(Game.race_opts.city)
+	return id if Data.city_available(id) else Progress.HOME_CITY
+
+
+## Points rounds are always on Skanderbeg Square; races need an open city.
+func race_city_open() -> bool:
+	return str(Game.race_opts.mode) == "points" or Progress.city_open(race_city())
+
+
+## Steps through every city this build carries, locked ones included, so the
+## player sees what the cup stars will open next.
+func step_city(direction: int) -> void:
+	var cities := Data.available_cities()
+	if cities.is_empty():
+		return
+	Sfx.ui_click()
+	var i := cities.find(race_city())
+	Game.race_opts.city = cities[posmod(i + direction, cities.size())]
 	_refresh_city()
 
 
@@ -1042,7 +1109,11 @@ func _page_car() -> Control:
 	_buy_btn.custom_minimum_size.y = 56
 	_buy_btn.pressed.connect(_buy_preview)
 	left.add_child(_buy_btn)
-	v.add_child(_bottombar(func(): show_page("title"), Data.t("menu.start"), func(): Game.race_opts.city = "tirane"; Game.race_opts.event = ""; Game.start_race()))
+	v.add_child(_bottombar(func(): show_page("title"), Data.t("menu.start"), func():
+		if not race_city_open():
+			Game.race_opts.city = Progress.HOME_CITY
+		Game.race_opts.event = ""
+		Game.start_race()))
 	_show_garage_tab("paint")
 	return c
 

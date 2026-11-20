@@ -84,6 +84,20 @@ func _ready() -> void:
 	menu._refresh_city()
 	check(menu._lap_plus.disabled and menu._lap_value.text == "9", "lap selector bounds maximum")
 	Game.race_opts.laps = 1
+	# The city picker steps through every city this build carries; a locked one
+	# says how many cup stars it needs and cannot start.
+	Game.race_opts.city = "tirane"
+	menu._refresh_city()
+	check(menu._city_title.text == "Tiranë" and not menu._play.disabled, "the race page opens on Tirana, ready to start")
+	menu._city_next.pressed.emit()
+	check(str(Game.race_opts.city) == "vlore" and menu._city_title.text == "Vlorë", "the next arrow chooses Vlorë")
+	if not Progress.city_open("vlore"):
+		check(menu._play.disabled and menu._city_note.text.begins_with("Mbyllur"), "a locked city shows its star price and cannot start")
+	menu._city_prev.pressed.emit()
+	check(str(Game.race_opts.city) == "tirane" and not menu._play.disabled, "the previous arrow returns to Tirana")
+	menu._city_prev.pressed.emit()
+	check(str(Game.race_opts.city) == Data.available_cities()[-1], "the picker wraps around")
+	Game.race_opts.city = "tirane"
 	menu._refresh_city()
 	menu.show_page("city")
 	menu.show_page("car")

@@ -18,6 +18,19 @@ var chunks: Array[MeshInstance3D] = []
 var chunk_pos: PackedVector2Array = []
 var far_mesh: MeshInstance3D
 var lana_enabled := false
+## A sea or lake (tools/pipeline/water.py baked water_near.bin): open water is
+## a separate surface (Sea) at water_surface, never above any land or road.
+var has_water := false
+var water_surface := -50.0
+var water_span := 320.0
+var beach_span := 60.0
+## Per near cell, a signed shore distance (see water.py): 128..255 water,
+## 0..127 land. Also handed to the terrain and sea shaders as `shore_tex`.
+var water_mask := PackedByteArray()
+var shore_tex: ImageTexture
+## Seabed depth under the surface, and the least height land keeps above it.
+const SEABED_DROP := 3.0
+const LAND_CLEARANCE := 0.25
 
 
 func load_city(city_id: String, splat: Texture2D) -> void:
@@ -29,6 +42,17 @@ func load_city(city_id: String, splat: Texture2D) -> void:
 	lana_enabled = city_id == "tirane"
 	near_h = FileAccess.get_file_as_bytes(dir + "terrain_near.bin").to_float32_array()
 	far_h = FileAccess.get_file_as_bytes(dir + "terrain_far.bin").to_float32_array()
+	var water: Dictionary = meta.get("water", {})
+	if not water.is_empty() and FileAccess.file_exists(dir + "water_near.bin"):
+		water_mask = FileAccess.get_file_as_bytes(dir + "water_near.bin")
+		has_water = water_mask.size() == int(near.n) * int(near.n)
+	if has_water:
+		water_surface = float(water.surface)
+		water_span = float(water.get("span", water_span))
+		beach_span = float(water.get("beach", beach_span))
+		_carve_water()
+		var n := int(near.n)
+		shore_tex = ImageTexture.create_from_image(Image.create_from_data(n, n, false, Image.FORMAT_R8, water_mask))
 	mat = ShaderMaterial.new()
 	mat.shader = SHADER
 	mat.set_shader_parameter("splat", splat)
@@ -47,12 +71,43 @@ func load_city(city_id: String, splat: Texture2D) -> void:
 		# rather than placing another mesh above the race road.
 		mat.set_shader_parameter("skanderbeg_square", true)
 	mat.set_shader_parameter("sea_level", sea_level)
+	mat.set_shader_parameter("sea_surface", has_water)
+	mat.set_shader_parameter("water_surface", water_surface)
+	if has_water:
+		mat.set_shader_parameter("shore_tex", shore_tex)
+		mat.set_shader_parameter("shore_origin", Vector2(float(near.x0), float(near.z0)))
+		mat.set_shader_parameter("shore_size", float(near.cell) * (int(near.n) - 1))
+		mat.set_shader_parameter("beach_span", beach_span)
 	_build_near()
 	_build_far()
 	if lana_enabled:
 		var river := LanaRiver.new()
 		add_child(river)
 		river.build(self)
+
+
+## Open water drops to a seabed under the surface; land (a rare DEM pit
+## included) stays at least LAND_CLEARANCE above it. The far grid only needs
+## its open sea below the surface: it is drawn 2.5 m lower already.
+func _carve_water() -> void:
+	var bed := water_surface - SEABED_DROP
+	var floor_h := water_surface + LAND_CLEARANCE
+	for i in near_h.size():
+		near_h[i] = minf(near_h[i], bed) if water_mask[i] >= 128 else maxf(near_h[i], floor_h)
+	var far_wet := sea_level - 0.1
+	for i in far_h.size():
+		if far_h[i] < far_wet:
+			far_h[i] = minf(far_h[i], bed)
+
+
+## True over open water of the near grid.
+func is_water(x: float, z: float) -> bool:
+	if not has_water:
+		return false
+	var n := int(near.n)
+	var ix := roundi((x - float(near.x0)) / float(near.cell))
+	var iz := roundi((z - float(near.z0)) / float(near.cell))
+	return ix >= 0 and iz >= 0 and ix < n and iz < n and water_mask[iz * n + ix] >= 128
 
 
 func set_env(wet: float, snow: float, night: float) -> void:

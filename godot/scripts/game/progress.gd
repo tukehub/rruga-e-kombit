@@ -164,6 +164,27 @@ func unlock_city(id: String) -> void:
 		save()
 
 
+## Open to race: unlocked before, or enough cup stars for its threshold.
+func city_open(id: String) -> bool:
+	if has_city(id):
+		return true
+	var c := Data.city(id)
+	return c.id == id and total_stars() >= int(c.get("stars", 0))
+
+
+## Records every city the stars now open; returns the ones new this time.
+func unlock_earned_cities() -> Array[String]:
+	var opened: Array[String] = []
+	for c: Dictionary in Data.CITIES:
+		var id := str(c.id)
+		if not has_city(id) and total_stars() >= int(c.get("stars", 0)):
+			cities.append(id)
+			opened.append(id)
+	if not opened.is_empty():
+		save()
+	return opened
+
+
 func stars(event: String) -> int:
 	return int(cup_stars.get(event, 0))
 

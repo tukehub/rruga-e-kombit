@@ -47,13 +47,15 @@ const ENV_ORDER := ["night", "dusk", "sunset", "day", "golden", "rainy", "rain",
 # ---------------------------------------------------------------- cities
 # Track geometry comes from assets/cities/<id>/ (built by tools/pipeline).
 # horizon: "flat" | "mountains" | "sea" picks the HDRI family and far terrain treatment.
+# stars: Tirana cup stars that open the city (Progress.city_open). A city whose
+# track.json is not in this build (left out of the APK) is not offered at all.
 const CITIES := [
-	{"id": "tirane", "env": "day", "laps": 2, "neon": "#ff2d6f", "horizon": "flat", "hdri": "day"},
-	{"id": "vlore", "env": "sunset", "laps": 2, "neon": "#ffd23a", "horizon": "sea", "hdri": "sunset"},
-	{"id": "berat", "env": "dusk", "laps": 2, "neon": "#ffb347", "horizon": "mountains", "hdri": "dusk"},
-	{"id": "gjirokaster", "env": "rain", "laps": 2, "neon": "#3d9dff", "horizon": "mountains", "hdri": "rain"},
-	{"id": "shkoder", "env": "golden", "laps": 2, "neon": "#4ee0ff", "horizon": "mountains", "hdri": "golden"},
-	{"id": "tetove", "env": "day", "laps": 2, "neon": "#ff5fc8", "horizon": "mountains", "hdri": "day"},
+	{"id": "tirane", "env": "day", "laps": 2, "neon": "#ff2d6f", "horizon": "flat", "hdri": "day", "stars": 0},
+	{"id": "vlore", "env": "sunset", "laps": 2, "neon": "#ffd23a", "horizon": "sea", "hdri": "sunset", "stars": 4},
+	{"id": "berat", "env": "dusk", "laps": 2, "neon": "#ffb347", "horizon": "mountains", "hdri": "dusk", "stars": 7},
+	{"id": "gjirokaster", "env": "rain", "laps": 2, "neon": "#3d9dff", "horizon": "mountains", "hdri": "rain", "stars": 10},
+	{"id": "shkoder", "env": "golden", "laps": 2, "neon": "#4ee0ff", "horizon": "mountains", "hdri": "golden", "stars": 13},
+	{"id": "tetove", "env": "day", "laps": 2, "neon": "#ff5fc8", "horizon": "mountains", "hdri": "day", "stars": 16},
 ]
 
 # ---------------------------------------------------------------- cars
@@ -290,6 +292,20 @@ func city(id: String) -> Dictionary:
 		if c.id == id:
 			return c
 	return CITIES[0]
+
+
+## True when this build carries the city's data (the APK may leave cities out).
+func city_available(id: String) -> bool:
+	return FileAccess.file_exists("res://assets/cities/%s/track.json" % id)
+
+
+## Ids of the cities this build carries, in menu order.
+func available_cities() -> Array[String]:
+	var ids: Array[String] = []
+	for c in CITIES:
+		if city_available(str(c.id)):
+			ids.append(str(c.id))
+	return ids
 
 
 func car(id: String) -> Dictionary:

@@ -21,6 +21,8 @@ var player: CarState
 var cars: Array[CarVisual] = []
 var sky: SkyEnv
 var terrain: Terrain
+## Open water (Vlorë's bay); null for inland cities.
+var sea: Sea
 var road: RoadMesh
 var route_guide: RouteGuide
 var cam: ChaseCam
@@ -153,6 +155,12 @@ func _build_world() -> void:
 	terrain = Terrain.new()
 	add_child(terrain)
 	terrain.load_city(city_id, splat)
+	sea = Sea.new()
+	if sea.build(terrain):
+		add_child(sea)
+	else:
+		sea.free()
+		sea = null
 	track = RaceTrack.load_city(city_id, bool(Game.race_setting("reverse")))
 	route_guide = RouteGuide.new(track)
 	var tj: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/%s/track.json" % city_id))
@@ -188,6 +196,8 @@ func _build_world() -> void:
 	pine_forest = get_node_or_null("PineForest") as Node3D
 	_setup_pines()
 	terrain.set_env(sky.wet, 0.0, sky.night)
+	if sea != null:
+		sea.set_env(sky.wet, sky.night)
 	road.set_wet(sky.wet)
 
 
@@ -953,6 +963,8 @@ func _update_weather(dt: float) -> void:
 		_env_pushed = env_now
 		road.set_wet(sky.wet)
 		terrain.set_env(sky.wet, 0.0, sky.night)
+		if sea != null:
+			sea.set_env(sky.wet, sky.night)
 		buildings.set_env(sky.night, sky.wet)
 		props.set_night(sky.night)
 		for car in cars:
