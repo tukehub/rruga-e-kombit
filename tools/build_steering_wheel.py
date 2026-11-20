@@ -2,8 +2,10 @@
 
 Writes godot/assets/ui/controls/steering_wheel.png, 512x512 RGBA, drawn
 procedurally (no source art, so it is ours to license): carbon-fibre top
-section, perforated leather grips, brushed-metal spokes, paddle shifters
-behind the horizontal spokes and a cyan 12 o'clock stripe. Rendered at 2x and
+section, perforated leather grips, brushed-metal spokes with see-through
+cutouts, paddle shifters behind the horizontal spokes, high-contrast
+specular rim lighting and a cyan 12 o'clock stripe. The game shows it at
+40-72% opacity, so the bright edges carry the silhouette. Rendered at 2x and
 downsampled for clean edges. Lit from the upper left.
 
     python3 tools/build_steering_wheel.py
@@ -113,6 +115,16 @@ over(shade(height, base * 1.15, spec=0.8, shininess=35, ambient=0.4), a)
 # Dark inlay along the side spokes.
 inlay = np.minimum(bar(-0.11, 0.025, -(R_IN - 0.01), 0.033, 0.03, 0.022)[0], bar(0.11, 0.025, R_IN - 0.01, 0.033, 0.03, 0.022)[0])
 over(np.broadcast_to(np.array([0.05, 0.06, 0.07]), (N, N, 3)), coverage(inlay) * 0.9)
+# Hollow cutouts through the spokes: the road shows through them.
+slots = [bar(-0.165, 0.028, -0.265, 0.032, 0.05, 0.036)[0], bar(0.165, 0.028, 0.265, 0.032, 0.05, 0.036)[0],
+	bar(0.0, 0.16, 0.0, 0.215, 0.042, 0.032)[0]]
+slot_sdf = np.minimum.reduce(slots)
+cut = coverage(slot_sdf)
+# A bright chamfer around each cutout, lit from the upper left.
+chamfer = coverage(np.abs(slot_sdf - 0.004) - 0.0035) * (1 - cut)
+over(np.broadcast_to(np.array([0.92, 0.95, 1.0]), (N, N, 3)), chamfer * 0.75)
+rgb = rgb * (1 - cut[..., None])
+alpha = alpha * (1 - cut)
 
 # --- rim
 outer = smax(r - R_OUT, y - FLAT_OUT, 0.05)
@@ -137,12 +149,19 @@ gy = (y * 150.0) % 1.0 - 0.5
 dots = (np.hypot(gx, gy) < 0.2).astype(float)
 leather = (0.12 + 0.02 * rng.normal(0, 1, (N, N)))[..., None] * np.array([1.0, 0.97, 0.95]) - 0.05 * dots[..., None]
 base = np.where(top[..., None] | bottom[..., None], carbon, leather)
-lit = shade(tube, base * 1.6, spec=0.55, shininess=18, ambient=0.28)
+lit = shade(tube, base * 1.6, spec=0.85, shininess=14, ambient=0.26)
 over(lit, a)
 # Stitching where carbon meets leather: thin light seams across the rim.
 for edge_ang in (-52, 52):
     seam = np.abs(np.degrees(ang) - edge_ang) < 0.7
     over(np.broadcast_to(np.array([0.35, 0.36, 0.4]), (N, N, 3)), a * seam * 0.5)
+# High-contrast rim lighting: a crisp light line along the outer edge, bright
+# where it faces the light (upper left), and a fainter one along the inner edge.
+facing = np.clip(0.35 + 0.65 * (-(x * 0.6 + y * 0.8) / np.maximum(r, 1e-6)), 0, 1)
+outer_line = coverage(np.abs(outer + 0.006) - 0.0035) * a
+over(np.broadcast_to(np.array([0.95, 0.98, 1.0]), (N, N, 3)), outer_line * (0.35 + 0.65 * facing))
+inner_line = coverage(np.abs(inner - 0.006) - 0.0025) * a
+over(np.broadcast_to(np.array([0.75, 0.85, 0.9]), (N, N, 3)), inner_line * (0.25 + 0.4 * (1 - facing)))
 # The 12 o'clock stripe.
 stripe = coverage(np.maximum(np.abs(x) - 0.017, rim)) * (y < 0)
 over(np.broadcast_to(CYAN, (N, N, 3)), stripe)

@@ -400,10 +400,13 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     wheel sprite (`assets/ui/controls/steering_wheel.png`, 512 px, drawn by
     `tools/build_steering_wheel.py`: carbon top, perforated leather grips,
     brushed spokes, paddles, cyan 12 o'clock stripe) in the bottom left
-    corner, no box or arrows. It turns about its hub up to ±135° with the
-    thumb and eases back when released (plain easing, not `lerp_angle`,
-    which would take the "short" way round over 270° of lock), sits at
-    0.75 opacity until touched, and grabs touches within 1.2× its radius
+    corner, no box or arrows; its spokes have see-through cutouts and a
+    bright rim light keeps the outline legible. It turns about its hub up
+    to ±135° with the thumb and springs back with `lerp_angle` (a 270°
+    lock-to-lock flick eases straight across instead, since `lerp_angle`
+    would go over the top). It rests at 40% opacity so the road shows
+    through, fades to 72% in 0.12 s when touched and back in 0.25 s, and
+    grabs touches within 1.2× its radius
     (`RaceInput.on_wheel`; power-up slots win where they overlap). The
     standings show only the car ahead, you (cyan) and the car behind, as
     shadowed text without a box. The mirror is a rounded, dark glass

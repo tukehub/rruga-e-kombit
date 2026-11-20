@@ -19,7 +19,11 @@ const WHEEL_HIT := 1.2
 ## Full lock as drawn, and how fast the drawn wheel follows the thumb.
 const WHEEL_LOCK_DEG := 135.0
 const WHEEL_FOLLOW := 14.0
-const WHEEL_IDLE_ALPHA := 0.75
+## See-through at rest so the road and apex show through; firmer while held.
+const WHEEL_IDLE_ALPHA := 0.40
+const WHEEL_HELD_ALPHA := 0.72
+const WHEEL_FADE_IN := 0.12
+const WHEEL_FADE_OUT := 0.25
 const WHEEL_TEXTURE := preload("res://assets/ui/controls/steering_wheel.png")
 ## How fast the drift button fades in and out.
 const BOOST_FADE := 6.0
@@ -58,8 +62,6 @@ class ControlFace extends Control:
 
 	func set_glow(value: float) -> void:
 		glow = value
-		if wheel_sprite != null:
-			wheel_sprite.modulate.a = lerpf(WHEEL_IDLE_ALPHA, 1.0, glow)
 		queue_redraw()
 
 	func icon_rect() -> Rect2:
@@ -80,6 +82,7 @@ class ControlFace extends Control:
 		wheel_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		wheel_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		wheel_sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wheel_sprite.modulate.a = WHEEL_IDLE_ALPHA
 		add_child(wheel_sprite)
 		resized.connect(_fit_wheel)
 		_fit_wheel()
@@ -94,18 +97,35 @@ class ControlFace extends Control:
 		if wheel:
 			advance(dt)
 
-	## Turns the drawn wheel toward the thumb (springing back to centre when
-	## released, because steer returns to 0) and brightens it while held.
+	## Fades the wheel to its held or resting opacity.
+	func fade_to(held: bool) -> void:
+		if wheel_sprite == null:
+			return
+		var to := WHEEL_HELD_ALPHA if held else WHEEL_IDLE_ALPHA
+		if has_meta("fade") and (get_meta("fade") as Tween) != null and (get_meta("fade") as Tween).is_valid():
+			(get_meta("fade") as Tween).kill()
+		if not is_inside_tree():
+			wheel_sprite.modulate.a = to
+			return
+		var tween := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(wheel_sprite, "modulate:a", to, WHEEL_FADE_IN if held else WHEEL_FADE_OUT)
+		set_meta("fade", tween)
+
+	## Turns the drawn wheel toward the thumb; released, steer returns to 0
+	## and the wheel springs back to centre.
 	func advance(dt: float) -> void:
 		if wheel_sprite == null:
 			return
 		var target := clampf(steer, -1.0, 1.0) * WHEEL_LOCK_DEG
-		# Plain easing, not lerp_angle: the wheel turns up to 270 degrees lock
-		# to lock and must never take the "shorter" way round through 180.
 		var k := 1.0 if dt <= 0.0 else 1.0 - exp(-WHEEL_FOLLOW * dt)
-		shown_deg = lerpf(shown_deg, target, k)
+		if absf(target - shown_deg) < 180.0:
+			# Every spring-back (at most 135 degrees) and ordinary steering.
+			shown_deg = rad_to_deg(lerp_angle(deg_to_rad(shown_deg), deg_to_rad(target), k))
+		else:
+			# Full lock to opposite lock is 270 degrees; lerp_angle would go
+			# the short way, over the top, so ease straight across instead.
+			shown_deg = lerpf(shown_deg, target, k)
 		wheel_sprite.rotation_degrees = shown_deg
-		wheel_sprite.modulate.a = lerpf(WHEEL_IDLE_ALPHA, 1.0, glow)
 
 	func _draw() -> void:
 		if wheel:
@@ -415,6 +435,8 @@ func _show_pressed(zone: String, button: Button, held: bool) -> void:
 		return
 	button.set_meta("shown_held", held)
 	var face: ControlFace = _faces[zone]
+	if face.wheel:
+		face.fade_to(held)
 	if not is_inside_tree():
 		button.scale = Vector2.ONE * (PRESS_SCALE if held else 1.0)
 		face.glow = 1.0 if held else 0.0

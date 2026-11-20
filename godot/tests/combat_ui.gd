@@ -244,11 +244,31 @@ func _ready() -> void:
 	for i in 90:
 		wheel.advance(1.0 / 60.0)
 	check(absf(sprite.rotation_degrees) < 0.5 and wheel.steer == 0.0, "and the wheel springs back to centre")
-	wheel.glow = 0.0
-	check(is_equal_approx(sprite.modulate.a, RaceInput.WHEEL_IDLE_ALPHA), "an idle wheel is a little see-through")
-	wheel.glow = 1.0
-	check(is_equal_approx(sprite.modulate.a, 1.0), "a held wheel is solid")
-	wheel.glow = 0.0
+	controls.reset_controls()
+	check(is_equal_approx(sprite.modulate.a, RaceInput.WHEEL_IDLE_ALPHA) and is_equal_approx(RaceInput.WHEEL_IDLE_ALPHA, 0.40), "an idle wheel is 40% opaque, the road shows through")
+	controls._show_pressed("steer", controls._steer_btn, true)
+	await get_tree().create_timer(RaceInput.WHEEL_FADE_IN * 0.5).timeout
+	check(sprite.modulate.a > RaceInput.WHEEL_IDLE_ALPHA and sprite.modulate.a < RaceInput.WHEEL_HELD_ALPHA, "touching fades it in, not a jump")
+	await get_tree().create_timer(RaceInput.WHEEL_FADE_IN).timeout
+	check(is_equal_approx(sprite.modulate.a, RaceInput.WHEEL_HELD_ALPHA) and is_equal_approx(RaceInput.WHEEL_HELD_ALPHA, 0.72), "held, it is 72% opaque within 0.12 s")
+	controls._show_pressed("steer", controls._steer_btn, false)
+	await get_tree().create_timer(RaceInput.WHEEL_FADE_IN).timeout
+	check(sprite.modulate.a > RaceInput.WHEEL_IDLE_ALPHA + 0.02, "release fades back more slowly")
+	await get_tree().create_timer(RaceInput.WHEEL_FADE_OUT).timeout
+	check(is_equal_approx(sprite.modulate.a, RaceInput.WHEEL_IDLE_ALPHA), "and rests at 40% after 0.25 s")
+	controls._pad_steer = 1.0
+	controls._update_marker()
+	for i in 90:
+		wheel.advance(1.0 / 60.0)
+	controls._pad_steer = -1.0
+	controls._update_marker()
+	var was := sprite.rotation_degrees
+	wheel.advance(1.0 / 60.0)
+	check(sprite.rotation_degrees < was, "full lock to opposite lock turns straight across, never over the top")
+	controls._pad_steer = 0.0
+	controls._update_marker()
+	for i in 90:
+		wheel.advance(1.0 / 60.0)
 	for zone in ["fire", "back", "boost"]:
 		check(controls._faces.has(zone) and controls._faces[zone].icon == null, "the %s button keeps its own item icon and status line" % zone)
 	# Forward fire on top, backward fire under it, the pedals below both.
