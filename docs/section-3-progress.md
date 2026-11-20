@@ -14,7 +14,7 @@ Current status:
 - **3.2 — implemented and tested:** pooled GPU driving particles and a
   quality-aware speed post effect, with regression coverage for state changes
   and bounded allocation.
-- **3.3 — implemented, validation in progress:** player/landmark reflections,
+- **3.3 — implemented and tested:** player/landmark reflections,
   HDRI garage and reduced ambient fill.
 - **3.4–3.8 — pending:** OSM dressing, road decals, facade depth,
   baked lighting/culling, and colour grading.
@@ -129,5 +129,30 @@ Do not merge to `main`; the user requested a separate branch.
 - Visual inspection prompted two refinements: preserve the original dark
   preset ambient fill and use full probe intensity for readable paint at
   night; move the garage camera aim slightly to keep the rotating car in view.
-- Final verification is running in `work/section-3.3-final-tests.log` and
-  `work/reflections-{mobile,forward}-final.log` before the final push.
+- Final verification logs are `work/section-3.3-final-tests.log` and
+  `work/reflections-{mobile,forward}-final.log`.
+- The full 28-launch runner passed again. The garage contact shadow now sits
+  above its floor (the garage does not run the road-pose update that normally
+  does this); both reflection regressions and dedicated garage captures passed
+  after that fix. The visual harness also accepts `-- --garage-only`.
+- GitHub reported the repository's new canonical URL as
+  `https://github.com/tukehub/vortex`; `origin` now uses it. The same graphics
+  branch and history are retained. Refinements were pushed as `6bbf274`.
+
+## 3.3 complete — final handoff (2026-11-20)
+
+- **Passed:** complete Godot 4.4.1 runner (28 scene launches, exit 0), plus
+  the targeted reflection regressions on both renderers after the contact
+  shadow fix. No unexpected script/runtime errors.
+- **Passed and visually reviewed:** six software Vulkan captures each on
+  Mobile and Forward+ (garage, day off/on, high landmark, night, low), plus
+  fresh garage-only captures on both renderers after the final shadow fix.
+  All rendered checks exited 0 with no errors. The car stays inside the
+  garage frame; nighttime fill retains the pre-3.3 floor.
+- README and status/budget documentation now describe 3.3 as implemented.
+  No new external assets, simulation changes or persisted settings were added.
+- **Next: 3.4 OSM street dressing.** Start with the pipeline's `props.json`
+  output and `scripts/world/props.gd`; preserve real source geography and
+  quality-limited instancing. Items 3.4–3.8 remain pending.
+- Actual A56/S25 phone profiling remains required; software Vulkan validates
+  rendering correctness and cannot establish mobile frame-time targets.

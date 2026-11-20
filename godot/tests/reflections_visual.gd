@@ -7,6 +7,8 @@ var phase := -1
 var phases := ["garage", "day_off", "day", "landmark", "night", "low"]
 
 func _ready() -> void:
+	if "--garage-only" in OS.get_cmdline_user_args():
+		phases = ["garage"]
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	Sfx.enabled = false
 	Quality.adaptive_enabled = false
@@ -20,7 +22,10 @@ func _ready() -> void:
 func _process(_dt: float) -> void:
 	var next := frame / 40
 	if next >= phases.size():
-		scene.queue_free()
+		if is_instance_valid(scene):
+			scene.queue_free()
+		if is_instance_valid(menu):
+			menu.queue_free()
 		set_process(false)
 		await get_tree().process_frame
 		Sfx.stop_all()

@@ -80,6 +80,7 @@ func _ready() -> void:
 	check(menu.garage_env.background_mode == Environment.BG_SKY and menu.garage_env.sky.sky_material is PanoramaSkyMaterial, "garage uses the licensed HDRI")
 	check((menu.garage_floor.material_override as StandardMaterial3D).roughness < 0.2, "garage floor has a glossy finish")
 	check(has_scenery(menu.garage_floor) and not has_scenery(menu.garage_car), "garage captures the floor without self-reflecting the rotating car")
+	check(menu.garage_car.contact_shadow.global_position.y > menu.garage_floor.global_position.y, "garage contact shadow clears the glossy floor")
 	for preset in ["low", "medium", "high"]:
 		Quality.set_preset(preset)
 		check(menu.garage_probe.visible == bool(Quality.p.probe), "garage responds to live quality changes")

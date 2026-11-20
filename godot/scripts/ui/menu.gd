@@ -128,6 +128,9 @@ func _set_garage_car(id: String) -> void:
 	garage_car = CarVisual.new()
 	garage_pivot.add_child(garage_car)
 	garage_car.setup(def, Color.html(def.color), false)
+	# The garage does not call apply_state(), which normally lifts the contact
+	# patch above the road. Keep it above the glossy floor to avoid z-fighting.
+	garage_car.contact_shadow.position.y = 0.025
 	garage_car.set_night(0.0)
 
 
