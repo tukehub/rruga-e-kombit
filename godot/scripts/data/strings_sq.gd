@@ -221,7 +221,6 @@ const T := {
 	# ------------ race: HUD
 	"hud.lap": "XHIRO %d/%d",
 	"hud.finished": "MBËRRITE",
-	"hud.standings": "RENDITJA · ±m NGA TI",
 	"hud.you": "TI",
 	"hud.pause": "II",
 	"hud.speed_unit": "KM/H",

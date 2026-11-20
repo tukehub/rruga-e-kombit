@@ -17,7 +17,12 @@ var view_button: Button
 var mirror_button: Button
 var cabin_overlay: Control
 var enabled := false
+## The new camera's name, for a brief note on screen.
+signal view_changed(label: String)
 var _mirror_frames := MIRROR_FRAME_INTERVAL - 1
+const CAMERA_ICON := preload("res://assets/ui/icons/camera.svg")
+## The camera button: square, left of the pause button, above the map.
+const VIEW_BUTTON_SIZE := 48.0
 
 
 class CabinOverlay extends Control:
@@ -62,21 +67,32 @@ func setup(cam: ChaseCam, player_visual: CarVisual, layer: Node) -> void:
 	mirror_panel.offset_top = 8
 	mirror_panel.offset_bottom = 88
 	mirror_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mirror_panel.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.015, 0.02, 0.025, 0.94), Color(0.65, 0.73, 0.76, 0.9), 10, 2))
+	# Dark glass with rounded corners; the picture is clipped to them.
+	mirror_panel.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.03, 0.04, 0.05, 0.85), Color(0.0, 0.0, 0.0, 0.7), 12, 2))
+	mirror_panel.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
 	mirror_panel.visible = enabled
 	layer.add_child(mirror_panel)
 	mirror = TextureRect.new()
-	mirror.position = Vector2(4, 4)
-	mirror.size = Vector2(320, 72)
+	mirror.position = Vector2(3, 3)
+	mirror.size = Vector2(322, 74)
 	mirror.texture = viewport.get_texture()
 	mirror.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	mirror.stretch_mode = TextureRect.STRETCH_SCALE
 	mirror.flip_h = true
 	mirror.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mirror_panel.add_child(mirror)
-	view_button = _button(layer, Data.t("view.camera.chase"), 218)
+	# A thin light rim drawn over the picture, like the edge of a glass.
+	var rim := Panel.new()
+	rim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rim.add_theme_stylebox_override("panel", UiTheme.flat(Color.TRANSPARENT, Color(1, 1, 1, 0.18), 12, 1))
+	mirror_panel.add_child(rim)
+	view_button = _icon_button(layer)
 	view_button.pressed.connect(_toggle_view)
-	mirror_button = _button(layer, Data.t("view.mirror.on") if enabled else Data.t("view.mirror.off"), 268)
+	view_button.tooltip_text = Data.t("view.camera.chase")
+	# The mirror switch lives in the pause menu, which adopts this button.
+	mirror_button = UiTheme.button(Data.t("view.mirror.on") if enabled else Data.t("view.mirror.off"))
+	mirror_button.name = "MirrorToggle"
 	mirror_button.pressed.connect(_toggle_mirror)
 	Quality.budget_changed.connect(_apply_budget)
 	_apply_budget()
@@ -88,14 +104,27 @@ func _apply_budget() -> void:
 	_mirror_frames = int(Quality.p.mirror_interval) - 1
 
 
-func _button(layer: Node, label: String, top: float) -> Button:
-	var b := UiTheme.button(label)
+func _icon_button(layer: Node) -> Button:
+	var b := Button.new()
+	b.name = "CameraButton"
+	b.icon = CAMERA_ICON
+	b.expand_icon = true
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.focus_mode = Control.FOCUS_NONE
+	var st := UiTheme.flat(Color(0.02, 0.04, 0.07, 0.8), Color(1, 1, 1, 0.65), 12)
+	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+		st.set_content_margin(side, 10)
+	b.add_theme_stylebox_override("normal", st)
+	var on := st.duplicate() as StyleBoxFlat
+	on.border_color = UiTheme.CYAN
+	b.add_theme_stylebox_override("hover", on)
+	b.add_theme_stylebox_override("pressed", on)
 	b.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	b.offset_left = -180
-	b.offset_right = -16
-	b.offset_top = top
-	b.offset_bottom = top + 42
-	b.add_theme_font_size_override("font_size", 17)
+	# The pause button spans -76..-16 from the right, 12..64 from the top.
+	b.offset_right = -88
+	b.offset_left = b.offset_right - VIEW_BUTTON_SIZE
+	b.offset_top = 14
+	b.offset_bottom = 14 + VIEW_BUTTON_SIZE
 	layer.add_child(b)
 	return b
 
@@ -115,11 +144,12 @@ func set_view(view: ChaseCam.View) -> void:
 	cabin_overlay.visible = view == ChaseCam.View.CABIN
 	match view:
 		ChaseCam.View.CABIN:
-			view_button.text = Data.t("view.camera.cabin")
+			view_button.tooltip_text = Data.t("view.camera.cabin")
 		ChaseCam.View.BUMPER:
-			view_button.text = Data.t("view.camera.bumper")
+			view_button.tooltip_text = Data.t("view.camera.bumper")
 		_:
-			view_button.text = Data.t("view.camera.chase")
+			view_button.tooltip_text = Data.t("view.camera.chase")
+	view_changed.emit(view_button.tooltip_text)
 	race_camera._snap = true
 
 

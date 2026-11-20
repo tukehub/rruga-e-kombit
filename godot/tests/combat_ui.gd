@@ -135,6 +135,9 @@ func _ready() -> void:
 	controls.set_driving_enabled(true)
 	car.skill_charge = 1.0
 	car.nitro_t = 0.0
+	# The drift button appears once there is drift (the race syncs every frame).
+	controls.sync_actions()
+	check(controls._boost_btn.visible, "drift shows once there is a charge (show=%s a=%s charge=%s)" % [controls.show_boost, controls._boost_btn.modulate.a, car.skill_charge])
 	touch(1, "steer")
 	touch(2, "boost")
 	controls.poll(0.016)
@@ -151,7 +154,7 @@ func _ready() -> void:
 	car.slots.clear()
 	controls.sync_actions()
 	touch(2, "fire")
-	check(denied.has("empty") and not controls.fire and controls._fire_btn.disabled, "tapping disabled empty action explains it without firing")
+	check(not controls._fire_btn.visible and not controls.fire and controls.zone_at(controls.control_rect("fire").get_center()) != "fire", "with nothing to fire there is no fire button to tap")
 	touch(2, "fire", false)
 	car.slots = [{"type": "repair", "ammo": 1}]
 	car.health = car.max_hp
@@ -189,7 +192,7 @@ func _ready() -> void:
 		hud._process(0.0)
 		await get_tree().process_frame
 		for zone in ["steer", "fire", "back", "brake", "boost"]:
-			check(not controls.control_rect(zone).intersects(hud._feed.get_rect()), "wrapped combat feedback clears mirrored/inset thumb controls")
+			check(not controls.control_rect(zone).intersects(hud._feed.get_rect()), "wrapped combat feedback clears mirrored/inset thumb controls: %s %s vs feed %s" % [zone, controls.control_rect(zone), hud._feed.get_rect()])
 		for i in car.slots.size():
 			check(not controls.control_rect("boost").intersects(controls.control_rect("slot%d" % i)), "earned boost and real inventory targets stay separate")
 		check(controls._boost_btn.size.is_equal_approx(controls.control_rect("boost").size), "drawn boost button matches its hit target: drawn=%s target=%s" % [controls._boost_btn.size, controls.control_rect("boost").size])
@@ -212,14 +215,40 @@ func _ready() -> void:
 		check(face.icon != null and not face.wheel, "the %s control shows an icon" % zone)
 		check(Rect2(Vector2.ZERO, face.size).encloses(face.icon_rect()) and face.icon_rect().size.x >= 40.0, "the %s icon is large and inside the button" % zone)
 	check(controls._faces.gas.icon != controls._faces.brake.icon, "gas and brake have different icons")
+	# The steering wheel: a sprite in the bottom left corner, turned about its hub.
 	var wheel: RaceInput.ControlFace = controls._faces.steer
-	check(wheel.wheel and wheel.icon == null and wheel.wheel_radius() >= 50.0 and wheel.wheel_radius() * 2.0 < wheel.size.x, "the steering pad draws a half wheel that fits it")
-	controls._pad_steer = 0.6
+	var sprite := wheel.wheel_sprite
+	var pad := controls.control_rect("steer")
+	check(wheel.wheel and sprite != null and sprite.texture == RaceInput.WHEEL_TEXTURE and sprite.texture.get_width() == 512, "the steering control is the 512 px wheel sprite")
+	check(is_equal_approx(pad.size.x, pad.size.y) and sprite.size.is_equal_approx(pad.size) and sprite.pivot_offset.is_equal_approx(pad.size / 2.0), "a square wheel that turns about its centre")
+	var vp := controls.size
+	if not Settings.left_handed:
+		check(pad.position.x >= RaceInput.WHEEL_MARGIN - 0.5 and vp.y - pad.end.y >= RaceInput.WHEEL_MARGIN - 0.5, "the wheel sits clear of the bottom left edges")
+	check(controls._steer_btn.get_theme_stylebox("normal") is StyleBoxEmpty, "no box is drawn around the wheel")
+	var r := pad.size.x * 0.5
+	check(controls.on_wheel(pad.get_center() + Vector2(r * 1.1, 0).rotated(0.7)) and not controls.on_wheel(pad.get_center() + Vector2(r * 1.3, 0)), "the touch area is a circle 1.2x the wheel's radius")
+	controls._pad_steer = 1.0
 	controls._update_marker()
-	check(is_equal_approx(wheel.steer, 0.6), "the half wheel turns with the thumb")
+	for i in 90:
+		wheel.advance(1.0 / 60.0)
+	check(absf(sprite.rotation_degrees - RaceInput.WHEEL_LOCK_DEG) < 1.0, "full lock turns the wheel to 135 degrees")
+	controls._pad_steer = -0.5
+	controls._update_marker()
+	for i in 90:
+		wheel.advance(1.0 / 60.0)
+	check(absf(sprite.rotation_degrees + RaceInput.WHEEL_LOCK_DEG * 0.5) < 1.0, "half left is -67.5 degrees")
 	controls._pad_steer = 0.0
 	controls._update_marker()
-	check(wheel.steer == 0.0, "the half wheel centres again")
+	wheel.advance(1.0 / 60.0)
+	check(sprite.rotation_degrees < -10.0, "letting go eases back rather than snapping")
+	for i in 90:
+		wheel.advance(1.0 / 60.0)
+	check(absf(sprite.rotation_degrees) < 0.5 and wheel.steer == 0.0, "and the wheel springs back to centre")
+	wheel.glow = 0.0
+	check(is_equal_approx(sprite.modulate.a, RaceInput.WHEEL_IDLE_ALPHA), "an idle wheel is a little see-through")
+	wheel.glow = 1.0
+	check(is_equal_approx(sprite.modulate.a, 1.0), "a held wheel is solid")
+	wheel.glow = 0.0
 	for zone in ["fire", "back", "boost"]:
 		check(controls._faces.has(zone) and controls._faces[zone].icon == null, "the %s button keeps its own item icon and status line" % zone)
 	# Forward fire on top, backward fire under it, the pedals below both.

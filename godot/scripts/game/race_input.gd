@@ -10,8 +10,21 @@ signal inventory_hold_changed(index: int, fraction: float)
 
 const Rules = preload("res://scripts/sim/combat_rules.gd")
 const DISCARD_HOLD := 0.65
-## Height of the touch steering pad before the size setting (was 128).
-const STEER_HEIGHT := 180.0
+## The steering wheel's side before the size setting; it sits in the bottom
+## left corner WHEEL_MARGIN from both edges.
+const WHEEL_SIZE := 260.0
+const WHEEL_MARGIN := 28.0
+## A touch this far from the hub, in wheel radii, still grabs the wheel.
+const WHEEL_HIT := 1.2
+## Full lock as drawn, and how fast the drawn wheel follows the thumb.
+const WHEEL_LOCK_DEG := 135.0
+const WHEEL_FOLLOW := 14.0
+const WHEEL_IDLE_ALPHA := 0.75
+const WHEEL_TEXTURE := preload("res://assets/ui/controls/steering_wheel.png")
+## How fast the drift button fades in and out.
+const BOOST_FADE := 6.0
+## The HUD feed (top 330, two wrapped lines) ends above this: the wheel stays below.
+const FEED_CLEARANCE := 418.0
 
 const DEAD_DEG := 2.2
 const TILT_SMOOTH := 14.0
@@ -45,50 +58,65 @@ class ControlFace extends Control:
 
 	func set_glow(value: float) -> void:
 		glow = value
+		if wheel_sprite != null:
+			wheel_sprite.modulate.a = lerpf(WHEEL_IDLE_ALPHA, 1.0, glow)
 		queue_redraw()
 
 	func icon_rect() -> Rect2:
 		var side := minf(size.x, size.y) * 0.58
 		return Rect2((size - Vector2(side, side)) * 0.5, Vector2(side, side))
 
-	func wheel_radius() -> float:
-		return minf(size.x * 0.24, size.y * 0.62)
+	## The steering wheel sprite, turned about its hub (wheel faces only).
+	var wheel_sprite: TextureRect
+	## Degrees the sprite is drawn at; eases toward steer * WHEEL_LOCK_DEG.
+	var shown_deg := 0.0
+
+	func _ready() -> void:
+		if not wheel:
+			return
+		wheel_sprite = TextureRect.new()
+		wheel_sprite.name = "WheelSprite"
+		wheel_sprite.texture = WHEEL_TEXTURE
+		wheel_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		wheel_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		wheel_sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(wheel_sprite)
+		resized.connect(_fit_wheel)
+		_fit_wheel()
+		advance(0.0)
+
+	func _fit_wheel() -> void:
+		wheel_sprite.position = Vector2.ZERO
+		wheel_sprite.size = size
+		wheel_sprite.pivot_offset = size / 2.0
+
+	func _process(dt: float) -> void:
+		if wheel:
+			advance(dt)
+
+	## Turns the drawn wheel toward the thumb (springing back to centre when
+	## released, because steer returns to 0) and brightens it while held.
+	func advance(dt: float) -> void:
+		if wheel_sprite == null:
+			return
+		var target := clampf(steer, -1.0, 1.0) * WHEEL_LOCK_DEG
+		# Plain easing, not lerp_angle: the wheel turns up to 270 degrees lock
+		# to lock and must never take the "shorter" way round through 180.
+		var k := 1.0 if dt <= 0.0 else 1.0 - exp(-WHEEL_FOLLOW * dt)
+		shown_deg = lerpf(shown_deg, target, k)
+		wheel_sprite.rotation_degrees = shown_deg
+		wheel_sprite.modulate.a = lerpf(WHEEL_IDLE_ALPHA, 1.0, glow)
 
 	func _draw() -> void:
-		var centre := size * 0.5
 		if wheel:
-			_draw_wheel()
 			return
+		var centre := size * 0.5
 		var ring := minf(size.x, size.y) * 0.42
 		if glow > 0.01:
 			draw_arc(centre, ring + 3.0, 0.0, TAU, 48, Color(color, 0.22 * glow), 7.0, true)
 			draw_arc(centre, ring, 0.0, TAU, 48, Color(color.lightened(0.3), 0.95 * glow), 2.5, true)
 		if icon != null:
 			draw_texture_rect(icon, icon_rect(), false, Color.WHITE.lerp(color.lightened(0.5), glow))
-
-	func _draw_wheel() -> void:
-		# The hub sits on the pad's lower edge, so only the upper half shows.
-		var radius := wheel_radius()
-		var hub := Vector2(size.x * 0.5, size.y - 10.0)
-		var turn := steer * 0.75
-		var rim := Color.WHITE.lerp(color.lightened(0.4), glow)
-		if glow > 0.01:
-			draw_arc(hub, radius + 4.0, PI, TAU, 40, Color(color, 0.25 * glow), 9.0, true)
-		draw_arc(hub, radius, PI, TAU, 40, rim, 5.0, true)
-		for spoke in [-PI * 0.5, -PI * 0.5 - 1.05, -PI * 0.5 + 1.05]:
-			var direction := Vector2.from_angle(spoke + turn)
-			# A spoke turned below the pad's edge is behind the dashboard.
-			if direction.y < 0.05:
-				draw_line(hub + direction * radius * 0.24, hub + direction * (radius - 2.0), rim, 4.0, true)
-		draw_arc(hub, radius * 0.24, PI, TAU, 16, rim, 4.0, true)
-		# The top-centre mark shows how far the wheel is turned.
-		var mark := Vector2.from_angle(-PI * 0.5 + turn)
-		draw_line(hub + mark * (radius - 5.0), hub + mark * (radius + 6.0), color, 5.0, true)
-		for side in [-1.0, 1.0]:
-			var at := Vector2(size.x * 0.5 + side * (radius + 34.0), size.y * 0.5)
-			var lit := clampf(steer * side, 0.0, 1.0)
-			var arrow := Color(rim, 0.45 + 0.55 * lit)
-			draw_polyline(PackedVector2Array([at + Vector2(-side * 7.0, -11.0), at + Vector2(side * 6.0, 0.0), at + Vector2(-side * 7.0, 11.0)]), arrow, 4.0, true)
 
 var steer := 0.0
 var gas := false
@@ -242,10 +270,14 @@ func control_rect(zone: String) -> Rect2:
 		"back":
 			rect = Rect2(Vector2(size.x - inset - rear.x, size.y - bottom - pedal.y - gap - rear.y), rear)
 		"steer":
-			# Taller than wide-and-flat: the thumb rests low but often drifts
-			# up while steering, so the pad reaches higher than it used to.
-			var width := minf(360.0 * scale, maxf(0.0, size.x * 0.5 - STEER_SLOT_CLEARANCE - inset))
-			rect = Rect2(Vector2(inset, size.y - bottom - STEER_HEIGHT * scale), Vector2(width, STEER_HEIGHT * scale))
+			# A square holding the round wheel, in the bottom left corner;
+			# the touch area is the circle around it (see zone_at).
+			var margin_x := maxf(WHEEL_MARGIN, inset)
+			var margin_y := maxf(WHEEL_MARGIN, bottom)
+			var side := minf(WHEEL_SIZE * scale, minf(size.y * 0.42, maxf(0.0, size.x * 0.5 - STEER_SLOT_CLEARANCE - margin_x)))
+			# Race messages appear above the wheel; never grow into them.
+			side = minf(side, maxf(0.0, size.y - margin_y - FEED_CLEARANCE))
+			rect = Rect2(Vector2(margin_x, size.y - margin_y - side), Vector2(side, side))
 	if Settings.left_handed and rect.has_area():
 		rect.position.x = size.x - rect.end.x
 	return rect
@@ -254,19 +286,27 @@ func control_rect(zone: String) -> Rect2:
 func zone_at(local_position: Vector2) -> String:
 	if not _can_drive():
 		return ""
-	for zone in ["gas", "brake", "fire", "back", "boost", "steer"]:
-		if zone == "steer" and not Settings.touch_steer:
-			continue
-		if zone == "boost" and not show_boost:
+	for zone in ["gas", "brake", "fire", "back", "boost"]:
+		if zone == "boost" and not (show_boost and _boost_btn.visible):
 			continue
 		if zone == "back" and not _back_btn.visible:
+			continue
+		if zone == "fire" and not _fire_btn.visible:
 			continue
 		if control_rect(zone).has_point(local_position):
 			return zone
 	for i in mini(_inventory_buttons.size(), _car.slots.size()):
 		if control_rect("slot%d" % i).has_point(local_position):
 			return "slot%d" % i
+	if Settings.touch_steer and on_wheel(local_position):
+		return "steer"
 	return ""
+
+
+## True inside the generous circle around the steering wheel's hub.
+func on_wheel(local_position: Vector2) -> bool:
+	var pad := control_rect("steer")
+	return pad.has_area() and local_position.distance_to(pad.get_center()) <= pad.size.x * 0.5 * WHEEL_HIT
 
 
 func _resized() -> void:
@@ -294,10 +334,10 @@ func _layout_buttons() -> void:
 		button.position = rect.position
 		button.size = rect.size
 		button.pivot_offset = rect.size * 0.5
-		button.modulate.a = Settings.control_opacity
+		button.modulate.a = 1.0 if pair[1] == "steer" else Settings.control_opacity
 	if _steer_btn != null:
 		_steer_btn.visible = Settings.touch_steer
-		_boost_btn.visible = show_boost
+		_boost_btn.visible = show_boost and _car != null and _car.skill_charge > 0.0
 		_gas_btn.visible = not Settings.auto_accel
 	if _auto_label != null:
 		_auto_label.position = Vector2(0, _brake_btn.size.y - 24)
@@ -317,15 +357,32 @@ func _mk_button(text: String, zone: String, col: Color) -> Button:
 	button.toggle_mode = true
 	button.expand_icon = true
 	button.add_theme_constant_override("icon_max_width", 30)
-	var normal := UiTheme.flat(Color(0.025, 0.045, 0.06, 0.64), Color(col, 0.8), 14, 2)
-	normal.content_margin_left = 8
-	normal.content_margin_right = 8
+	# Every bottom control wears the same dark glass; a held control lights
+	# up in its own colour.
+	var glass_normal := UiTheme.glass()
+	var glass_pressed := UiTheme.glass()
+	glass_pressed.bg_color = Color(col.darkened(0.55), 0.82)
+	glass_pressed.border_color = Color(col.lightened(0.2), 0.9)
+	var glass_disabled := UiTheme.glass()
+	glass_disabled.bg_color.a = 0.5
+	glass_disabled.border_color.a = 0.15
+	for style in [glass_normal, glass_pressed, glass_disabled]:
+		style.content_margin_left = 8
+		style.content_margin_right = 8
+	var normal: StyleBox = glass_normal
+	var pressed: StyleBox = glass_pressed
+	var disabled: StyleBox = glass_disabled
+	if zone == "steer":
+		# The wheel is the whole picture: no box around it.
+		normal = StyleBoxEmpty.new()
+		pressed = StyleBoxEmpty.new()
+		disabled = StyleBoxEmpty.new()
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", normal)
-	var pressed := UiTheme.flat(Color(col.darkened(0.5), 0.85), col.lightened(0.25), 14, 2)
 	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("hover_pressed", pressed)
-	button.add_theme_stylebox_override("disabled", UiTheme.flat(Color(0.025, 0.045, 0.06, 0.48), Color(col, 0.25), 14, 2))
+	button.add_theme_stylebox_override("disabled", disabled)
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.add_theme_font_override("font", UiTheme.body_bold())
 	button.add_theme_color_override("font_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
@@ -386,6 +443,8 @@ func sync_actions() -> void:
 	elif type == "shock" and _race != null and _race.leader() == _car:
 		_fire_btn.text = Data.t("hint.deny.first")
 	_fire_btn.icon = PowerupIcons.texture(type) if Data.has_pw(type) else null
+	# Nothing to fire: no button at all, the corner stays clear.
+	_fire_btn.visible = Data.has_pw(type)
 	_back_btn.icon = _fire_btn.icon
 	_back_btn.text = Data.t("input.back.%s" % type) if Data.has_text("input.back.%s" % type) else Data.t("input.back")
 	_back_btn.visible = _race != null and _race.has_back(type)
@@ -401,8 +460,21 @@ func sync_actions() -> void:
 		_boost_btn.disabled = not _can_act() or not str(_race.boost_status(_car)).is_empty()
 		_boost_fill.position = Vector2(8, _boost_btn.size.y - 7)
 		_boost_fill.size = Vector2((_boost_btn.size.x - 16) * _car.skill_charge, 3)
+		_fade_boost(_car.skill_charge > 0.0)
 	else:
 		_boost_btn.disabled = true
+		_fade_boost(false)
+
+
+## The drift counter only shows while there is drift to show.
+func _fade_boost(wanted: bool) -> void:
+	var dt := get_process_delta_time() if is_inside_tree() else 1.0
+	if dt <= 0.0:
+		dt = 1.0 / 60.0
+	var a := move_toward(_boost_btn.modulate.a, Settings.control_opacity if wanted else 0.0, dt * BOOST_FADE)
+	_boost_btn.modulate.a = a
+	# Tappable as soon as there is drift; only the look fades.
+	_boost_btn.visible = show_boost and (wanted or a > 0.01)
 
 
 func _request_action(backward: bool) -> void:
@@ -518,7 +590,7 @@ func _handle_touch(event: InputEvent, local: Vector2) -> bool:
 		if not _touches.has(drag.index):
 			return false
 		if drag.index == _steer_finger:
-			var full := minf(control_rect("steer").size.x * 0.4, float(Settings.TOUCH_TRAVEL[Settings.touch_sens]) * float(Settings.CONTROL_SCALES[Settings.control_size]))
+			var full := minf(control_rect("steer").size.x * 0.5, float(Settings.TOUCH_TRAVEL[Settings.touch_sens]) * float(Settings.CONTROL_SCALES[Settings.control_size]))
 			_pad_steer = clampf((local.x - _steer_origin) / maxf(1.0, full), -1.0, 1.0)
 			if absf(_pad_steer) < 0.06:
 				_pad_steer = 0.0

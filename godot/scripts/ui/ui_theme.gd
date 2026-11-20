@@ -69,6 +69,15 @@ static func theme() -> Theme:
 	return t
 
 
+## The race HUD's one panel style: dark glass, a thin cyan edge.
+const GLASS_BG := Color(0.08, 0.10, 0.13, 0.72)
+const GLASS_BORDER := Color(0.0, 0.90, 1.0, 0.35)
+
+
+static func glass(radius := 12) -> StyleBoxFlat:
+	return flat(GLASS_BG, GLASS_BORDER, radius, 1)
+
+
 static func flat(bg: Color, border: Color, radius: int, bw := 2) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg

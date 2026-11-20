@@ -311,7 +311,9 @@ func _build_ui() -> void:
 	safe.add_child(input)
 	input.bind(player, race)
 	hud = Hud.new()
+	hud.controls = input
 	safe.add_child(hud)
+	views.view_changed.connect(func(label: String) -> void: hud.feed(label, UiTheme.MUTED, 1.4))
 	intro_cards = IntroCards.new()
 	safe.add_child(intro_cards)
 	intro_cards.setup(race)
@@ -351,8 +353,8 @@ func _build_pause(layer: CanvasLayer) -> void:
 	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	box.offset_left = -220
 	box.offset_right = 220
-	box.offset_top = -255
-	box.offset_bottom = 255
+	box.offset_top = -290
+	box.offset_bottom = 290
 	safe.add_child(box)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
@@ -375,6 +377,9 @@ func _build_pause(layer: CanvasLayer) -> void:
 		b_compare.text = Data.t("pause.hide_scenery") if scenery_visible else Data.t("pause.show_scenery")
 		Sfx.ui_click())
 	v.add_child(b_compare)
+	# The mirror switch, moved off the race screen.
+	views.mirror_button.custom_minimum_size.y = 0
+	v.add_child(views.mirror_button)
 	var b_restart := UiTheme.button(Data.t("pause.restart"))
 	b_restart.pressed.connect(func(): Sfx.ui_click(); restart())
 	v.add_child(b_restart)

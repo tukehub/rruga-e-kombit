@@ -24,8 +24,15 @@ var _time: Label
 var _board: VBoxContainer
 var _board_key := ""
 var _board_gaps: Array[Label] = []
+## The cars the proximity list shows right now, in its row order.
+var _board_cars: Array[CarState] = []
 var _standings: PanelContainer
 const STANDINGS_WIDTH := 270.0
+## The speed and health card, beside the pedals.
+const GAUGE_SIZE := Vector2(156, 92)
+## The race's touch controls, to put the speed card beside the pedals; null
+## puts it bottom right.
+var controls: Control
 var _feed: VBoxContainer
 var _center: Label
 var _center_sub: Label
@@ -91,6 +98,13 @@ func _ready() -> void:
 	_build()
 	combat = preload("res://scripts/ui/combat_hud.gd").new()
 	add_child(combat)
+	# Health lives in the speed card, under the bar it labels.
+	var health: Label = combat._health
+	health.reparent(_gauge, false)
+	health.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	health.offset_top = -24
+	health.offset_bottom = -4
+	health.add_theme_font_size_override("font_size", 15)
 
 
 func setup(p_race: Race, p_player: CarState, p_track: RaceTrack, p_guide: RouteGuide = null) -> void:
@@ -130,16 +144,14 @@ func _build() -> void:
 	standings.position = Vector2(16, 102)
 	standings.custom_minimum_size.x = STANDINGS_WIDTH
 	standings.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	standings.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.24), Color(1, 1, 1, 0.13), 12, 1))
+	# No box: three shadowed lines, the car ahead, you, the car behind.
+	standings.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	add_child(standings)
 	_standings = standings
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 3)
 	bv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	standings.add_child(bv)
-	var board_title := UiTheme.label(Data.t("hud.standings"), 18, UiTheme.CYAN)
-	board_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bv.add_child(board_title)
 	_board = VBoxContainer.new()
 	_board.add_theme_constant_override("separation", 0)
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -219,27 +231,25 @@ func _build() -> void:
 	_corner_panel.add_child(_corner_caption)
 	# Compact digital speed and damage bar, rather than an opaque corner dial.
 	_gauge = Control.new()
-	_gauge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_gauge.offset_left = -323
-	_gauge.offset_right = -167
-	_gauge.offset_top = 12
-	_gauge.offset_bottom = 100
+	_gauge.name = "SpeedCard"
+	_gauge.size = GAUGE_SIZE
 	_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_gauge.draw.connect(_draw_gauge)
 	add_child(_gauge)
 	var speed_back := Panel.new()
-	speed_back.size = Vector2(156, 78)
+	speed_back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	speed_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	speed_back.add_theme_stylebox_override("panel", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.65), Color(1, 1, 1, 0.15), 12, 1))
+	speed_back.add_theme_stylebox_override("panel", UiTheme.glass())
 	_gauge.add_child(speed_back)
-	_speed = UiTheme.headline("0", 44, UiTheme.TEXT)
-	_speed.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_speed.offset_bottom = -28
+	_speed = UiTheme.headline("0", 38, UiTheme.TEXT)
+	_speed.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_speed.offset_top = -2
+	_speed.offset_bottom = 42
 	_gauge.add_child(_speed)
-	_speed_unit = UiTheme.label(Data.t("hud.speed_unit"), 18, UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_CENTER)
-	_speed_unit.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_speed_unit.offset_top = -34
-	_speed_unit.offset_bottom = -10
+	_speed_unit = UiTheme.label(Data.t("hud.speed_unit"), 14, UiTheme.MUTED, false, HORIZONTAL_ALIGNMENT_CENTER)
+	_speed_unit.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_speed_unit.offset_top = 38
+	_speed_unit.offset_bottom = 56
 	_gauge.add_child(_speed_unit)
 	_me = UiTheme.label("", 22)
 	_me.visible = false
@@ -277,7 +287,9 @@ func _build() -> void:
 		button.expand_icon = true
 		button.add_theme_constant_override("icon_max_width", 40)
 		button.add_theme_font_size_override("font_size", 22)
-		button.add_theme_stylebox_override("normal", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.48), Color(1, 1, 1, 0.3), 12))
+		button.add_theme_stylebox_override("normal", UiTheme.glass())
+		button.add_theme_stylebox_override("hover", UiTheme.glass())
+		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 		var index := i
 		button.pressed.connect(func(): slot_selected.emit(index))
 		inventory.add_child(button)
@@ -288,7 +300,12 @@ func _build() -> void:
 		button.add_child(hold_bar)
 		_hold_bars.append(hold_bar)
 		if i == 0:
-			button.add_theme_stylebox_override("normal", UiTheme.flat(Color(0.02, 0.04, 0.07, 0.65), UiTheme.CYAN, 12, 2))
+			# The selected item: the same glass, a full cyan edge.
+			var selected := UiTheme.glass()
+			selected.border_color = UiTheme.CYAN
+			selected.set_border_width_all(2)
+			button.add_theme_stylebox_override("normal", selected)
+			button.add_theme_stylebox_override("hover", selected)
 	_fps = UiTheme.label("", 18, UiTheme.TEXT)
 	_fps.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_fps.offset_left = -350
@@ -383,10 +400,11 @@ func _draw_gauge() -> void:
 		return
 	var hp := clampf(player.health / player.max_hp, 0.0, 1.0)
 	var col := UiTheme.GREEN if hp > 0.5 else (UiTheme.AMBER if hp > 0.25 else UiTheme.RED)
-	_gauge.draw_rect(Rect2(8, 82, 140, 6), Color(0.01, 0.02, 0.03, 0.65))
-	_gauge.draw_rect(Rect2(8, 82, 140 * hp, 6), col)
+	var bar := Rect2(12, 60, GAUGE_SIZE.x - 24, 5)
+	_gauge.draw_rect(bar, Color(0.01, 0.02, 0.03, 0.65))
+	_gauge.draw_rect(Rect2(bar.position, Vector2(bar.size.x * hp, bar.size.y)), col)
 	if player.shield_t > 0.0:
-		_gauge.draw_line(Vector2(8, 78), Vector2(148, 78), UiTheme.CYAN, 3.0)
+		_gauge.draw_line(bar.position - Vector2(0, 3), Vector2(bar.end.x, bar.position.y - 3), UiTheme.CYAN, 2.0)
 
 
 func feed(text: String, col := UiTheme.TEXT, ttl := 2.6) -> void:
@@ -483,9 +501,10 @@ func _process(dt: float) -> void:
 	_time.text = Game.fmt_time(player.finish_time if player.finished else race.time)
 	_update_corner_caption()
 	_speed.text = str(roundi(absf(player.v) * 3.6))
-	# standings
+	# standings: only the car ahead, you and the car behind
+	_board_cars = neighbours(race.order, player)
 	var key := ""
-	for c in race.order:
+	for c in _board_cars:
 		key += str(c.id) + ("f" if c.finished else "") + ","
 	if key != _board_key:
 		_board_key = key
@@ -493,12 +512,13 @@ func _process(dt: float) -> void:
 		for ch in _board.get_children():
 			_board.remove_child(ch)
 			ch.queue_free()
-		var i := 0
-		for c in race.order:
-			i += 1
+		for c in _board_cars:
+			var place := race.order.find(c) + 1
+			var mine := c == player
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 6)
-			var n := UiTheme.label(str(i), 23, UiTheme.TEXT, false)
+			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var n := _shadowed(UiTheme.label(str(place), 23, UiTheme.CYAN if mine else UiTheme.TEXT, false))
 			n.custom_minimum_size.x = 24
 			row.add_child(n)
 			var dot := ColorRect.new()
@@ -506,28 +526,20 @@ func _process(dt: float) -> void:
 			dot.custom_minimum_size = Vector2(8, 8)
 			dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(dot)
-			var nm := UiTheme.label(c.name + (" ✓" if c.finished else ""), 23, UiTheme.CYAN if c == player else UiTheme.TEXT)
+			var nm := _shadowed(UiTheme.label(c.name + (" ✓" if c.finished else ""), 23, UiTheme.CYAN if mine else UiTheme.TEXT))
 			nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-			nm.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-			nm.add_theme_constant_override("outline_size", 3)
 			row.add_child(nm)
-			var gap := UiTheme.label("", 20, UiTheme.CYAN if c == player else UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_RIGHT)
+			var gap := _shadowed(UiTheme.label("", 20, UiTheme.CYAN if mine else UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_RIGHT))
 			gap.custom_minimum_size.x = 70
-			gap.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-			gap.add_theme_constant_override("outline_size", 3)
 			row.add_child(gap)
 			_board_gaps.append(gap)
-			row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			if c == player:
-				n.add_theme_color_override("font_color", UiTheme.CYAN)
 			_board.add_child(row)
-	for i in mini(race.order.size(), _board_gaps.size()):
-		var c: CarState = race.order[i]
-		var metres := roundi(c.progress - player.progress)
-		_board_gaps[i].text = Data.t("hud.you") if c == player else ("+%dm" % metres if metres > 0 else "%dm" % metres)
+	for i in mini(_board_cars.size(), _board_gaps.size()):
+		_board_gaps[i].text = gap_text(_board_cars[i])
+	_place_gauge()
 	# slots
-	var sk := ""
+	var sk := "slots:"
 	for s in player.slots:
 		sk += s.type + str(s.ammo) + ","
 	if sk != _slot_key:
@@ -543,10 +555,12 @@ func _process(dt: float) -> void:
 				b.add_theme_color_override("font_color", Color.html(pw.col).lightened(0.25))
 				b.visible = true
 			else:
+				# An empty slot stays as a faint frame: three places, always.
 				b.text = ""
 				b.icon = null
 				b.tooltip_text = ""
-				b.visible = false
+				b.visible = true
+			b.modulate.a = 1.0 if i < player.slots.size() else 0.4
 		_slot_name.text = Data.pw_name(player.slots[0].type).to_upper() if not player.slots.is_empty() else ""
 	if _hold_index >= 0:
 		_target_hint.text = Data.t("hud.hold_to_drop", roundi(_hold_fraction * 100.0))
@@ -557,7 +571,8 @@ func _process(dt: float) -> void:
 		_target_hint.modulate = UiTheme.MUTED if bool(status.ready) else UiTheme.AMBER
 	_mm_dots.queue_redraw()
 	_gauge.queue_redraw()
-	if Settings.show_fps or diagnostic_fps:
+	# Frame times are for development builds only.
+	if OS.is_debug_build() and (Settings.show_fps or diagnostic_fps):
 		_fps.text = Data.t("hud.fps", [Game.frame_ms_avg, Game.frame_ms_max, Engine.get_frames_per_second()])
 	else:
 		_fps.text = ""
@@ -578,3 +593,49 @@ func _update_corner_caption() -> void:
 		return
 	_corner_caption.text = "%s %s" % ["→" if corner.direction == "right" else "←", "%dm" % roundi(corner.distance) if float(corner.distance) > 5.0 else Data.t("hud.corner.now")]
 	_corner_caption.modulate = UiTheme.AMBER if int(corner.severity) >= 2 else Color.WHITE
+
+
+## The car ahead of `me`, `me`, and the car behind, as far as they exist.
+static func neighbours(order: Array, me: CarState) -> Array[CarState]:
+	var out: Array[CarState] = []
+	var i := order.find(me)
+	if i < 0:
+		return out
+	for k in [i - 1, i, i + 1]:
+		if k >= 0 and k < order.size():
+			out.append(order[k])
+	return out
+
+
+## "TI" for the player, else metres ahead (+) or behind (-) on race progress.
+func gap_text(c: CarState) -> String:
+	if c == player:
+		return Data.t("hud.you")
+	var metres := roundi(c.progress - player.progress)
+	return "+%dm" % metres if metres > 0 else "%dm" % metres
+
+
+## A thin outline and a soft drop shadow, readable over sky and road alike.
+static func _shadowed(label: Label) -> Label:
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	label.add_theme_constant_override("outline_size", 2)
+	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	label.add_theme_constant_override("shadow_offset_x", 1)
+	label.add_theme_constant_override("shadow_offset_y", 2)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
+
+
+## The speed card sits immediately beside the pedals, on the side away from
+## the screen edge, its bottom level with theirs.
+func _place_gauge() -> void:
+	var gap := 12.0
+	if controls == null or not controls.has_method("control_rect"):
+		_gauge.position = size - GAUGE_SIZE - Vector2(20, 20)
+		return
+	var pedals: Rect2 = controls.control_rect("brake")
+	var gas: Rect2 = controls.control_rect("gas")
+	if gas.has_area():
+		pedals = pedals.merge(gas)
+	var x := pedals.end.x + gap if Settings.left_handed else pedals.position.x - gap - GAUGE_SIZE.x
+	_gauge.position = Vector2(x, pedals.end.y - GAUGE_SIZE.y)

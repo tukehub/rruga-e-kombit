@@ -396,6 +396,25 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     threads first, so the build finds them cached. Covered by
     `tests/online_flow` and `tests/flow_test`.
 
+5.5 **Race HUD declutter — done.** Steering is a flat-bottomed supercar
+    wheel sprite (`assets/ui/controls/steering_wheel.png`, 512 px, drawn by
+    `tools/build_steering_wheel.py`: carbon top, perforated leather grips,
+    brushed spokes, paddles, cyan 12 o'clock stripe) in the bottom left
+    corner, no box or arrows. It turns about its hub up to ±135° with the
+    thumb and eases back when released (plain easing, not `lerp_angle`,
+    which would take the "short" way round over 270° of lock), sits at
+    0.75 opacity until touched, and grabs touches within 1.2× its radius
+    (`RaceInput.on_wheel`; power-up slots win where they overlap). The
+    standings show only the car ahead, you (cyan) and the car behind, as
+    shadowed text without a box. The mirror is a rounded, dark glass
+    frame; the frame-time line exists only in debug builds. The camera is
+    a 48 px icon left of pause, the mirror switch moved to the pause menu.
+    The fire button disappears with nothing to fire; DRIFT fades in only
+    with a drift charge. All bottom controls, the three power-up slots
+    (empty ones as faint frames) and the speed card share one glass style
+    (`UiTheme.glass()`); the speed and health card sits beside the pedals.
+    Covered by `tests/combat_ui`, `tests/ui_motion`, `tests/flow_test`.
+
 ### 6. Progression
 
 6.1 **Fans persist — done.** A finished race passes the player's fans

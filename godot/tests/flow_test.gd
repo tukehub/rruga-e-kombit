@@ -142,13 +142,24 @@ func _ready() -> void:
 		check(wheel.layers == 2, "player wheel isolated from rear mirror")
 	scene.views._toggle_view()
 	check(scene.cam.view == ChaseCam.View.CABIN and scene.views.cabin_overlay.visible and not scene.cam.get_cull_mask_value(2), "cabin view hides own car and shows dashboard")
-	check(scene.views.view_button.text == Data.t("view.camera.cabin"), "view button names the cabin view")
+	check(scene.views.view_button.tooltip_text == Data.t("view.camera.cabin"), "view button names the cabin view")
 	scene.views._toggle_view()
 	check(scene.cam.view == ChaseCam.View.BUMPER and not scene.views.cabin_overlay.visible and not scene.cam.get_cull_mask_value(2), "bumper view hides own car and the dashboard")
-	check(scene.views.view_button.text == Data.t("view.camera.bumper"), "view button names the bumper view")
+	check(scene.views.view_button.tooltip_text == Data.t("view.camera.bumper"), "view button names the bumper view")
 	scene.views._toggle_view()
 	check(scene.cam.view == ChaseCam.View.CHASE and scene.cam.get_cull_mask_value(2), "exterior view restores own car")
-	check(scene.views.view_button.text == Data.t("view.camera.chase"), "view button names the chase view")
+	check(scene.views.view_button.tooltip_text == Data.t("view.camera.chase"), "view button names the chase view")
+	check(scene.views.view_button.icon != null and scene.views.view_button.text.is_empty() and scene.views.view_button.size.is_equal_approx(Vector2.ONE * RaceViews.VIEW_BUTTON_SIZE), "the camera button is a 48 px icon")
+	check(scene.views.view_button.get_global_rect().end.x <= scene.hud._pause.get_global_rect().position.x and scene.views.view_button.get_global_rect().end.y <= scene.hud._minimap.get_global_rect().position.y, "left of pause, above the map")
+	check(scene.views.mirror_button.get_parent() != null and scene.pause_ui.is_ancestor_of(scene.views.mirror_button), "the mirror switch is in the pause menu")
+	check(scene.views.mirror_panel.clip_children == CanvasItem.CLIP_CHILDREN_AND_DRAW, "the mirror picture is clipped to rounded corners")
+	# The speed card sits beside the pedals and clears every control.
+	var card: Rect2 = scene.hud._gauge.get_rect()
+	var brake: Rect2 = scene.input.control_rect("brake")
+	check(absf(card.end.y - brake.end.y) < 1.0 and card.end.x <= brake.position.x + 0.5 and brake.position.x - card.end.x < 20.0, "speed card immediately left of the pedal: %s vs %s" % [card, brake])
+	for zone in ["steer", "fire", "back", "brake", "gas", "boost"]:
+		check(not card.intersects(scene.input.control_rect(zone)), "speed card clears %s" % zone)
+	check(scene.hud.combat._health.get_parent() == scene.hud._gauge, "health is in the speed card")
 	scene.views._toggle_mirror()
 	check(scene.views.mirror_panel.visible and Settings.mirror, "mirror can be enabled and the choice is saved")
 	scene.views._toggle_mirror()
@@ -174,11 +185,13 @@ func _ready() -> void:
 	var saved_progress := opponent.progress
 	opponent.progress = scene.player.progress + 12.0
 	scene.hud._process(0.016)
-	var opponent_row: int = scene.race.order.find(opponent)
-	check(scene.hud._board_gaps[opponent_row].text == "+12m", "leaderboard distance ahead")
+	check(scene.hud.gap_text(opponent) == "+12m", "leaderboard distance ahead")
 	opponent.progress = scene.player.progress - 32.0
 	scene.hud._process(0.016)
-	check(scene.hud._board_gaps[opponent_row].text == "-32m", "leaderboard distance behind updates")
+	check(scene.hud.gap_text(opponent) == "-32m", "leaderboard distance behind updates")
+	var shown: int = scene.hud._board_cars.find(opponent)
+	if shown >= 0:
+		check(scene.hud._board_gaps[shown].text == "-32m", "a neighbour's row shows the same distance")
 	opponent.progress = saved_progress
 	# A 120 Hz render frame between fixed simulation steps should visibly move
 	# the car without advancing the simulation. The camera must follow that

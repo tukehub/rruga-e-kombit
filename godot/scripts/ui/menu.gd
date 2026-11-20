@@ -1215,6 +1215,8 @@ func _page_settings() -> Control:
 		Quality.configure_from_settings()
 		Quality.apply_viewport(get_viewport()))
 	_set_row(list, "fps", Data.t("settings.show_fps"), no_yes, func(i): Settings.show_fps = (i == 1))
+	# Frame times only exist in development builds.
+	(_set_rows.fps as Control).get_parent().visible = OS.is_debug_build()
 	_set_slider(list, "master", Data.t("settings.volume.master"), func(x): Settings.vol_master = x)
 	_set_slider(list, "engine", Data.t("settings.volume.engine"), func(x): Settings.vol_engine = x)
 	_set_slider(list, "tyres", Data.t("settings.volume.tyres"), func(x): Settings.vol_tyres = x)

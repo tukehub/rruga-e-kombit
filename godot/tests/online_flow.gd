@@ -119,7 +119,7 @@ func _ready() -> void:
 	check(scene.net.lockstep.desync_tick < 0 and other != null and other.lockstep.desync_tick < 0, "no desync")
 	check(other != null and scene.race.humans[1].progress > 20.0, "the other phone's car moves on the host's screen")
 	check(scene._net_badge != null and scene._net_badge.is_visible_in_tree() and scene._net_badge.text.contains("ms"), "a badge shows the connection: %s" % (scene._net_badge.text if scene._net_badge else "none"))
-	check(scene.input.control_rect("steer").size.y >= RaceInput.STEER_HEIGHT * 0.85, "the steering pad is the taller one")
+	check(scene.input.control_rect("steer").size.y >= RaceInput.WHEEL_SIZE * 0.8, "the steering wheel is full size")
 	# Same tick, same race.
 	if other != null:
 		var tick := mini(scene.net.lockstep.tick, other.lockstep.tick)

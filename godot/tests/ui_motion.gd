@@ -137,10 +137,17 @@ func _ready() -> void:
 	hud.setup(race, race.player, track)
 	hud._process(0.0)
 	await get_tree().process_frame
-	check(hud._board.get_child_count() == race.cars.size() and hud._standings.size.x >= Hud.STANDINGS_WIDTH, "the standings show every racer at full width")
+	# Standings: just the car ahead, you and the car behind, without a box.
+	var at := race.order.find(race.player)
+	check(hud._board.get_child_count() == mini(3, race.order.size() - maxi(0, at - 1)) and hud._board.get_child_count() <= 3, "the standings show only your neighbours (%d rows)" % hud._board.get_child_count())
+	check(hud._board_cars.has(race.player) and hud._standings.get_theme_stylebox("panel") is StyleBoxEmpty, "you are among them, with no panel behind")
 	for row in hud._board.get_children():
 		check(row.get_children().all(func(c: Control) -> bool: return c.visible), "each row shows place, colour, name and gap")
 	check(hud._board_gaps.all(func(l: Label) -> bool: return l.text == Data.t("hud.you") or l.text.ends_with("m")), "gaps are in metres")
+	var me_row: Label = hud._board_gaps[hud._board_cars.find(race.player)]
+	check(me_row.text == Data.t("hud.you") and me_row.get_theme_color("font_color") == UiTheme.CYAN and me_row.get_theme_constant("outline_size") == 2, "your row is cyan, every row has an outline")
+	var order: Array = race.order
+	check(Hud.neighbours(order, order[0]).size() == 2 and Hud.neighbours(order, order[order.size() - 1]).size() == 2 and Hud.neighbours(order, order[2]) == [order[1], order[2], order[3]], "first and last have one neighbour, the rest two")
 	hud.queue_free()
 
 	# Scene changes fade through the loading cover.

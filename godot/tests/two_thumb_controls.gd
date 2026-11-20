@@ -144,7 +144,7 @@ func _ready() -> void:
 	car.spin_t = 0.0
 	car.slots.clear()
 	controls.sync_actions()
-	check(controls._fire_btn.disabled and controls._fire_btn.text == "PA FUQI" and not controls._back_btn.visible, "empty inventory has clear inactive action")
+	check(not controls._fire_btn.visible and not controls._back_btn.visible, "an empty inventory shows no fire button at all")
 
 	configure({"auto_accel": false})
 	controls.poll(0.016)
