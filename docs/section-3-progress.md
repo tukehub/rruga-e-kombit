@@ -89,11 +89,8 @@ Do not merge to `main`; the user requested a separate branch.
   final shader check use `work/graphics-{mobile,forward}-final.log`.
 - The initial plan, tested 3.1 and implemented 3.2 were pushed separately
   (`b544d46`, `c087cc0`, `aa2f42e`). A final validation/docs checkpoint follows.
-- **Next: 3.3 reflections.** `Quality.p.probe` already exists, but race probes
-  are not implemented. Start with a probe that follows the player, landmark
-  probes on high, HDRI/probe garage and ambient-floor adjustment. Read
-  `sky_env.gd`, `menu.gd`, `race_scene.gd` and the renderer-budget tests first.
-  Items 3.3–3.8 remain pending; no phone performance claim or release was made.
+- At this checkpoint 3.3 was next. Its implementation and final validation
+  are recorded below; no phone performance claim or release was made.
 
 ## Checkpoint: 3.3 implementation (2026-11-16)
 
@@ -114,7 +111,7 @@ Do not merge to `main`; the user requested a separate branch.
   floor. Its rotating car is excluded from capture to avoid self-reflections.
   The glossy floor reflects its environment; it is not a planar car mirror.
   Garage viewport/environment/probe budgets now respond to live changes.
-- Reduced daytime flat ambient fill (day: 0.5 → 0.325); night retains a 0.38
+- Reduced daytime flat ambient fill (day: 0.5 → 0.325); night retains a 0.48
   minimum. Weather interpolation uses the same adjusted endpoints.
 - **Passed so far:** new Mobile `reflections` regression (budget, layer mask,
   reuse, movement, weather, retry, garage). Full runner and software Vulkan
@@ -123,3 +120,14 @@ Do not merge to `main`; the user requested a separate branch.
 - Optional rendered check: `godot --path godot --rendering-method mobile
   --fixed-fps 60 res://tests/reflections_visual.tscn` (repeat Forward+).
   Captures garage, day without/with probes, high landmark, night and low.
+
+## Resume and visual review (2026-11-20)
+
+- Recovered checkpoint `4c662d7`; the saved full-runner log contains all 28
+  scene launches with no unexpected errors, including both reflection tests.
+  Both Vulkan render paths had produced all six captures without errors.
+- Visual inspection prompted two refinements: preserve the original dark
+  preset ambient fill and use full probe intensity for readable paint at
+  night; move the garage camera aim slightly to keep the rotating car in view.
+- Final verification is running in `work/section-3.3-final-tests.log` and
+  `work/reflections-{mobile,forward}-final.log` before the final push.

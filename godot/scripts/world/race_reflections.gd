@@ -31,7 +31,7 @@ static func make_probe() -> ReflectionProbe:
 	probe.max_distance = 120.0
 	probe.size = Vector3(160, 64, 160)
 	probe.blend_distance = 18.0
-	probe.intensity = 0.75
+	probe.intensity = 1.0
 	probe.visible = false
 	return probe
 

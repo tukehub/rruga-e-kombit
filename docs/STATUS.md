@@ -63,6 +63,13 @@ renderer paths have regression coverage; Mobile and Forward+ software Vulkan
 captures exercise the shaders and production race integration. Physical phone
 performance is still unmeasured. [Checkpoints and next work](section-3-progress.md).
 
+Graphics item 3.3 adds local reflections from static scenery: one player probe
+on medium and high, plus three landmark probes on high. Captures update at
+bounded intervals and react to weather; low quality and sustained pressure
+disable them. The garage now has an HDRI background, a reflection probe and
+a glossy floor. Daytime ambient fill is reduced; night retains its original
+visibility floor. Phone frame-time validation remains outstanding.
+
 Checks include fixed-step race simulations, city loading, race flow, touch
 controls, OSM routing, side-road clearance and terrain-to-road clearance. Desktop
 rendering verifies visual placement, but cannot establish Android performance.

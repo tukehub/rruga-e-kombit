@@ -106,7 +106,7 @@ func _build_garage() -> void:
 	var cam := Camera3D.new()
 	add_child(cam)
 	cam.position = Vector3(8.0, 3.3, 11.0)
-	cam.look_at(Vector3(0.0, 0.65, 0.0))
+	cam.look_at(Vector3(1.2, 0.65, 0.0))
 	cam.fov = 38
 	cam.current = true
 	_set_garage_car(str(Game.race_opts.car))

@@ -233,10 +233,13 @@ work. An item below that needs a Forward+-only feature is desktop-only.
     `scripts/game/fx_visual.gd` with caps in `POOL_CAPS`); fullscreen
     `shaders/speed_post.gdshader` (radial blur, vignette, slight chroma) driven
     by speed ratio and nitro, disabled on low.
-3.3 **Reflections:** one `ReflectionProbe` following the player (medium+),
+3.3 **Reflections — implemented** (see [checkpoints](docs/section-3-progress.md)):
+    one `ReflectionProbe` following the player (medium+),
     static probes at landmarks on high; garage in `scripts/ui/menu.gd` gets an
     HDRI background, a probe and a glossy floor. Lower the flat ambient floor in
     `scripts/world/sky_env.gd`.
+    Captures use static scenery, spaced updates and quality/pressure limits;
+    daytime ambient fill is lower while night keeps its readable floor.
 3.4 **Street dressing from OSM:** the pipeline emits traffic lights, bus stops,
     benches, bins, bollards and parked-car slots into `props.json`;
     `scripts/world/props.gd` draws each kind as one `MultiMeshInstance3D` with

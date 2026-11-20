@@ -149,3 +149,33 @@ that captures drift, wet boost and low-quality screenshots. Software Vulkan
 checks appearance and shader compilation; physical phones are still required
 for frame-time validation.
 
+## Section 3.3 reflections
+
+The city has one medium/high player probe and three high-only street-side
+probes near the National Museum, Pyramid and Polytechnic. Only static scenery
+enters their capture layer; cars, pickups, particles and weather remain out.
+The shared atlas uses 128-pixel faces and eight slots; at most four city probes
+can affect a mesh, including the single road mesh. Probes use no capture
+shadows and prefer coarser mesh LOD.
+
+The player probe follows in steps: movement of at least 18 m and an elapsed
+0.5 s trigger an UPDATE_ONCE capture. Pressure stage 1 increases the interval
+to 1 s and disables landmark probes. A gap over 65 m (including teleporting)
+recenters immediately. Low and pressure stages 2/3 disable all probes.
+Weather changes and transition milestones invalidate captures, with static
+refresh requests spaced by 0.75 s. Retry retains the world nodes and resets
+the player anchor. Quality snapshots report probe and landmark budgets.
+
+The garage reuses the licensed daylight HDRI and a static probe; the rotating
+car is excluded from capture to avoid self-reflection. The glossy floor
+reflects the environment, not a planar image of the car. Garage render budgets
+respond immediately to settings changes. Day ambient energy changes from
+0.5 to 0.325; dark presets keep their original 0.48 minimum for visibility.
+
+`tests/reflections` runs under both Mobile and Forward+ in the standard runner.
+The optional `tests/reflections_visual.tscn` captures the garage, probes off/on
+in daylight, a high-quality landmark, night and low quality. Run with
+`--fixed-fps 60` and each `--rendering-method`; images go to `user://shots/`.
+Software Vulkan validates rendering correctness; target-phone profiling is
+still needed to measure the cost of capture updates.
+

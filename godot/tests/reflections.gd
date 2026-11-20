@@ -70,7 +70,7 @@ func _ready() -> void:
 	scene.sky.advance(4.0)
 	check(is_equal_approx(scene.sky.env.ambient_light_energy, 0.325), "daylight uses reduced ambient fill")
 	scene.sky.apply("night")
-	check(scene.sky.env.ambient_light_energy >= 0.38 - 0.00001, "night retains a readable ambient floor")
+	check(scene.sky.env.ambient_light_energy >= 0.48 - 0.00001, "night preserves its original readable ambient floor")
 	scene.restart()
 	check(scene.reflections == reflections and not reflections._placed, "retry reuses world probes and resets the follow anchor")
 	scene.queue_free()

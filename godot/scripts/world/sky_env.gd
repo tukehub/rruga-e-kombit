@@ -82,8 +82,8 @@ func apply(id: String, is_wet_override: bool = false) -> void:
 	env.ambient_light_sky_contribution = 0.25
 	# Preserve phone visibility at night, but let daytime presets retain shade
 	# and surface detail instead of lifting every surface toward white.
-	var ambient_floor := 0.38 if is_night else 0.28
-	env.ambient_light_energy = maxf(float(preset.ambient) * (0.8 if is_night else 0.65), ambient_floor)
+	var ambient_floor := 0.48 if is_night else 0.28
+	env.ambient_light_energy = maxf(float(preset.ambient) * (1.0 if is_night else 0.65), ambient_floor)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
 	# tonemap + exposure
