@@ -71,7 +71,8 @@ tree detail, loading feedback and touch controls.
 
 Vlorë is now in the build, opened by four Tirana cup stars through the race
 page's city picker, with an open-water bay (baked shore mask, one opaque wave
-plane, sand beach and foam). Its route is still the old placeholder loop
-around Flag Square; Lungomare, the Flamurtari stadium and the Independence
-Museum need a new route and landmark work. The other four cities stay out of
+plane, sand beach and foam). Its 7.35 km route runs from Flag Square down the
+boulevard past the stadium and the Independence Museum, along Lungomare (palms
+on the sea side, cafés and 10–15 storey blocks on the land side) and back over
+the hills. The monument, stadium and museum still use placeholder models. The other four cities stay out of
 the APK until their datasets are reworked.

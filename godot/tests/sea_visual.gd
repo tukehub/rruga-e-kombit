@@ -41,6 +41,22 @@ func _ready() -> void:
 		{"name": "shore", "eye": Vector3(water.x, surface + 35.0, water.z) - seaward * 120.0, "at": Vector3(water.x, surface, water.z) + seaward * 60.0},
 		{"name": "bay", "eye": road + Vector3(0, 220, 0) - seaward * 250.0, "at": Vector3(water.x, surface, water.z) + seaward * 900.0},
 	]
+	# Lungomare: along the promenade at driver height, and from above the
+	# apartment blocks toward the bay.
+	var palms := scene.props.get_node_or_null("Palms")
+	assert(palms != null, "Lungomare needs its palms")
+	var crowns := palms.get_node("PalmCrowns") as MultiMeshInstance3D
+	var mid := crowns.multimesh.get_instance_transform(crowns.multimesh.instance_count / 2).origin
+	var i := scene.track.nearest(mid.x, mid.z, 80.0)
+	var ahead := (i + 45) % scene.track.M
+	var at_road := Vector3(scene.track.X[i], scene.track.Y[i], scene.track.Z[i])
+	var at_ahead := Vector3(scene.track.X[ahead], scene.track.Y[ahead], scene.track.Z[ahead])
+	var to_sea := (mid - at_road)
+	to_sea.y = 0.0
+	to_sea = to_sea.normalized()
+	views.append({"name": "lungomare", "eye": at_road + Vector3(0, 2.2, 0) - (at_ahead - at_road).normalized() * 12.0, "at": at_ahead + Vector3(0, 2.0, 0)})
+	views.append({"name": "lungomare_high", "eye": at_road - to_sea * 140.0 + Vector3(0, 75, 0), "at": at_road + to_sea * 60.0})
+	views.append({"name": "lungomare_side", "eye": at_road + to_sea * 2.0 + Vector3(0, 2.0, 0), "at": at_road - to_sea * 60.0 + Vector3(0, 14, 0)})
 	print("SEA VISUAL: shore ", best, " m from the road at ", road)
 	camera = Camera3D.new()
 	camera.far = 6000.0

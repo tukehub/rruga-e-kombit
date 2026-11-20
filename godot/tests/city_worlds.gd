@@ -92,6 +92,20 @@ func _ready() -> void:
 					assert(scene.terrain.near_h[k] >= surface + 0.24, "land must stay above the surface")
 			assert(wet > 0)
 			print("SEA: ", city.id, " surface ", surface, " m, ", wet, " water cells")
+		if city.id == "vlore":
+			# Lungomare: palms on the sea side, on dry ground and clear of the
+			# road; café terraces on the land side.
+			var grove := scene.props.get_node_or_null("Palms")
+			assert(grove != null, "Lungomare needs its palms")
+			var mm := (grove.get_node("PalmTrunks") as MultiMeshInstance3D).multimesh
+			assert(mm.instance_count >= 40, "a promenade's worth of palms")
+			for k in mm.instance_count:
+				var at := mm.get_instance_transform(k).origin
+				assert(not scene.terrain.is_water(at.x, at.z), "palms stand on dry ground")
+				assert(scene.track.dist_to(at.x, at.z) >= scene.track.half_w + 4.0, "palms stay off the road")
+				assert(at.y > scene.terrain.water_surface, "palms stand above the sea")
+			assert(scene.props.get_node_or_null("BllokuCafes") != null, "Lungomare needs its café terraces")
+			print("LUNGOMARE: ", mm.instance_count, " palms")
 		else:
 			assert(scene.sea == null, "inland cities have no sea")
 		await get_tree().process_frame

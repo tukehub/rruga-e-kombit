@@ -25,6 +25,7 @@ from common import CACHE, OUT, Proj, ensure_dir, load_json, log, save_json  # no
 from cities import CITIES, ROAD_WIDTH, ROUTABLE, ROUTE_COST  # noqa: E402
 from glb import GLB, earcut  # noqa: E402
 from water import process_city as build_water_mask  # noqa: E402
+import seafront  # noqa: E402
 import fetch_dem  # noqa: E402
 from side_roads import build_side_roads
 
@@ -201,7 +202,11 @@ class Graph:
         return path[::-1]
 
 
-def route_loop(graph, waypoints_xz):
+def route_loop(graph, waypoints_xz, leg_clearance=0.0):
+    """Shortest disjoint legs between consecutive waypoints. With leg_clearance
+    (metres), a leg also keeps that far from earlier legs except within
+    2 x leg_clearance of its own ends, so a dual carriageway cannot carry the
+    loop out on one side and back on the other."""
     wp = [graph.nearest(x, z) for x, z in waypoints_xz]
     loop = []
     used = set()
@@ -212,6 +217,16 @@ def route_loop(graph, waypoints_xz):
         blocked.discard(a)
         if i == n - 1:
             blocked.discard(wp[0])
+        if leg_clearance > 0.0 and used:
+            ends = np.array([graph.pos[a], graph.pos[b]])
+            used_xy = np.array([graph.pos[u] for u in used])
+            for idx in range(len(graph.ids)):
+                nid = int(graph.ids[idx])
+                p = graph.xy[idx]
+                if nid in blocked or np.min(np.hypot(*(ends - p).T)) < 2.0 * leg_clearance:
+                    continue
+                if np.min(np.hypot(*(used_xy - p).T)) < leg_clearance:
+                    blocked.add(nid)
         path = graph.dijkstra(a, b, blocked, set())
         if path is None:
             log(f'  leg {i}: no disjoint path, allowing reuse with penalty')
@@ -636,7 +651,7 @@ def overlaps_landmark_bounds(points, zones):
                for x0, z0, x1, z1 in zones)
 
 
-def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buildings=(), landmark_zones=()):
+def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buildings=(), landmark_zones=(), height_fn=None):
     excluded_ids = set(landmark_buildings)
     excluded_ways = set(excluded_ids)
     for rel in osm.rels:
@@ -681,6 +696,9 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
         # keep buildings near the track; distant ones only when tall enough to show on the skyline
         d_track = ref.coarse_dist(cx, cz)
         pre_h = parse_height(tags, bid, style)
+        override = height_fn(ref, bid, tags, cx, cz) if height_fn else None
+        if override is not None:
+            pre_h = override
         if d_track > BUILD_NEAR and not (pre_h > 22 and d_track < BUILD_RADIUS):
             continue
         # push away from the track corridor
@@ -707,14 +725,16 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
                 continue
         if overlaps_landmark_bounds(ring, landmark_zones):
             continue
-        height = parse_height(tags, bid, style)
+        height = override if override is not None else parse_height(tags, bid, style)
         base = float(terrain_sample(arr[:, 0], arr[:, 1]).min()) - 0.6
         top = base + height
         seed_c = rnd(bid, 2)
         col = pal[int(seed_c * len(pal)) % len(pal)]
         shade = 0.85 + 0.3 * rnd(bid, 3)
         col = tuple(min(1.0, c * shade) for c in col)
-        glass = 1.0 if (height > 30 and rnd(bid, 4) < 0.6) or tags.get('building') in ('office', 'hotel') and height > 18 else 0.0
+        # Seaside high-rises are plastered apartment blocks, not glass towers.
+        tall_glass = height > 30 and rnd(bid, 4) < 0.6 and style != 'seaside'
+        glass = 1.0 if tall_glass or tags.get('building') in ('office', 'hotel') and height > 18 else 0.0
         if glass:
             col = (0.35, 0.45, 0.55)
         kind = 1.0 if glass else 0.0
@@ -861,7 +881,7 @@ def build_splat(osm, ref, hw, out_png, map_draw=None, map_tf=None):
     return img
 
 
-def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf):
+def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf, seafront_props=None):
     lamps, trees = [], []
     for nid, (x, z, tags) in osm.nodes.items():
         if not tags or math.hypot(x, z) > PROP_RADIUS:
@@ -927,7 +947,20 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf)
     if city.get('style') == 'tirana':
         mask = blloku_building_mask(os.path.join(os.path.dirname(out_json), 'buildings.glb'))
         cafes = blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones, mask)
-    save_json(out_json, {'lamps': lamps, 'track_lamps': track_lamps, 'trees': trees, 'landmarks': landmarks, 'cafes': cafes})
+    palms = []
+    if seafront_props:
+        mask = blloku_building_mask(os.path.join(os.path.dirname(out_json), 'buildings.glb'))
+        idx, side = seafront_props['idx'], seafront_props['side']
+        cafes += cafe_strip_anchors(ref, hw, terrain_sample, zones, mask, idx, (-side,), seafront.CAFE_SPACING)
+        palms = seafront_props['palms']
+        # The promenade has its palms; drop mapped trees that would crowd them.
+        trees = [t for t in trees if min((t[0] - q[0]) ** 2 + (t[2] - q[2]) ** 2 for q in palms) > 36.0] if palms else trees
+    data = {'lamps': lamps, 'track_lamps': track_lamps, 'trees': trees, 'landmarks': landmarks, 'cafes': cafes}
+    if palms:
+        data['palms'] = palms
+    save_json(out_json, data)
+    if palms or seafront_props:
+        log(f'  seafront: {len(palms)} palms, {len(cafes)} café terraces')
     log(f'  props: {len(lamps)} lamps, {len(track_lamps)} track lamps, {len(trees)} trees, {len(landmarks)} landmarks')
 
 
@@ -989,24 +1022,32 @@ def blloku_building_overlap(corners, walls):
 
 
 def blloku_cafe_anchors(ref, hw, proj, terrain_sample, zones, walls=None):
-    """Paired terraces on the Polytechnic-to-cathedral return via Blloku.
-
-    Keep the whole terrace, not just its centre, outside all track sections.
-    Store the road and terrain elevations separately so foundations are only
-    as tall as needed on the conformed road embankment.
-    """
+    """Paired terraces on the Polytechnic-to-cathedral return via Blloku."""
     centre = np.asarray(proj.to_xz(41.3208399, 19.8182188))
     middle = int(np.argmin(np.linalg.norm(ref.xz - centre, axis=1)))
     spacing = float(np.median(np.linalg.norm(np.diff(ref.xz, axis=0), axis=1)))
     first = max(0, middle - int(180 / spacing))
     last = min(len(ref.xz), middle + int(300 / spacing) + 1)
+    return cafe_strip_anchors(ref, hw, terrain_sample, zones, walls, list(range(first, last)), (-1.0, 1.0), 48.0)
+
+
+def cafe_strip_anchors(ref, hw, terrain_sample, zones, walls, idx, sides, every):
+    """Terraces along the track samples `idx` on the given sides (+1 = +normal).
+
+    Keep the whole terrace, not just its centre, outside all track sections.
+    Store the road and terrain elevations separately so foundations are only
+    as tall as needed on the conformed road embankment.
+    """
+    spacing = float(np.median(np.linalg.norm(np.diff(ref.xz, axis=0), axis=1)))
+    shift_step = max(1, int(round(6 / spacing)))
     anchors = []
-    for i in range(first, last, max(1, int(round(48 / spacing)))):
-        for side in (-1.0, 1.0):
+    for k in range(0, len(idx), max(1, int(round(every / spacing)))):
+        for side in sides:
             for shift in (0, 1, -1, 2, -2):
-                j = i + shift * max(1, int(round(6 / spacing)))
-                if j < first or j >= last:
+                kk = k + shift * shift_step
+                if kk < 0 or kk >= len(idx):
                     continue
+                j = idx[kk]
                 tangent, normal = ref.tan[j], ref.nrm[j]
                 yaw = math.atan2(-float(tangent[1]), float(tangent[0]))
                 pos = ref.xz[j] + side * (hw + 4.5) * normal
@@ -1087,7 +1128,7 @@ def build(cid, route_only=False):
     # 1. route the loop
     g = Graph(osm, exclude_pedestrian=city.get('exclude_pedestrian', False))
     wps = [proj.to_xz(lat, lon) for lat, lon in city['waypoints']]
-    raw = route_loop(g, wps)
+    raw = route_loop(g, wps, city.get('leg_clearance', 0.0))
     if len(raw) != len(set(map(tuple, raw))):
         raise RuntimeError(f'{cid}: route doubles back; correct the city waypoints before export')
     dense, length = resample_closed(raw, SAMPLE)
@@ -1148,12 +1189,25 @@ def build(cid, route_only=False):
     log(f'  track.json {len(pts)} control points, elevation {y.min():.1f}..{y.max():.1f} m')
 
     # 4. buildings, splat, props
-    build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()), landmark_clearance_zones(city, proj))
-    build_side_roads(osm, ref, hw, terrain_sample, os.path.join(out, 'roads.glb'))
+    # The splat and water mask come first: the seafront needs to know which
+    # side of the road the sea is on before buildings and props are placed.
     build_splat(osm, ref, hw, os.path.join(out, 'splat.png'))
     if sea:
         build_water_mask(cid, os.path.dirname(out))
-    build_props(osm, ref, hw, terrain_sample, city, proj, os.path.join(out, 'props.json'), None)
+    height_fn, seafront_props = None, None
+    if city.get('seafront'):
+        cfg = city['seafront']
+        idx = seafront.stretch(ref, proj, cfg)
+        mask, wnm = seafront.load_water(out)
+        side = seafront.sea_side(ref, hw, idx, mask, wnm)
+        surface = load_json(os.path.join(out, 'terrain.json'))['water']['surface']
+        height_fn = seafront.frontage_height(cfg, idx, side, rnd)
+        seafront_props = {'idx': idx, 'side': side,
+                          'palms': seafront.palms(ref, hw, idx, side, mask, wnm, terrain_sample, surface, rnd)}
+        log(f'  seafront: {len(idx) * SAMPLE:.0f} m of road, sea on the {"+" if side > 0 else "-"} normal side')
+    build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()), landmark_clearance_zones(city, proj), height_fn)
+    build_side_roads(osm, ref, hw, terrain_sample, os.path.join(out, 'roads.glb'))
+    build_props(osm, ref, hw, terrain_sample, city, proj, os.path.join(out, 'props.json'), None, seafront_props)
     debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_map.png'))
     debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_zoom.png'), span=1800, size=1800)
     log(f'  done -> {out}')

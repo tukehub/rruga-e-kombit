@@ -9,6 +9,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(__file__))
 from common import CACHE, Proj, ensure_dir, http_get, log  # noqa: E402
 from cities import CITIES  # noqa: E402
+import fetch_osm_api  # noqa: E402
 
 OSM_DIR = ensure_dir(os.path.join(CACHE, 'osm'))
 ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter']
@@ -64,6 +65,11 @@ def fetch(cid, force=False):
         except Exception as e:  # noqa: BLE001
             last = e
             log(f'  failed: {e}')
+    try:
+        log(f'[{cid}] every Overpass endpoint failed; tiling the OSM API instead')
+        return fetch_osm_api.fetch(OSM_DIR, cid, bbox(cid, 2600), path)
+    except Exception as e:  # noqa: BLE001
+        log(f'  failed: {e}')
     raise last
 
 

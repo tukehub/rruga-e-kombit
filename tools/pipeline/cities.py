@@ -74,20 +74,41 @@ CITIES = {
     },
     'vlore': {
         'name': 'Vlorë',
-        'origin': (40.4565, 19.4890),          # Flag Square (Independence Monument)
+        # Terrain/OSM window centre, by the Flamurtari stadium: the loop runs
+        # 1.6 km north to Flag Square and 1.2 km south along the bay.
+        'origin': (40.4565, 19.4890),
         'near_km': 4.5, 'far_km': 24.0,
         'half_width': 10.0,
+        # Bulevardi Ismail Qemali's centre is a pedestrian mall; race on the
+        # drivable carriageways and the coast road instead.
+        'exclude_pedestrian': True,
+        # The boulevard's carriageways are 20 m apart north of the mosque:
+        # keep the return leg off the southbound one.
+        'leg_clearance': 45.0,
         'waypoints': [
-            (40.4572235, 19.4891185),  # Flag Square north
-            (40.4546913, 19.4867492),  # west side of the centre
-            (40.4513451, 19.4888815),  # southern street junction
-            (40.4566135, 19.4922383),  # eastern junction, back to Flag Square
+            (40.4708, 19.4914),  # Sheshi i Flamurit, east of the Independence Monument
+            (40.4699, 19.4890),  # At Kristo Negovani, west side of the square
+            (40.4628, 19.4894),  # Bulevardi Ismail Qemali, southbound
+            (40.4574, 19.4876),  # past the Flamurtari stadium
+            (40.4545, 19.4866),  # Sheshi Pavarsia
+            (40.4530, 19.4865),  # down to the port, Independence Museum
+            (40.4500, 19.4904),  # Lungomare: Rruga Çamëria along the bay
+            (40.4462, 19.4943),  # end of the promenade, Ibrahim Avdullai
+            (40.4500, 19.4972),  # inland, back north
+            (40.4550, 19.4976),  # Rruga Zenel Murra
+            (40.4595, 19.4957),  # Rruga Sulejman Delvina
         ],
         'landmarks': [
-            {'id': 'independence', 'll': (40.45640, 19.48900), 'yaw': 0},
-            {'id': 'flagpole_big', 'll': (40.45700, 19.48860), 'yaw': 0},
-            {'id': 'mosque', 'll': (40.45820, 19.49120), 'yaw': 0},
+            {'id': 'independence', 'll': (40.47067, 19.49066), 'yaw': 0},
+            {'id': 'flagpole_big', 'll': (40.47100, 19.49100), 'yaw': 0},
+            {'id': 'mosque', 'll': (40.46907, 19.49087), 'yaw': 0},
+            {'id': 'flamurtari', 'll': (40.45593, 19.48885), 'yaw': 0},
+            {'id': 'independence_museum', 'll': (40.45218, 19.48528), 'yaw': 0},
         ],
+        # Lungomare: from Sheshi Pavarsia past the museum to the end of the
+        # promenade. Sea on one side (palms), cafés and 10-15 storey blocks on the other.
+        'seafront': {'from': (40.4530, 19.4865), 'to': (40.4462, 19.4943),
+                     'levels': (10, 15), 'frontage': 140},
         'sea': True,
         'style': 'seaside',
     },

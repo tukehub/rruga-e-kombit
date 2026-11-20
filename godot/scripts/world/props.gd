@@ -46,6 +46,12 @@ func load_city(city_id: String, terrain: Terrain) -> void:
 		terraces.name = "BllokuCafes"
 		add_child(terraces)
 		terraces.build(cafes)
+	# Palms along a seafront promenade (Vlorë's Lungomare).
+	var palms: Array = p.get("palms", [])
+	if not palms.is_empty():
+		var grove := Palms.new()
+		add_child(grove)
+		grove.build(palms)
 	_build_lamps(p.get("lamps", []), track_lamps)
 	_build_trees(p.get("trees", []), terrain, city_id)
 	light_slots = int(Quality.p.lamp_lights)

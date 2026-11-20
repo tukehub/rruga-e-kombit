@@ -128,7 +128,7 @@ processed track, terrain, buildings, side roads and props belong in
 The builder rejects routes that double back, and terrain validation fails if the
 ground intersects the road. No data is fabricated if access fails.
 
-Pipeline regression tests: `python3 tools/pipeline/test_terrain.py`, `python3 tools/pipeline/test_water.py`.
+Pipeline regression tests: `python3 tools/pipeline/test_terrain.py`, `test_water.py`, `test_seafront.py`.
 
 Car source: Car Concept © 2024 Darmstadt Graphics Group GmbH and Eric Chadwick, CC BY 4.0; conversion instructions are in `tools/import_carconcept.py`. SFX: `python3 tools/gen_sfx.py`.
 The central lists and model paths live in `godot/scripts/data/data.gd`; every
@@ -584,6 +584,20 @@ and shore foam; the terrain drops the seabed under it and paints a sand beach.
 Covered by `tests/city_worlds`, `tools/pipeline/test_water.py` and the rendered
 `tests/sea_visual.tscn`. `build_city.py` runs the bake itself; run it alone on
 an existing dataset with `python3 tools/pipeline/water.py vlore`.
+
+Vlorë's circuit (7.35 km) now starts at Sheshi i Flamurit beside the
+Independence Monument, runs down Bulevardi Ismail Qemali past the Muradie
+Mosque and the Flamurtari stadium to Sheshi Pavarsia and the Independence
+Museum, follows Lungomare (Rruga Çamëria) along the bay, and climbs back
+through the hills below Kuzum Baba (grades up to 10.5%). The city's
+`leg_clearance` keeps the return leg off the boulevard's other carriageway.
+Its `seafront` entry dresses Lungomare (`tools/pipeline/seafront.py`): the
+sea side, read from the water mask, gets a promenade of procedural palms
+(`scripts/world/palms.gd`); the land side gets café terraces and 10–15 storey
+plastered apartment blocks where OSM has no heights. When every Overpass
+endpoint is down, `fetch_osm.py` tiles the main OSM API instead
+(`fetch_osm_api.py`). Still to come: dedicated models for the monument, the
+stadium and the museum (their anchors are in place).
 
 8.1 Re-run `tools/pipeline/build_all.py` for the five datasets; fix side-road
     and terrain clearance failures; add per-city landmarks via
