@@ -15,7 +15,7 @@ def _clear_of_track(ref, midpoint, segment_length, road_half_width, track_half_w
     return ref.nearest(*midpoint)[0] >= track_half_width + 2.0 + radius + 1.0
 
 
-def build_side_roads(osm, ref, half_width, height, path):
+def build_side_roads(osm, ref, half_width, height, path, radius=2600):
     chunks = {}
     for way in osm.ways.values():
         road_type = way.get('tags', {}).get('highway')
@@ -34,7 +34,7 @@ def build_side_roads(osm, ref, half_width, height, path):
                 mid = (start + end) / 2
                 # Avoid side-road quads bridging over the detailed racing ribbon.
                 width = float(ROAD_WIDTH[road_type]) / 2
-                if not _clear_of_track(ref, mid, float(np.linalg.norm(end - start)), width, half_width) or np.linalg.norm(mid) > 2600:
+                if not _clear_of_track(ref, mid, float(np.linalg.norm(end - start)), width, half_width) or np.linalg.norm(mid) > radius:
                     continue
                 key = tuple(np.floor(mid / 250).astype(int))
                 quads = chunks.setdefault(key, [])

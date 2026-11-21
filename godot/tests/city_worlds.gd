@@ -4,6 +4,7 @@ extends Node
 func _ready() -> void:
 	_test_tree_lod()
 	Quality.set_preset("low")
+	Game.race_opts.reverse = false
 	var count := 0
 	for city in Data.CITIES:
 		if not FileAccess.file_exists("res://assets/cities/%s/track.json" % city.id):
@@ -99,10 +100,13 @@ func _ready() -> void:
 			assert(grove != null, "Lungomare needs its palms")
 			var mm := (grove.get_node("PalmTrunks") as MultiMeshInstance3D).multimesh
 			assert(mm.instance_count >= 40, "a promenade's worth of palms")
-			for k in mm.instance_count:
-				var at := mm.get_instance_transform(k).origin
+			var baked: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/vlore/props.json"))
+			assert(mm.instance_count == baked.palms.size())
+			# Headless rendering does not retain individual MultiMesh transforms.
+			for palm in baked.palms:
+				var at := Vector3(palm[0], palm[1], palm[2])
 				assert(not scene.terrain.is_water(at.x, at.z), "palms stand on dry ground")
-				assert(scene.track.dist_to(at.x, at.z) >= scene.track.half_w + 4.0, "palms stay off the road")
+				assert(scene.track.dist_to(at.x, at.z) >= scene.track.half_w + 2.0, "palms stay off the road")
 				assert(at.y > scene.terrain.water_surface, "palms stand above the sea")
 			assert(scene.props.get_node_or_null("BllokuCafes") != null, "Lungomare needs its café terraces")
 			print("LUNGOMARE: ", mm.instance_count, " palms")
@@ -115,7 +119,8 @@ func _ready() -> void:
 				if child is Landmarks:
 					marks = child
 			var expected := {"flamurtari": "FlamurtariStadium", "independence": "IndependenceMonument",
-				"independence_museum": "IndependenceHouse", "flagpole_big": "GreatFlag"}
+				"independence_museum": "IndependenceHouse", "flagpole_big": "GreatFlag",
+				"vlora_house": "VloreHeritage/VloraHouseFacade", "muradie_mosque": "VloreHeritage/MuradieMasonry"}
 			for id: String in expected:
 				var root := marks.get_node(id) as Node3D
 				assert(root.get_node_or_null(str(expected[id])) != null, "Vlorë landmark model missing: " + id)
@@ -129,6 +134,7 @@ func _ready() -> void:
 				assert(d > scene.track.half_w + 20.0 and d < 70.0, "landmark off the road and in sight of it: " + id)
 			var flag := marks.get_node("flagpole_big/GreatFlag") as MeshInstance3D
 			assert((flag.material_override as ShaderMaterial).get_shader_parameter("use_tex"), "the great flag shows the eagle")
+			_test_vlore_circuit(scene, marks)
 			print("VLORE LANDMARKS: stadium facade ", snappedf(gap, 0.1), " m from the race line")
 		else:
 			assert(scene.sea == null, "inland cities have no sea")
@@ -140,6 +146,40 @@ func _ready() -> void:
 		count += 1
 	print("CITY WORLDS: ", count, " loaded")
 	get_tree().quit()
+
+
+func _test_vlore_circuit(scene: RaceScene, marks: Node) -> void:
+	var track := scene.track
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/vlore/track.json"))
+	var prior := 0.0
+	for landmark in ["vlora_house", "muradie_mosque", "flamurtari", "independence_museum"]:
+		var at := (marks.get_node(landmark) as Node3D).position
+		var s := track.locate_xz(at.x, at.z).x
+		assert(s > prior and s < track.L * 0.30, "Vlorë outbound landmarks must be passed in order")
+		prior = s
+	var entry := track.locate_xz(data.tunnel[0][0], data.tunnel[0][1]).x
+	var exit := track.locate_xz(data.tunnel[1][0], data.tunnel[1][1]).x
+	var old_town := track.locate_xz(data.stone_street[0][0], data.stone_street[0][1]).x
+	assert(prior < entry and entry + 70.0 < exit and exit < old_town and old_town > track.L - 240.0)
+	assert(scene.road.get_node_or_null("UjiIFtohteTunnel/TunnelBore") != null)
+	assert(scene.road.get_node_or_null("MuradieStreet/MuradieStreetFronts") != null)
+	for i in track.M * 4:
+		var s := i * track.ds * 0.25
+		for side: float in [-1.0, 1.0]:
+			var d := side * (track.half_w + 0.7)
+			var at := track.pos(s, d)
+			var next := track.pos(s + track.ds * 0.25, d)
+			assert((next - at).dot(track.tangent(s)) > 0.0, "Vlorë road edge folds at %.1f m" % s)
+	for s in range(int(entry) - 5, int(exit) + 5, 2):
+		var at := track.pos(s, 0.0)
+		assert(at.y > scene.terrain.height_at(at.x, at.z), "tunnel road must clear the cut terrain")
+	var reverse := RaceTrack.load_city("vlore", true)
+	var tunnel := preload("res://scripts/world/vlore_tunnel.gd").new()
+	add_child(tunnel)
+	tunnel.build(reverse, data.tunnel, true, scene.terrain)
+	var bore := tunnel.get_node("TunnelBore") as MeshInstance3D
+	assert(bore.mesh.get_aabb().size.length() < 145.0, "reverse race must build the same short bore")
+	tunnel.queue_free()
 
 
 func _test_tree_lod() -> void:

@@ -74,29 +74,41 @@ CITIES = {
     },
     'vlore': {
         'name': 'Vlorë',
-        # Terrain/OSM window centre, by the Flamurtari stadium: the loop runs
-        # 1.6 km north to Flag Square and 1.2 km south along the bay.
-        'origin': (40.4565, 19.4890),
+        # Midpoint of the expanded circuit, between Flag Square and Uji i Ftohtë.
+        'origin': (40.444, 19.491),
         'near_km': 4.5, 'far_km': 24.0,
-        'half_width': 10.0,
-        # Bulevardi Ismail Qemali's centre is a pedestrian mall; race on the
-        # drivable carriageways and the coast road instead.
+        'osm_radius': 3900, 'splat_span': 8000.0,
+        'building_radius': 3900, 'prop_radius': 3800,
+        'half_width': 8.0,
         'exclude_pedestrian': True,
-        # The boulevard's carriageways are 20 m apart north of the mosque:
-        # keep the return leg off the southbound one.
-        'leg_clearance': 45.0,
+        # The mapped coastal tunnel carries the outbound leg under the headland.
+        'race_ways': (228375726,),
         'waypoints': [
-            (40.4708, 19.4914),  # Sheshi i Flamurit, east of the Independence Monument
-            (40.4699, 19.4890),  # At Kristo Negovani, west side of the square
-            (40.4628, 19.4894),  # Bulevardi Ismail Qemali, southbound
-            (40.4574, 19.4876),  # past the Flamurtari stadium
-            (40.4545, 19.4866),  # Sheshi Pavarsia
-            (40.4530, 19.4865),  # down to the port, Independence Museum
-            (40.4500, 19.4904),  # Lungomare: Rruga Çamëria along the bay
-            (40.4462, 19.4943),  # end of the promenade, Ibrahim Avdullai
-            (40.4500, 19.4972),  # inland, back north
-            (40.4550, 19.4976),  # Rruga Zenel Murra
-            (40.4595, 19.4957),  # Rruga Sulejman Delvina
+            (40.4704777, 19.4912006),  # Sheshi i Flamurit, north of the monument
+            (40.4698724, 19.4911927),  # Boulevard beside the house
+            (40.4688450, 19.4912131),  # Muradie Mosque, then toward Skelë
+            (40.4628, 19.4894),       # Bulevardi Ismail Qemali, southbound
+            (40.4574, 19.4876),       # Flamurtari stadium
+            (40.4545, 19.4866),       # Sheshi Pavarësia
+            (40.4530, 19.4865),       # Independence Museum approach
+            (40.4500, 19.4904),       # Rruga Çamëria, Lungomare
+            (40.4462743, 19.4943573), # seaside boulevard
+            (40.4321612, 19.4944346), # Murat Tërbaçi on the waterfront
+            (40.4212347, 19.4876934), # Uji i Ftohtë, north portal
+            (40.4205612, 19.4869312), # south portal
+            (40.4169588, 19.4870453), # the climb inland, Dhimitër Konomi
+            (40.4238856, 19.4935304),
+            (40.4345345, 19.4958724), # Duro Shaska toward Centrale
+            (40.4526699, 19.4973512), # Centrale return via Zenel Murra
+            (40.4593455, 19.4960511), # Sulejman Delvina
+            (40.4698464, 19.4919386), # Ismet Cakerri in Muradie
+            (40.4706296, 19.4917737), # back across Flag Square
+        ],
+        'tunnel': ((40.4212347, 19.4876934), (40.4205612, 19.4869312)),
+        'stone_street': ((40.470025, 19.491889), (40.470515, 19.491913)),
+        'scenery_clearances': [
+            ((40.47027, 19.49190), (28, 32)),  # the modeled Muradie street fronts
+            ((40.42090, 19.48733), (63, 67)),  # rock and tunnel portals
         ],
         'landmarks': [
             # Independence Monument at its OSM node, "1912" and the group
@@ -106,19 +118,22 @@ CITIES = {
             # The great flag stands beside it on the square (placed, not mapped).
             {'id': 'flagpole_big', 'll': (40.470543, 19.49083), 'yaw': -44.3,
              'clear_half': (8, 8)},
-            {'id': 'mosque', 'll': (40.46907, 19.49087), 'yaw': 0},
+            {'id': 'muradie_mosque', 'll': (40.46907, 19.49087), 'yaw': -72,
+             'clear_half': (21, 27)},
+            {'id': 'vlora_house', 'll': (40.469837, 19.490869), 'yaw': -90,
+             'clear_half': (15, 15)},
             # Centre spot of the mapped pitch; the main stand's facade faces
             # west across its plaza to the boulevard (OSM axis 96.8 deg).
-            {'id': 'flamurtari', 'll': (40.456086, 19.488786), 'yaw': -6.8},
-            # The Independence House stands 139 m from the road across its
-            # park; a racing adaptation brings it 75 m closer, still in the
-            # park, front toward the circuit, oriented with its OSM outline.
+            {'id': 'flamurtari', 'll': (40.456086, 19.488786), 'yaw': -6.8, 'clear_half': (95, 85)},
+            # Move the Independence Museum through its park toward the road
+            # so the entrance and balcony read from the seafront approach.
             {'id': 'independence_museum', 'll': (40.45218, 19.48528), 'yaw': -62.4,
-             'offset_x': 57.4, 'offset_z': -48.4, 'clear_half': (24, 24)},
+             'offset_x': 76.0, 'offset_z': -62.0, 'clear_half': (24, 24)},
         ],
-        # OSM outlines replaced by the dedicated models: the four stands and
-        # the museum house.
-        'landmark_buildings': [1237374187, 1237374188, 1237374189, 1237374190, 1003616059],
+        # Replace mapped landmark outlines and open the stadium's frontage
+        # by omitting the two buildings that flank its plaza.
+        'landmark_buildings': [1237374187, 1237374188, 1237374189, 1237374190, 1003616059,
+                               1083265737, 1083173083, 533052049, 731109970],
         # Lungomare: from Sheshi Pavarsia past the museum to the end of the
         # promenade. Sea on one side (palms), cafés and 10-15 storey blocks on the other.
         'seafront': {'from': (40.4530, 19.4865), 'to': (40.4462, 19.4943),

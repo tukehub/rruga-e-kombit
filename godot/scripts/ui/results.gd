@@ -125,8 +125,7 @@ func _ready() -> void:
 			cells.append(control)
 		row_cells.append(cells)
 	var best := float(r.get("best_lap", INF))
-	var record: Dictionary = Settings.stats.best_laps
-	var rec_t := float(record.get(city.id, INF))
+	var rec_t := Settings.best_lap_for(city.id)
 	var foot := Data.t("results.best_lap", Game.fmt_time(best))
 	if points:
 		foot = Data.t("results.points", int(r.get("score", 0)))

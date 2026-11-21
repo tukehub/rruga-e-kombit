@@ -14,6 +14,7 @@ uniform vec3 line_white : source_color = vec3(0.9, 0.9, 0.86);
 uniform vec3 line_yellow : source_color = vec3(0.95, 0.75, 0.2);
 uniform float lane_count = 4.0;
 uniform float start_s = 0.0;
+uniform vec2 stone_section = vec2(0.0); // start and length in metres
 
 varying vec2 ruv;
 varying vec3 wpos;
@@ -78,6 +79,21 @@ void fragment() {
 		col = mix(col, line_white * worn, lane_line * 0.85);
 		col = mix(col, line_yellow * worn, centre * 0.9);
 		rough = mix(rough, 0.55, mark);
+	}
+
+	// Pale staggered stone setts through the historic Muradie street.
+	if (stone_section.y > 0.0) {
+		float stone_s = mod(along - stone_section.x, track_len);
+		if (stone_s < stone_section.y) {
+			vec2 slab_uv = vec2(across / 0.65 + mod(floor(stone_s / 0.38), 2.0) * 0.5, stone_s / 0.38);
+			vec2 joints = min(fract(slab_uv), 1.0 - fract(slab_uv));
+			float grout = smoothstep(0.015, 0.061, min(joints.x, joints.y));
+			vec3 slab = vec3(0.56, 0.50, 0.41) * (0.88 + hash(floor(slab_uv)) * 0.22);
+			float blend = smoothstep(0.0, 1.4, min(stone_s, stone_section.y - stone_s));
+			col = mix(col, slab * mix(0.59, 1.0, grout), blend);
+			rough = mix(rough, 0.89, blend);
+			nrm = mix(nrm, vec3(0.5, 0.5, 1.0), blend * 0.72);
+		}
 	}
 
 	// start / finish chequer band 6 m long

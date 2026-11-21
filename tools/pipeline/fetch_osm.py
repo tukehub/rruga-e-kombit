@@ -24,7 +24,7 @@ def bbox(cid, half_m):
 
 
 def query(cid):
-    bb = bbox(cid, 2600)
+    bb = bbox(cid, CITIES[cid].get('osm_radius', 2600))
     return f"""[out:json][timeout:180];
 (
   way["highway"]({bb});
@@ -67,7 +67,7 @@ def fetch(cid, force=False):
             log(f'  failed: {e}')
     try:
         log(f'[{cid}] every Overpass endpoint failed; tiling the OSM API instead')
-        return fetch_osm_api.fetch(OSM_DIR, cid, bbox(cid, 2600), path)
+        return fetch_osm_api.fetch(OSM_DIR, cid, bbox(cid, CITIES[cid].get('osm_radius', 2600)), path)
     except Exception as e:  # noqa: BLE001
         log(f'  failed: {e}')
     raise last

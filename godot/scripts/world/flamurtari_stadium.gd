@@ -14,8 +14,7 @@ extends Node3D
 
 const FRONT := -72.0             # facade plane, local x
 const HALF := 24.0               # half width of the facade block
-## The facade block sits centred on the plaza between the two buildings that
-## flank it (OSM 1083265737 north, 1083173083 south), 6 m south of halfway.
+## The facade block sits 6 m south of the pitch centre, facing the open plaza.
 const FACADE_Z := 6.0
 const TOP := 17.2
 const BAND := 15.3               # roof band starts here

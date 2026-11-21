@@ -170,6 +170,22 @@ func _build_world() -> void:
 	road = RoadMesh.new()
 	add_child(road)
 	road.build(track, float(tj.get("hw", track.half_w)), sky.wet, terrain.height_at)
+	if tj.has("tunnel"):
+		var tunnel := preload("res://scripts/world/vlore_tunnel.gd").new()
+		tunnel.name = "UjiIFtohteTunnel"
+		road.add_child(tunnel)
+		tunnel.build(track, tj.tunnel, bool(Game.race_setting("reverse")), terrain)
+	if tj.has("stone_street"):
+		var reverse := bool(Game.race_setting("reverse"))
+		var entry: Array = tj.stone_street[1 if reverse else 0]
+		var exit: Array = tj.stone_street[0 if reverse else 1]
+		var start := track.locate_xz(entry[0], entry[1]).x
+		var length := track.mod_s(track.locate_xz(exit[0], exit[1]).x - start)
+		var street := preload("res://scripts/world/muradie_street.gd").new()
+		street.name = "MuradieStreet"
+		road.add_child(street)
+		street.build(track, start, length)
+		road.surface_mat.set_shader_parameter("stone_section", Vector2(start, length))
 	var route_signs := RouteSigns.new()
 	route_signs.name = "RouteSigns"
 	road.add_child(route_signs)

@@ -115,15 +115,16 @@ class Osm:
 
 # --------------------------------------------------------------------------- routing
 class Graph:
-    def __init__(self, osm, exclude_pedestrian=False):
+    def __init__(self, osm, exclude_pedestrian=False, race_ways=()):
         self.adj = {}
         self.pos = {}
-        for w in osm.ways.values():
+        for way_id, w in osm.ways.items():
             tags = w.get('tags') or {}
             hw = tags.get('highway')
-            if hw not in ROUTABLE or (exclude_pedestrian and hw == 'pedestrian'):
+            race_way = way_id in race_ways
+            if hw not in ROUTABLE or (exclude_pedestrian and hw == 'pedestrian' and not race_way):
                 continue
-            if tags.get('area') == 'yes' or tags.get('tunnel') in ('yes', 'building_passage'):
+            if tags.get('area') == 'yes' or (tags.get('tunnel') in ('yes', 'building_passage') and not race_way):
                 continue
             cost = ROUTE_COST.get(hw, 1.5)
             if tags.get('bridge') == 'yes':
@@ -299,7 +300,7 @@ def smooth_tirana_jog(dense):
     return out
 
 
-def repair_tirana_bends(dense, half_width):
+def repair_road_bends(dense, half_width, sigma=8):
     """Smooth tight sections before terrain and scenery clearance are built.
 
     Sharp changes in the centerline otherwise fold the inside edge of a 20m
@@ -317,14 +318,16 @@ def repair_tirana_bends(dense, half_width):
     if not np.any(unsafe):
         return dense
     influence = np.zeros(len(dense))
-    for offset in range(-40, 41):
+    fade = 2.5 * sigma
+    for offset in range(-5 * sigma, 5 * sigma + 1):
         distance = abs(offset)
-        blend = 1.0 if distance <= 20 else 0.5 + 0.5 * np.cos(np.pi * (distance - 20) / 20.0)
+        blend = 1.0 if distance <= fade else 0.5 + 0.5 * np.cos(np.pi * (distance - fade) / fade)
         influence = np.maximum(influence, np.roll(unsafe, offset) * blend)
-    weights = np.exp(-0.5 * (np.arange(-24, 25) / 8.0) ** 2)
+    support = range(-3 * sigma, 3 * sigma + 1)
+    weights = np.exp(-0.5 * (np.array(support) / sigma) ** 2)
     weights /= weights.sum()
     smoothed = sum(np.roll(dense, offset, axis=0) * weight
-                   for offset, weight in zip(range(-24, 25), weights))
+                   for offset, weight in zip(support, weights))
     return dense + influence[:, None] * (smoothed - dense)
 
 
@@ -633,6 +636,9 @@ def clean_ring(ring):
 def landmark_clearance_zones(city, proj, margin=1.0):
     """Small local keepouts around explicitly relocated racing landmarks."""
     zones = []
+    for ll, (hx, hz) in city.get('scenery_clearances', ()):
+        x, z = proj.to_xz(*ll)
+        zones.append((x - hx, z - hz, x + hx, z + hz))
     for landmark in city.get('landmarks', []):
         if 'clear_half' not in landmark:
             continue
@@ -653,7 +659,7 @@ def overlaps_landmark_bounds(points, zones):
                for x0, z0, x1, z1 in zones)
 
 
-def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buildings=(), landmark_zones=(), height_fn=None):
+def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buildings=(), landmark_zones=(), height_fn=None, radius=BUILD_RADIUS):
     excluded_ids = set(landmark_buildings)
     excluded_ways = set(excluded_ids)
     for rel in osm.rels:
@@ -690,7 +696,7 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
             continue
         arr = np.array(ring)
         cx, cz = arr.mean(axis=0)
-        if math.hypot(cx, cz) > BUILD_RADIUS:
+        if math.hypot(cx, cz) > radius:
             continue
         area = poly_area(ring)
         if area < 12:
@@ -720,7 +726,7 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
             arr = arr + nrm[None, :] * push
             ring = [tuple(p) for p in arr]
             cx, cz = arr.mean(axis=0)
-            if math.hypot(cx, cz) > BUILD_RADIUS:
+            if math.hypot(cx, cz) > radius:
                 continue
             # still intersecting? (corner cases around curves)
             if min(ref.nearest(x, z)[0] for x, z in ring) < hw + 1.0:
@@ -830,12 +836,12 @@ def build_buildings(osm, ref, hw, terrain_sample, style, out_path, landmark_buil
 
 
 # --------------------------------------------------------------------------- splat + props
-def build_splat(osm, ref, hw, out_png, map_draw=None, map_tf=None):
+def build_splat(osm, ref, hw, out_png, map_draw=None, map_tf=None, span=SPLAT_SPAN):
     S = SPLAT_SIZE
-    k = S / SPLAT_SPAN
+    k = S / span
 
     def tf(p):
-        return ((p[0] + SPLAT_SPAN / 2) * k, (p[1] + SPLAT_SPAN / 2) * k)
+        return ((p[0] + span / 2) * k, (p[1] + span / 2) * k)
 
     road = Image.new('L', (S, S), 0)
     green = Image.new('L', (S, S), 0)
@@ -888,8 +894,9 @@ def build_splat(osm, ref, hw, out_png, map_draw=None, map_tf=None):
 
 def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf, seafront_props=None):
     lamps, trees = [], []
+    radius = city.get("prop_radius", PROP_RADIUS)
     for nid, (x, z, tags) in osm.nodes.items():
-        if not tags or math.hypot(x, z) > PROP_RADIUS:
+        if not tags or math.hypot(x, z) > radius:
             continue
         d, lat, i = ref.signed_lateral(x, z)
         if tags.get('highway') == 'street_lamp' and d > hw + 1.0:
@@ -908,7 +915,7 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf,
         if len(ring) < 3:
             continue
         arr = np.array(ring)
-        if math.hypot(*arr.mean(axis=0)) > PROP_RADIUS:
+        if math.hypot(*arr.mean(axis=0)) > radius:
             continue
         area = poly_area(ring)
         n = min(400, int(area / 220))
@@ -1137,12 +1144,13 @@ def build(cid, route_only=False):
     lat0, lon0 = city['origin']
     proj = Proj(lat0, lon0)
     hw = city['half_width']
+    splat_span = city.get('splat_span', SPLAT_SPAN)
     out = ensure_dir(os.path.join(OUT, cid))
     log(f'[{cid}] build')
     osm = Osm(os.path.join(CACHE, 'osm', f'{cid}.json'), proj)
 
     # 1. route the loop
-    g = Graph(osm, exclude_pedestrian=city.get('exclude_pedestrian', False))
+    g = Graph(osm, exclude_pedestrian=city.get('exclude_pedestrian', False), race_ways=city.get('race_ways', ()))
     wps = [proj.to_xz(lat, lon) for lat, lon in city['waypoints']]
     raw = route_loop(g, wps, city.get('leg_clearance', 0.0))
     if len(raw) != len(set(map(tuple, raw))):
@@ -1157,8 +1165,13 @@ def build(cid, route_only=False):
         dense, length = resample_closed(dense, SAMPLE)
         dense = route_tirana_museum_front(dense)
         dense, length = resample_closed(dense, SAMPLE)
-        dense = repair_tirana_bends(dense, hw)
+        dense = repair_road_bends(dense, hw)
         dense, length = resample_closed(dense, SAMPLE)
+    if cid == 'vlore':
+        # Round the tight mapped junctions before baking terrain and meshes.
+        for sigma in (8, 8, 12, 20, 24, 28):
+            dense = repair_road_bends(dense, hw + 1.5, sigma)
+            dense, length = resample_closed(dense, SAMPLE)
     log(f'  track length {length:.0f} m, {len(dense)} samples')
 
     # 2. terrain
@@ -1168,11 +1181,22 @@ def build(cid, route_only=False):
     near = mean_filter(min_filter(near))
     nm = meta['near']
     y_raw = sample_grid(near, nm['x0'], nm['z0'], nm['cell'], dense[:, 0], dense[:, 1])
+    if city.get('sea'):
+        y_raw = np.maximum(y_raw, 1.5)
+    if 'tunnel' in city:
+        portals = [proj.to_xz(*ll) for ll in city['tunnel']]
+        first, last = [int(np.argmin(np.linalg.norm(dense - p, axis=1))) for p in portals]
+        # The DSM reports the top of the ridge above the tunnel. Hold the
+        # coastal road at approach grade through the bore.
+        approach = max(0, first - 24)
+        exit = min(len(dense) - 1, last + 24)
+        y_raw[approach:exit + 1] = np.linspace(y_raw[approach], y_raw[exit], exit - approach + 1)
     y = smooth_elevation(y_raw.astype(np.float64), SAMPLE)
     ref = TrackRef(dense, y)
     ref.length = length
+    map_span = max(4200, city.get('osm_radius', 0) * 2)
     if route_only:
-        debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_map.png'))
+        debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_map.png'), span=map_span)
         debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_zoom.png'), span=1800, size=1800)
         return
     near = conform_terrain(near, nm['x0'], nm['z0'], nm['cell'], ref, hw)
@@ -1185,7 +1209,7 @@ def build(cid, route_only=False):
     save_json(os.path.join(out, 'terrain.json'), {
         'near': {'x0': nm['x0'], 'z0': nm['z0'], 'cell': nm['cell'], 'n': nm['n']},
         'far': {'x0': meta['far']['x0'], 'z0': meta['far']['z0'], 'cell': meta['far']['cell'], 'n': meta['far']['n']},
-        'splat': {'span': SPLAT_SPAN, 'size': SPLAT_SIZE},
+        'splat': {'span': splat_span, 'size': SPLAT_SIZE},
         'sea_level': sea_level,
         'origin': {'lat': lat0, 'lon': lon0},
     }, compact=False)
@@ -1201,13 +1225,15 @@ def build(cid, route_only=False):
     save_json(os.path.join(out, 'track.json'), {
         'id': cid, 'name': city['name'], 'hw': hw, 'length': round(length, 1), 'pts': pts,
         'style': city['style'], 'sea_level': sea_level,
+        **({'tunnel': portals} if 'tunnel' in city else {}),
+        **({'stone_street': [proj.to_xz(*ll) for ll in city['stone_street']]} if 'stone_street' in city else {}),
     })
     log(f'  track.json {len(pts)} control points, elevation {y.min():.1f}..{y.max():.1f} m')
 
     # 4. buildings, splat, props
     # The splat and water mask come first: the seafront needs to know which
     # side of the road the sea is on before buildings and props are placed.
-    build_splat(osm, ref, hw, os.path.join(out, 'splat.png'))
+    build_splat(osm, ref, hw, os.path.join(out, 'splat.png'), span=splat_span)
     if sea:
         build_water_mask(cid, os.path.dirname(out))
     height_fn, seafront_props = None, None
@@ -1221,10 +1247,10 @@ def build(cid, route_only=False):
         seafront_props = {'idx': idx, 'side': side, 'water': (mask, wnm), 'surface': surface,
                           'palms': seafront.palms(ref, hw, idx, side, mask, wnm, terrain_sample, surface, rnd)}
         log(f'  seafront: {len(idx) * SAMPLE:.0f} m of road, sea on the {"+" if side > 0 else "-"} normal side')
-    build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()), landmark_clearance_zones(city, proj), height_fn)
-    build_side_roads(osm, ref, hw, terrain_sample, os.path.join(out, 'roads.glb'))
+    build_buildings(osm, ref, hw, terrain_sample, city['style'], os.path.join(out, 'buildings.glb'), city.get('landmark_buildings', ()), landmark_clearance_zones(city, proj), height_fn, city.get('building_radius', BUILD_RADIUS))
+    build_side_roads(osm, ref, hw, terrain_sample, os.path.join(out, 'roads.glb'), radius=city.get('osm_radius', 2600))
     build_props(osm, ref, hw, terrain_sample, city, proj, os.path.join(out, 'props.json'), None, seafront_props)
-    debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_map.png'))
+    debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_map.png'), span=map_span)
     debug_map(osm, ref, hw, city, proj, os.path.join(CACHE, f'{cid}_zoom.png'), span=1800, size=1800)
     log(f'  done -> {out}')
 

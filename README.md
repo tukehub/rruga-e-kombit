@@ -585,18 +585,21 @@ Covered by `tests/city_worlds`, `tools/pipeline/test_water.py` and the rendered
 `tests/sea_visual.tscn`. `build_city.py` runs the bake itself; run it alone on
 an existing dataset with `python3 tools/pipeline/water.py vlore`.
 
-Vlorë's circuit (7.35 km) now starts at Sheshi i Flamurit beside the
-Independence Monument, runs down Bulevardi Ismail Qemali past the Muradie
-Mosque and the Flamurtari stadium to Sheshi Pavarsia and the Independence
-Museum, follows Lungomare (Rruga Çamëria) along the bay, and climbs back
-through the hills below Kuzum Baba (grades up to 10.5%). The city's
-`leg_clearance` keeps the return leg off the boulevard's other carriageway.
+Vlorë's 13.5 km circuit starts at Sheshi i Flamurit and runs down Bulevardi
+Ismail Qemali past the Vlora house, Muradie Mosque and Flamurtari stadium to
+Skelë and the Independence Museum. It follows Lungomare and Aleksandër Moisiu
+to the Uji i Ftohtë coastal tunnel, then climbs Dhimitër Konomi and returns
+through the Centrale area and the tiled Muradie street into Flag Square.
+The mapped tunnel is explicitly enabled for routing and its grade is baked
+from road approaches, since the elevation raster measures the ridge above it.
 Its `seafront` entry dresses Lungomare (`tools/pipeline/seafront.py`): the
 sea side, read from the water mask, gets a promenade of procedural palms
 (`scripts/world/palms.gd`); the land side gets café terraces and 10–15 storey
 plastered apartment blocks where OSM has no heights. When every Overpass
 endpoint is down, `fetch_osm.py` tiles the main OSM API instead
-(`fetch_osm_api.py`).
+(`fetch_osm_api.py`). When rebuilding from an older Vlorë cache, run
+`python3 tools/pipeline/fetch_osm.py vlore --force` and
+`python3 tools/pipeline/fetch_dem.py vlore` before rebuilding the city.
 
 Vlorë's landmarks are procedural interpretations after photographs, built
 from the shared `scripts/world/landmark_kit.gd` (vertex-coloured boxes, tubes
@@ -604,12 +607,15 @@ and spheres; the Albanian flag texture, eagle included, is generated):
 `flamurtari_stadium.gd` (the main stand's facade: red cladding behind grey
 louvres, `shaders/louvre_facade.gdshader`, a mirror-glass centre with
 staggered red bars, the lettering and striped shield, floodlights, stands and
-pitch; the facade faces the boulevard across its real plaza),
+pitch; the facade faces the boulevard across its plaza, with the flanking buildings omitted),
 `independence_monument.gd` (dark stone pylon with "1912", bronze flag-bearer
 and the group at its foot), `independence_house.gd` (yellow two-storey house,
 terracotta hip roof, wooden shutters and balcony on white columns, hanging
-flags, gravel square with palms, well and bust; moved 75 m toward the road
-inside its park so it reads at racing speed) and the great flag on Flag Square.
+flags, gravel square with palms, well and bust; moved roughly 100 m toward the road
+inside its park so it reads at racing speed) and the great flag on Flag Square. The photo-based Muradie Mosque and
+white-balcony Vlora house share a separate heritage mesh builder. The old-town
+return has colored plaster fronts, wall lanterns and stone setts. The coastal
+tunnel has an open bore, rock portals and a lit interior in both race directions.
 Lungomare also has both palm rows, white parasols with orange valances over
 the land-side terraces, pastel 10–15 storey blocks, and stone paving with
 lawns cut by diagonal paths down to the beach (`seafront_promenade.gd`,

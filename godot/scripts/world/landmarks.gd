@@ -164,7 +164,7 @@ func _column(parent: Node3D, pos: Vector3, radius: float, height: float, color: 
 	mesh.radial_segments = 16
 	return _part(parent, mesh, pos, color)
 
-func load_anchors(anchors: Array) -> void:
+func load_anchors(anchors: Array, terrain: Terrain = null) -> void:
 	for anchor in anchors:
 		var root := Node3D.new()
 		root.name = str(anchor.id)
@@ -196,6 +196,11 @@ func load_anchors(anchors: Array) -> void:
 			var house := IndependenceHouse.new()
 			house.name = "IndependenceHouse"
 			root.add_child(house)
+		elif str(anchor.id) in ["muradie_mosque", "vlora_house"]:
+			var heritage := preload("res://scripts/world/vlore_heritage.gd").new()
+			heritage.name = "VloreHeritage"
+			root.add_child(heritage)
+			heritage.build(str(anchor.id), terrain)
 		elif str(anchor.id) == "flagpole_big":
 			_great_flag(root)
 		elif str(anchor.id) in ["national_museum", "prime_minister"]:

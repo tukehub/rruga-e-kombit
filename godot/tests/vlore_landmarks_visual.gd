@@ -4,7 +4,7 @@ extends Node
 ## closer three-quarter view. Captures go to user://shots/vlore_*.png.
 ##   godot --path godot --rendering-method mobile res://tests/vlore_landmarks_visual.tscn
 
-const IDS := ["flamurtari", "independence", "independence_museum", "flagpole_big"]
+const IDS := ["flamurtari", "independence", "independence_museum", "flagpole_big", "muradie_mosque", "vlora_house"]
 
 var scene: RaceScene
 var camera: Camera3D
@@ -16,6 +16,7 @@ func _ready() -> void:
 	Quality.set_preset("medium")
 	Game.race_opts.city = "vlore"
 	Game.race_opts.env = "day"
+	Game.race_opts.reverse = false
 	scene = load("res://scenes/race.tscn").instantiate()
 	add_child(scene)
 	var landmarks: Node3D = null
@@ -24,7 +25,8 @@ func _ready() -> void:
 			landmarks = child
 	# Each model's front: the stadium facade looks along -X, the others -Z.
 	var fronts := {"flamurtari": [Vector3(-72, 9, 6), Vector3.LEFT], "independence": [Vector3(0, 8, 0), Vector3.FORWARD],
-		"independence_museum": [Vector3(0, 5, -6), Vector3.FORWARD], "flagpole_big": [Vector3(0, 20, 0), Vector3.FORWARD]}
+		"independence_museum": [Vector3(0, 5, -6), Vector3.FORWARD], "flagpole_big": [Vector3(0, 20, 0), Vector3.FORWARD],
+		"muradie_mosque": [Vector3(0, 5, -6), Vector3.FORWARD], "vlora_house": [Vector3(0, 5, -7), Vector3.FORWARD]}
 	for id in IDS:
 		var root := landmarks.get_node(id) as Node3D
 		var face: Vector3 = root.global_transform * (fronts[id][0] as Vector3)
@@ -38,6 +40,15 @@ func _ready() -> void:
 		views.append({"name": id + "_road", "eye": road + Vector3(0, 2.4, 0) - (ahead - road).normalized() * 30.0, "at": face})
 		views.append({"name": id + "_near", "eye": face + out * 38.0 + side * 16.0 + Vector3(0, 3.0, 0), "at": face})
 		print("LANDMARK: ", id, " front ", snappedf(Vector2(face.x - road.x, face.z - road.z).length(), 0.1), " m from the race line")
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/vlore/track.json"))
+	var portal := scene.track.locate_xz(data.tunnel[0][0], data.tunnel[0][1]).x
+	var stone_street := scene.track.locate_xz(data.stone_street[0][0], data.stone_street[0][1]).x
+	var route_views := {"tunnel_approach": portal - 37.0, "inside_tunnel": portal + 35.0, "muradie_return": stone_street - 5.0}
+	for view_name in route_views:
+		var s: float = route_views[view_name]
+		var eye := scene.track.pos(s, 0.0) + Vector3.UP * 2.4
+		var at := scene.track.pos(s + 18.0, 0.0) + Vector3.UP * 1.0
+		views.append({"name": view_name, "eye": eye, "at": at})
 	camera = Camera3D.new()
 	camera.far = 6000.0
 	scene.add_child(camera)

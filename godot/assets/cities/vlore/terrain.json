@@ -12,13 +12,13 @@
   "n": 534
  },
  "splat": {
-  "span": 6000.0,
+  "span": 8000.0,
   "size": 2048
  },
  "sea_level": 0.3,
  "origin": {
-  "lat": 40.4565,
-  "lon": 19.489
+  "lat": 40.444,
+  "lon": 19.491
  },
  "water": {
   "surface": -1.2,

@@ -23,5 +23,17 @@ class GraphRoutingTest(unittest.TestCase):
                              for _, _, kind in edges))
 
 
+    def test_tunnel_is_routable_only_when_explicitly_selected(self):
+        osm = SimpleNamespace(
+            nodes={1: (0.0, 0.0, None), 2: (20.0, 0.0, None), 3: (10.0, 30.0, None)},
+            ways={
+                10: {'nodes': [1, 2], 'tags': {'highway': 'primary', 'tunnel': 'yes'}},
+                20: {'nodes': [1, 3, 2], 'tags': {'highway': 'primary'}},
+            },
+        )
+        self.assertEqual(Graph(osm).dijkstra(1, 2, set(), set()), [1, 3, 2])
+        self.assertEqual(Graph(osm, race_ways=(10,)).dijkstra(1, 2, set(), set()), [1, 2])
+
+
 if __name__ == '__main__':
     unittest.main()

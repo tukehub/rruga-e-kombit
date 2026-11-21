@@ -38,7 +38,7 @@ func load_city(city_id: String, terrain: Terrain) -> void:
 	landmarks = p.get("landmarks", [])
 	var models := Landmarks.new()
 	add_child(models)
-	models.load_anchors(landmarks)
+	models.load_anchors(landmarks, terrain)
 	# Café terraces wherever the city's props list them (Blloku, Lungomare).
 	var cafes: Array = p.get("cafes", [])
 	if not cafes.is_empty():

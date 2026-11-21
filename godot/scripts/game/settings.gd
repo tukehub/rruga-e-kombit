@@ -236,6 +236,16 @@ func reset_control_layout() -> void:
 	control_offset_y = 0.0
 
 
+# Keep the old Vlorë lap times under their original course key. They are
+# incomparable with the longer Uji i Ftohtë circuit.
+func _lap_record_key(city: String) -> String:
+	return "vlore:2" if city == "vlore" else city
+
+
+func best_lap_for(city: String) -> float:
+	return float(stats.best_laps.get(_lap_record_key(city), INF))
+
+
 func record_result(city: String, place: int, best_lap: float) -> void:
 	stats.races = int(stats.races) + 1
 	if place == 1:
@@ -243,6 +253,6 @@ func record_result(city: String, place: int, best_lap: float) -> void:
 	if place <= 3:
 		stats.podiums = int(stats.podiums) + 1
 	var bl: Dictionary = stats.best_laps
-	if best_lap < INF and (not bl.has(city) or best_lap < float(bl[city])):
-		bl[city] = best_lap
+	if best_lap < best_lap_for(city):
+		bl[_lap_record_key(city)] = best_lap
 	save()

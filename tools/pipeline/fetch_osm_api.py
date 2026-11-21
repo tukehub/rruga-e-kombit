@@ -4,7 +4,7 @@ caps one call at 50 000 nodes), keeps what fetch_osm.query() asks for, and
 writes the same Overpass-style JSON (tagged ways and relations with their node
 ids, then the nodes) so build_city.py cannot tell the difference.
 
-Raw tiles are cached in tools/cache/osm/api_<city>/. Data (c) OpenStreetMap
+Raw tiles are cached per bounding box under tools/cache/osm/. Data (c) OpenStreetMap
 contributors, ODbL.
 """
 import json
@@ -106,7 +106,8 @@ def to_overpass(nodes, ways, rels):
 
 def fetch(cache_root, cid, bb, path):
     s, w, n, e = (float(v) for v in bb.split(','))
-    paths = fetch_tiles(os.path.join(cache_root, f'api_{cid}'), s, w, n, e)
+    # Tile indices alone identify different places when a city's bounds change.
+    paths = fetch_tiles(os.path.join(cache_root, f'api_{cid}_{bb}'), s, w, n, e)
     data = to_overpass(*merge(paths))
     with open(path, 'w', encoding='utf8') as f:
         json.dump(data, f, separators=(',', ':'))
