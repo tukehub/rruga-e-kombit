@@ -9,7 +9,10 @@ var page := "title"
 var back_to := "title"
 var garage_car: CarVisual
 var garage_pivot: Node3D
-var _garage_t := 0.0
+const NO_POINTER := -2
+const MOUSE_POINTER := -1
+var _garage_pointer := NO_POINTER
+var _garage_inspected := false
 var _diff_btns: Array[Button] = []
 var _lap_value: Label
 var _lap_minus: Button
@@ -64,6 +67,7 @@ func _ready() -> void:
 	Quality.apply_viewport(get_viewport())
 	_build_garage()
 	_build_ui()
+	get_window().focus_exited.connect(func(): _garage_pointer = NO_POINTER)
 	# Back from a cup race, the cup is where the player was.
 	show_page("cup" if not str(Game.race_opts.event).is_empty() else "title")
 
@@ -114,6 +118,7 @@ func _build_garage() -> void:
 	ground.material_override = fm
 	add_child(ground)
 	garage_pivot = Node3D.new()
+	garage_pivot.rotation.y = deg_to_rad(-122.0)
 	garage_pivot.position.x = 4.0
 	add_child(garage_pivot)
 	var cam := Camera3D.new()
@@ -134,6 +139,9 @@ func _set_garage_car(id: String) -> void:
 	garage_pivot.add_child(garage_car)
 	garage_car.setup(def, Color.html(def.color), false, {"rim": garage_choice("rim"), "livery": garage_choice("livery")})
 	garage_car.set_night(0.0)
+	for nm in garage_car.wheels:
+		var wheel: MeshInstance3D = garage_car.wheels[nm]
+		wheel.rotation.y = PI if String(nm).ends_with("l") else 0.0
 
 
 func _process(dt: float) -> void:
@@ -141,12 +149,44 @@ func _process(dt: float) -> void:
 	garage_pivot.position.x = move_toward(garage_pivot.position.x, _car_x, dt * 6.0)
 	if _garage_cam != null:
 		_garage_cam.fov = move_toward(_garage_cam.fov, float(CAR_FOV.get(page, CAR_FOV_DEFAULT)), dt * 30.0)
-	_garage_t += dt
-	garage_pivot.rotation.y = _garage_t * 0.25
-	if garage_car:
-		for nm in garage_car.wheels:
-			var w: MeshInstance3D = garage_car.wheels[nm]
-			w.rotation = Vector3(0.0, PI if String(nm).ends_with("l") else 0.0, 0.0)
+	if not _garage_inspected and _garage_pointer == NO_POINTER:
+		garage_pivot.rotate_y(dt * 0.25)
+
+
+func _rotation_area() -> Control:
+	var area := Control.new()
+	area.name = "GarageRotation"
+	area.mouse_default_cursor_shape = Control.CURSOR_DRAG
+	area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var hint := UiTheme.label(Data.t("garage.rotate"), 21, UiTheme.TEXT, false, HORIZONTAL_ALIGNMENT_CENTER)
+	area.add_child(hint)
+	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	hint.offset_top -= 16
+	hint.offset_bottom -= 16
+	area.gui_input.connect(_rotate_garage.bind(area))
+	return area
+
+
+func _rotate_garage(event: InputEvent, area: Control) -> void:
+	# The project mirrors mouse and touch events. Use only the original pointer.
+	if event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
+	var pointer := MOUSE_POINTER
+	var motion := 0.0
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		pointer = event.index
+	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if event is InputEventMouseButton or event is InputEventScreenTouch:
+		if event.pressed and not event.canceled and _garage_pointer == NO_POINTER:
+			_garage_pointer = pointer
+		elif (not event.pressed or event.canceled) and pointer == _garage_pointer:
+			_garage_pointer = NO_POINTER
+	elif event is InputEventMouseMotion or event is InputEventScreenDrag:
+		motion = event.relative.x
+	if pointer == _garage_pointer and motion != 0.0:
+		_garage_inspected = true
+		garage_pivot.rotate_y(motion * TAU / maxf(1.0, area.size.x))
 
 
 # ------------------------------------------------------------------ ui
@@ -172,6 +212,7 @@ func show_page(name: String) -> void:
 		name = "title"
 	var changed := page != name
 	page = name
+	_garage_pointer = NO_POINTER
 	for k in pages:
 		pages[k].visible = (k == name)
 	# The page shown is right at once; only its arrival is animated. Going
@@ -325,9 +366,8 @@ func _page_title() -> Control:
 	gear.pressed.connect(func(): Sfx.ui_click(); back_to = "title"; show_page("settings"))
 	top.add_child(gear)
 	# --- the car shows through the middle
-	var middle := Control.new()
+	var middle := _rotation_area()
 	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(middle)
 	# --- bottom: garage on the left, modes on the right
 	var bottom := HBoxContainer.new()
@@ -1053,6 +1093,7 @@ func _page_car() -> Control:
 	var panel := UiTheme.panel(20)
 	panel.custom_minimum_size.x = 560
 	body.add_child(panel)
+	body.add_child(_rotation_area())
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 10)
 	panel.add_child(left)
@@ -1128,6 +1169,13 @@ func _shop_button(kind: String, item: Dictionary) -> Button:
 	if kind == "paint" or kind == "rim":
 		# A swatch of the colour on the left of the button.
 		b.icon = _swatch(Color.html(str(item.color)))
+	if kind == "livery" and int(item.tile) >= 0:
+		var swatch := AtlasTexture.new()
+		swatch.atlas = load("res://assets/cars/livery_atlas.png")
+		var side := swatch.atlas.get_height() / 2
+		swatch.region = Rect2(int(item.tile) * side, side, side, side)
+		b.icon = swatch
+		b.add_theme_constant_override("icon_max_width", 46)
 	var id := str(item.id)
 	b.pressed.connect(func(): Sfx.ui_click(); _pick_item(kind, id))
 	return b

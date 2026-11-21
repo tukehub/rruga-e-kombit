@@ -75,6 +75,7 @@ const T := {
 	"cup.event.tirana_5.name": "Finalja e muzgut",
 	# ------------ garage
 	"garage.eyebrow": "%s · GARAZHI",
+	"garage.rotate": "Rrëshqit për ta rrotulluar",
 	"garage.title": "Stili yt. Gara jote.",
 	"garage.tab.paint": "Ngjyra",
 	"garage.tab.rim": "Disqet",

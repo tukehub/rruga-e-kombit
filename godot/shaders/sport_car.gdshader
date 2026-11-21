@@ -28,7 +28,8 @@ void fragment() {
 	float lightness = max(max(col.r, col.g), col.b);
 	col = mix(col, paint_color.rgb * lightness, blue);
 	// The livery sits on the paint only, under any wear.
-	col = mix(col, livery_color.rgb * mix(0.85, 1.0, lightness), livery_mask() * blue);
+	vec4 ink = livery_decal();
+	col = mix(col, ink.rgb * mix(0.85, 1.0, lightness), ink.a * blue);
 	// The source atlas has small third-party sponsor marks on a dark panel.
 	// Cover only that panel; the car remains unbranded in the game.
 	float logo = step(0.252, UV.x) * step(UV.x, 0.332)

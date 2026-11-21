@@ -11,8 +11,9 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = livery_color.rgb;
-	ALPHA = livery_mask();
+	vec4 ink = livery_decal();
+	ALBEDO = ink.rgb;
+	ALPHA = ink.a;
 	METALLIC = 0.35;
 	ROUGHNESS = 0.3;
 	CLEARCOAT = 0.6;

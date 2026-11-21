@@ -24,6 +24,25 @@ func clean() -> void:
 func shop_button(menu: Menu, kind: String, id: String) -> Button:
 	return menu._shop_btns[kind + ":" + id]
 
+func drag_title_car(menu: Menu) -> void:
+	var area: Control = menu.pages.title.find_child("GarageRotation", true, false)
+	var press := InputEventScreenTouch.new()
+	press.index = 1
+	press.pressed = true
+	press.position = area.get_global_rect().get_center()
+	get_viewport().push_input(press, true)
+	var start := menu.garage_pivot.rotation.y
+	var drag := InputEventScreenDrag.new()
+	drag.index = press.index
+	drag.relative = Vector2(area.size.x * 0.25, 0)
+	drag.position = press.position + drag.relative
+	get_viewport().push_input(drag, true)
+	press.pressed = false
+	press.position = drag.position
+	get_viewport().push_input(press, true)
+	check(is_equal_approx(angle_difference(start, menu.garage_pivot.rotation.y), PI / 2), "a quarter-width swipe turns the title car a quarter turn")
+
+
 func _ready() -> void:
 	var sound := Sfx.enabled
 	Sfx.enabled = false
@@ -146,6 +165,8 @@ func _ready() -> void:
 	var menu: Menu = MenuScript.new()
 	add_child(menu)
 	await get_tree().process_frame
+	drag_title_car(menu)
+	var inspected_angle := menu.garage_pivot.rotation.y
 	menu.show_page("car")
 	check(menu._fans_label.text == "700 fansa" and menu._garage_tab == "paint" and menu._garage_lists.paint.visible and not menu._garage_lists.rim.visible, "the garage opens on the paints and shows the fans")
 	check(not menu._buy_btn.visible, "nothing to buy until a shop item is picked")
@@ -164,6 +185,8 @@ func _ready() -> void:
 	menu._show_garage_tab("livery")
 	check(menu._garage_lists.livery.visible and not menu._garage_lists.paint.visible, "tabs switch the list")
 	shop_button(menu, "livery", "checker").pressed.emit()
+	menu._process(0.2)
+	check(is_equal_approx(menu.garage_pivot.rotation.y, inspected_angle), "the garage keeps the inspected angle while previewing a locked livery")
 	check(menu._buy_btn.visible and menu._buy_btn.disabled and menu._buy_btn.text == "Të duhen edhe 700 fansa", "a dear item says how many fans are missing")
 	check(menu.garage_car.livery.id == "checker" and menu.garage_car.def.id == "ari", "and is still tried on, over the chosen paint")
 	menu._buy_preview()
