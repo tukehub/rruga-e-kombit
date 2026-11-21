@@ -4,7 +4,8 @@ extends Node
 ## closer three-quarter view. Captures go to user://shots/vlore_*.png.
 ##   godot --path godot --rendering-method mobile res://tests/vlore_landmarks_visual.tscn
 
-const IDS := ["flamurtari", "independence", "independence_museum", "flagpole_big", "muradie_mosque", "vlora_house"]
+const IDS := ["flamurtari", "independence", "independence_museum", "flagpole_big", "muradie_mosque", "vlora_house",
+	"petro_marko", "vlore_municipality", "skela_roundabout", "lungomare_gateway", "waterfront_courts"]
 
 var scene: RaceScene
 var camera: Camera3D
@@ -26,7 +27,12 @@ func _ready() -> void:
 	# Each model's front: the stadium facade looks along -X, the others -Z.
 	var fronts := {"flamurtari": [Vector3(-72, 9, 6), Vector3.LEFT], "independence": [Vector3(0, 8, 0), Vector3.FORWARD],
 		"independence_museum": [Vector3(0, 5, -6), Vector3.FORWARD], "flagpole_big": [Vector3(0, 20, 0), Vector3.FORWARD],
-		"muradie_mosque": [Vector3(0, 5, -6), Vector3.FORWARD], "vlora_house": [Vector3(0, 5, -7), Vector3.FORWARD]}
+		"muradie_mosque": [Vector3(0, 5, -6), Vector3.FORWARD], "vlora_house": [Vector3(0, 5, -7), Vector3.FORWARD],
+		"petro_marko": [Vector3(0, 5, -12), Vector3.FORWARD],
+		"vlore_municipality": [Vector3(0, 7, -10), Vector3.FORWARD],
+		"skela_roundabout": [Vector3(0, 9, 0), Vector3.LEFT],
+		"lungomare_gateway": [Vector3(0, 8, -10), Vector3.FORWARD],
+		"waterfront_courts": [Vector3(0, 2, 0), Vector3.RIGHT]}
 	for id in IDS:
 		var root := landmarks.get_node(id) as Node3D
 		var face: Vector3 = root.global_transform * (fronts[id][0] as Vector3)
@@ -43,7 +49,10 @@ func _ready() -> void:
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/vlore/track.json"))
 	var portal := scene.track.locate_xz(data.tunnel[0][0], data.tunnel[0][1]).x
 	var stone_street := scene.track.locate_xz(data.stone_street[0][0], data.stone_street[0][1]).x
-	var route_views := {"tunnel_approach": portal - 37.0, "inside_tunnel": portal + 35.0, "muradie_return": stone_street - 5.0}
+	var turn := scene.track.locate_xz(data.turnaround[0][0], data.turnaround[0][1]).x
+	var median := scene.track.locate_xz(data.median[0][0], data.median[0][1]).x
+	var route_views := {"tunnel_approach": portal - 37.0, "inside_tunnel": portal + 35.0,
+		"muradie_return": stone_street - 5.0, "lungomare_median": median + 125.0, "turnaround": turn - 9.0}
 	for view_name in route_views:
 		var s: float = route_views[view_name]
 		var eye := scene.track.pos(s, 0.0) + Vector3.UP * 2.4

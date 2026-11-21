@@ -115,10 +115,13 @@ class Osm:
 
 # --------------------------------------------------------------------------- routing
 class Graph:
-    def __init__(self, osm, exclude_pedestrian=False, race_ways=()):
+    def __init__(self, osm, exclude_pedestrian=False, race_ways=(), race_connectors=()):
         self.adj = {}
         self.pos = {}
-        for way_id, w in osm.ways.items():
+        roads = list(osm.ways.items())
+        roads.extend((-i - 1, {'nodes': pair, 'tags': {'highway': 'residential'}})
+                     for i, pair in enumerate(race_connectors))
+        for way_id, w in roads:
             tags = w.get('tags') or {}
             hw = tags.get('highway')
             race_way = way_id in race_ways
@@ -271,6 +274,31 @@ def smooth_closed(a, radius, passes):
             padded = np.concatenate([col[-radius:], col, col[:radius]])
             out[:, k] = np.convolve(padded, kernel, mode='valid')
     return out
+
+
+def route_vlore_turnaround(raw, city, proj):
+    """Cut the coastal detour with a south-facing hairpin after the tunnel."""
+    approach, inland = [np.array(proj.to_xz(*ll)) for ll in city['turnaround']]
+    first, last = [int(np.argmin(np.linalg.norm(raw - p, axis=1))) for p in (approach, inland)]
+    if first >= last or any(np.linalg.norm(raw[i] - p) > 3.0 for i, p in ((first, approach), (last, inland))):
+        raise ValueError('Vlorë turnaround must join the coastal and inland legs in order')
+    radius = 36.0
+    theta = np.linspace(0.0, np.pi, 25)[1:]
+    arc = raw[first] + radius * np.column_stack((1.0 - np.cos(theta), np.sin(theta)))
+    exit_join = arc[-1] + np.array([[6.0, -26.0], [28.0, -49.0], [75.0, -63.0], [138.0, -68.0]])
+    return np.vstack((raw[:first + 1], arc, exit_join, raw[last:]))
+
+
+def separate_vlore_coastal_legs(dense, proj):
+    # Duro Shaska and the coastal road converge near the seafront. Give
+    # their full-width racing ribbons clearance along this shared slope.
+    at = np.array(proj.to_xz(40.43081, 19.49412))
+    i = int(np.argmin(np.linalg.norm(dense - at, axis=1)))
+    span = int(100.0 / SAMPLE)
+    distances = np.arange(-span, span + 1)
+    weight = 0.5 + 0.5 * np.cos(np.pi * distances / span)
+    dense[i + distances] += weight[:, None] * [9.0, 9.0]
+    return dense
 
 
 def smooth_tirana_jog(dense):
@@ -953,7 +981,7 @@ def build_props(osm, ref, hw, terrain_sample, city, proj, out_json, landmark_tf,
         x, z = proj.to_xz(*lm['ll'])
         x += lm.get('offset_x', 0)
         z += lm.get('offset_z', 0)
-        y = float(terrain_sample([x], [z])[0])
+        y = float(terrain_sample([x], [z])[0]) + lm.get('offset_y', 0.0)
         landmarks.append({'id': lm['id'], 'x': round(x, 1), 'y': round(y, 1), 'z': round(z, 1), 'yaw': lm.get('yaw', 0)})
     cafes = []
     if city.get('style') == 'tirana':
@@ -1142,7 +1170,7 @@ def debug_map(osm, ref, hw, city, proj, path, span=4200, size=2100):
 def build(cid, route_only=False):
     city = CITIES[cid]
     lat0, lon0 = city['origin']
-    proj = Proj(lat0, lon0)
+    proj = Proj(lat0, lon0, city.get('latitude_compression', ()))
     hw = city['half_width']
     splat_span = city.get('splat_span', SPLAT_SPAN)
     out = ensure_dir(os.path.join(OUT, cid))
@@ -1150,11 +1178,14 @@ def build(cid, route_only=False):
     osm = Osm(os.path.join(CACHE, 'osm', f'{cid}.json'), proj)
 
     # 1. route the loop
-    g = Graph(osm, exclude_pedestrian=city.get('exclude_pedestrian', False), race_ways=city.get('race_ways', ()))
+    g = Graph(osm, exclude_pedestrian=city.get('exclude_pedestrian', False), race_ways=city.get('race_ways', ()),
+              race_connectors=city.get('race_connectors', ()))
     wps = [proj.to_xz(lat, lon) for lat, lon in city['waypoints']]
     raw = route_loop(g, wps, city.get('leg_clearance', 0.0))
     if len(raw) != len(set(map(tuple, raw))):
         raise RuntimeError(f'{cid}: route doubles back; correct the city waypoints before export')
+    if 'turnaround' in city:
+        raw = route_vlore_turnaround(raw, city, proj)
     dense, length = resample_closed(raw, SAMPLE)
     dense = smooth_closed(dense, 7, 3)
     dense, length = resample_closed(dense, SAMPLE)
@@ -1168,6 +1199,8 @@ def build(cid, route_only=False):
         dense = repair_road_bends(dense, hw)
         dense, length = resample_closed(dense, SAMPLE)
     if cid == 'vlore':
+        dense = separate_vlore_coastal_legs(dense, proj)
+        dense, length = resample_closed(dense, SAMPLE)
         # Round the tight mapped junctions before baking terrain and meshes.
         for sigma in (8, 8, 12, 20, 24, 28):
             dense = repair_road_bends(dense, hw + 1.5, sigma)
@@ -1226,7 +1259,7 @@ def build(cid, route_only=False):
         'id': cid, 'name': city['name'], 'hw': hw, 'length': round(length, 1), 'pts': pts,
         'style': city['style'], 'sea_level': sea_level,
         **({'tunnel': portals} if 'tunnel' in city else {}),
-        **({'stone_street': [proj.to_xz(*ll) for ll in city['stone_street']]} if 'stone_street' in city else {}),
+        **{key: [proj.to_xz(*ll) for ll in city[key]] for key in ('stone_street', 'median', 'turnaround') if key in city},
     })
     log(f'  track.json {len(pts)} control points, elevation {y.min():.1f}..{y.max():.1f} m')
 

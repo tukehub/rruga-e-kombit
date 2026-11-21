@@ -78,11 +78,20 @@ CITIES = {
         'origin': (40.444, 19.491),
         'near_km': 4.5, 'far_km': 24.0,
         'osm_radius': 3900, 'splat_span': 8000.0,
+        # Keep landmark blocks at full scale and compress the longer roads
+        # between them. Coordinates list south end, north end, and scale.
+        'latitude_compression': (
+            (40.4586, 40.4640, 0.43),  # Vlorë–Skelë between theatre and stadium
+            (40.4304, 40.4475, 0.36),  # after the Lungomare entrance and gardens
+            (40.4220, 40.4267, 0.62),  # approach to the coastal tunnel
+        ),
         'building_radius': 3900, 'prop_radius': 3800,
         'half_width': 8.0,
         'exclude_pedestrian': True,
         # The mapped coastal tunnel carries the outbound leg under the headland.
-        'race_ways': (228375726,),
+        'race_ways': (228375726, 177181139),
+        # A short closed-course connector from Celo Picari to Irfan Shehu.
+        'race_connectors': ((2584087207, 1876295954),),
         'waypoints': [
             (40.4704777, 19.4912006),  # Sheshi i Flamurit, north of the monument
             (40.4698724, 19.4911927),  # Boulevard beside the house
@@ -101,13 +110,23 @@ CITIES = {
             (40.4345345, 19.4958724), # Duro Shaska toward Centrale
             (40.4526699, 19.4973512), # Centrale return via Zenel Murra
             (40.4593455, 19.4960511), # Sulejman Delvina
-            (40.4698464, 19.4919386), # Ismet Cakerri in Muradie
-            (40.4706296, 19.4917737), # back across Flag Square
+            (40.47066, 19.49496),
+            (40.4707020, 19.4928220),
+            (40.4714072, 19.4931028),
+            (40.4714889, 19.4919095), # Justin Godard in Muradie
+            (40.4728369, 19.4926983),
+            (40.4733250, 19.4939970),
+            (40.4747170, 19.4939030), # approach the Municipality from the east
+            (40.4748120, 19.4933420), # Bashkia Vlorë
+            (40.4748120, 19.4929890),
+            (40.4713892, 19.4910000), # back across Flag Square
         ],
         'tunnel': ((40.4212347, 19.4876934), (40.4205612, 19.4869312)),
-        'stone_street': ((40.470025, 19.491889), (40.470515, 19.491913)),
+        'turnaround': ((40.4191404, 19.4866541), (40.4197696, 19.4902821)),
+        'median': ((40.4523, 19.4874), (40.4473, 19.4929)),
+        'stone_street': ((40.47165, 19.49202), (40.47258, 19.49256)),
         'scenery_clearances': [
-            ((40.47027, 19.49190), (28, 32)),  # the modeled Muradie street fronts
+            ((40.47210, 19.49228), (42, 66)),  # the modeled Muradie street fronts
             ((40.42090, 19.48733), (63, 67)),  # rock and tunnel portals
         ],
         'landmarks': [
@@ -124,6 +143,17 @@ CITIES = {
              'clear_half': (15, 15)},
             # Centre spot of the mapped pitch; the main stand's facade faces
             # west across its plaza to the boulevard (OSM axis 96.8 deg).
+            {'id': 'petro_marko', 'll': (40.46488, 19.49068), 'yaw': 72,
+             'offset_x': -9, 'clear_half': (29, 26)},
+            {'id': 'skela_roundabout', 'll': (40.454502, 19.486624), 'yaw': 0},
+            {'id': 'skela_corner', 'll': (40.45471, 19.48712), 'yaw': 76,
+             'clear_half': (18, 27)},
+            {'id': 'lungomare_gateway', 'll': (40.45228, 19.48812), 'yaw': 123,
+             'clear_half': (29, 27)},
+            {'id': 'waterfront_courts', 'll': (40.42871, 19.49157), 'yaw': -33,
+             'offset_x': 20, 'offset_y': 1.15, 'offset_z': 21, 'clear_half': (60, 77)},
+            {'id': 'vlore_municipality', 'll': (40.47458, 19.49335), 'yaw': -32,
+             'offset_z': 8, 'clear_half': (31, 27)},
             {'id': 'flamurtari', 'll': (40.456086, 19.488786), 'yaw': -6.8, 'clear_half': (95, 85)},
             # Move the Independence Museum through its park toward the road
             # so the entrance and balcony read from the seafront approach.
@@ -133,7 +163,7 @@ CITIES = {
         # Replace mapped landmark outlines and open the stadium's frontage
         # by omitting the two buildings that flank its plaza.
         'landmark_buildings': [1237374187, 1237374188, 1237374189, 1237374190, 1003616059,
-                               1083265737, 1083173083, 533052049, 731109970],
+                               1083265737, 1083173083, 533052049, 731109970, 491621848, 776920597],
         # Lungomare: from Sheshi Pavarsia past the museum to the end of the
         # promenade. Sea on one side (palms), cafés and 10-15 storey blocks on the other.
         'seafront': {'from': (40.4530, 19.4865), 'to': (40.4462, 19.4943),

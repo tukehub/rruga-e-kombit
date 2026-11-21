@@ -383,6 +383,8 @@ const T := {
 	"city.tetove.name": "Tetovë",
 	"sign.blloku": "BLLOKU",
 	"sign.flamurtari": "FLAMURTARI",
+	"sign.petro_marko": "TEATRI PETRO MARKO",
+	"sign.vlore_municipality": "BASHKIA VLORË",
 	"sign.independence_year": "1912",
 	# ------------ data: paints (Data.CARS)
 	"car.benxi.name": "E kuqe",

@@ -3,6 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 from build_city import Graph
+from common import Proj
 
 
 class GraphRoutingTest(unittest.TestCase):
@@ -33,6 +34,21 @@ class GraphRoutingTest(unittest.TestCase):
         )
         self.assertEqual(Graph(osm).dijkstra(1, 2, set(), set()), [1, 3, 2])
         self.assertEqual(Graph(osm, race_ways=(10,)).dijkstra(1, 2, set(), set()), [1, 2])
+
+
+class ProjectionTest(unittest.TestCase):
+    def test_compression_shortens_only_the_configured_latitude_band(self):
+        projection = Proj(40.0, 19.0, [(40.0, 40.01, 0.5), (39.97, 39.98, 0.75)])
+        plain = Proj(40.0, 19.0)
+        for coords in [(40.015, 19.002), (40.005, 19.002), (39.975, 19.006), (39.95, 18.99)]:
+            restored = projection.to_ll(*projection.to_xz(*coords))
+            self.assertAlmostEqual(restored[0], coords[0])
+            self.assertAlmostEqual(restored[1], coords[1])
+        above = projection.to_xz(40.01, 19.0)[1]
+        self.assertAlmostEqual(projection.to_xz(40.0, 19.0)[1] - above,
+                               (plain.to_xz(40.0, 19.0)[1] - plain.to_xz(40.01, 19.0)[1]) * 0.5)
+        self.assertAlmostEqual(projection.to_xz(39.985, 19.0)[1] - projection.to_xz(39.99, 19.0)[1],
+                               plain.to_xz(39.985, 19.0)[1] - plain.to_xz(39.99, 19.0)[1])
 
 
 if __name__ == '__main__':

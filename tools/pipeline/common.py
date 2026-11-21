@@ -6,6 +6,8 @@ import sys
 import time
 import urllib.request
 
+import numpy as np
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CACHE = os.path.join(ROOT, 'tools', 'cache')
 OUT = os.path.join(ROOT, 'godot', 'assets', 'cities')
@@ -55,16 +57,34 @@ def download(url, path, timeout=600):
 class Proj:
     """Equirectangular local projection: x east, z south (Godot -Z is north), metres."""
 
-    def __init__(self, lat0, lon0):
+    def __init__(self, lat0, lon0, latitude_compression=()):
         self.lat0, self.lon0 = lat0, lon0
         self.kx = math.cos(math.radians(lat0)) * M_PER_DEG_LAT * 1.0033  # ~111320 at the equator
         self.kz = M_PER_DEG_LAT
+        # Each band scales north–south distance while preserving its centreline
+        # alignment with adjacent bands. East–west widths stay full size.
+        self.z_bands = []
+        self.inverse_bands = []
+        removed = 0.0
+        for south, north, scale in sorted(latitude_compression, reverse=True):
+            start = (lat0 - north) * self.kz
+            span = (north - south) * self.kz
+            self.z_bands.append((start, span, 1.0 - scale))
+            self.inverse_bands.append((start - removed, span * scale, 1.0 / scale - 1.0))
+            removed += span * (1.0 - scale)
 
     def to_xz(self, lat, lon):
-        return (lon - self.lon0) * self.kx, -(lat - self.lat0) * self.kz
+        z = (self.lat0 - lat) * self.kz
+        compressed = z
+        for start, span, amount in self.z_bands:
+            compressed = compressed - np.clip(z - start, 0.0, span) * amount
+        return (lon - self.lon0) * self.kx, compressed
 
     def to_ll(self, x, z):
-        return self.lat0 - z / self.kz, self.lon0 + x / self.kx
+        uncompressed = z
+        for start, span, amount in self.inverse_bands:
+            uncompressed = uncompressed + np.clip(z - start, 0.0, span) * amount
+        return self.lat0 - uncompressed / self.kz, self.lon0 + x / self.kx
 
 
 def load_json(p):

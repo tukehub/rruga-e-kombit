@@ -47,6 +47,36 @@ func build(track: RaceTrack, hw: float, wet: float, terrain_height := Callable()
 	set_wet(wet)
 
 
+func add_paved_median(track: RaceTrack, start: float, length_m: float) -> void:
+	# Traversable chamfered curbs keep the race's continuous road width.
+	var mesh := LandmarkKit.begin()
+	var steps := maxi(1, ceili(length_m / 3.0))
+	var lateral := [-0.97, -0.68, 0.68, 0.97]
+	var heights := [0.021, 0.105, 0.105, 0.021]
+	var curb := Color("#cec5ac")
+	var brick := Color("#b1a18a")
+	for i in steps:
+		var a := length_m * i / steps
+		var b := length_m * (i + 1) / steps
+		var width_a := maxf(0.03, smoothstep(0.0, 6.0, minf(a, length_m - a)))
+		var width_b := maxf(0.03, smoothstep(0.0, 6.0, minf(b, length_m - b)))
+		var row_a: Array[Vector3] = []
+		var row_b: Array[Vector3] = []
+		for j in lateral.size():
+			row_a.append(track.pos(start + a, lateral[j] * width_a) + Vector3.UP * heights[j] * width_a)
+			row_b.append(track.pos(start + b, lateral[j] * width_b) + Vector3.UP * heights[j] * width_b)
+		for j in lateral.size() - 1:
+			var color := brick.lerp(brick.darkened(0.08), 0.5 + 0.5 * sin(i * 2.1)) if j == 1 else curb
+			LandmarkKit.quad_facing(mesh, row_a[j], row_b[j], row_b[j + 1], row_a[j + 1], color, Vector3.UP)
+	var mat := LandmarkKit.material(0.89)
+	mat.albedo_texture = preload("res://assets/textures/cobble_diff.jpg")
+	mat.uv1_triplanar = true
+	mat.uv1_scale = Vector3.ONE * 1.6
+	var median := LandmarkKit.mesh_node(mesh, mat, "LungomarePavedMedian", 1400.0)
+	median.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(median)
+
+
 func set_wet(w: float) -> void:
 	surface_mat.set_shader_parameter("wetness", w)
 	var wet := clampf(w, 0.0, 1.0)

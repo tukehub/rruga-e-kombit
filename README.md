@@ -585,13 +585,17 @@ Covered by `tests/city_worlds`, `tools/pipeline/test_water.py` and the rendered
 `tests/sea_visual.tscn`. `build_city.py` runs the bake itself; run it alone on
 an existing dataset with `python3 tools/pipeline/water.py vlore`.
 
-Vlorë's 13.5 km circuit starts at Sheshi i Flamurit and runs down Bulevardi
-Ismail Qemali past the Vlora house, Muradie Mosque and Flamurtari stadium to
-Skelë and the Independence Museum. It follows Lungomare and Aleksandër Moisiu
-to the Uji i Ftohtë coastal tunnel, then climbs Dhimitër Konomi and returns
-through the Centrale area and the tiled Muradie street into Flag Square.
-The mapped tunnel is explicitly enabled for routing and its grade is baked
-from road approaches, since the elevation raster measures the ridge above it.
+Vlorë's 11.0 km circuit starts at Sheshi i Flamurit and follows Bulevardi
+Ismail Qemali past the Vlora house, Muradie Mosque, Teatri Petro Marko and
+Flamurtari stadium. It passes the palm-planted Skelë roundabout and the
+Independence Museum, then follows Lungomare past the twin-wing block, raised
+paved median and waterfront tennis, basketball and football courts. At Uji
+i Ftohtë it passes through the tunnel and makes a hairpin onto the return via
+Centrale. Justin Godard leads through the colorful Muradie streets toward
+Bashkia Vlorë, then back to Flag Square. Shorter stretches between landmarks
+use the same north–south compression in the road graph and terrain. The
+tunnel grade comes from its road approaches because the elevation raster
+measures the ridge above it.
 Its `seafront` entry dresses Lungomare (`tools/pipeline/seafront.py`): the
 sea side, read from the water mask, gets a promenade of procedural palms
 (`scripts/world/palms.gd`); the land side gets café terraces and 10–15 storey
@@ -614,9 +618,10 @@ terracotta hip roof, wooden shutters and balcony on white columns, hanging
 flags, gravel square with palms, well and bust; moved roughly 100 m toward the road
 inside its park so it reads at racing speed) and the great flag on Flag Square. The photo-based Muradie Mosque and
 white-balcony Vlora house share a separate heritage mesh builder. The old-town
-return has colored plaster fronts, wall lanterns and stone setts. The coastal
+return has colored café fronts, bougainvillea, wall lanterns and stone setts.
+The coastal
 tunnel has an open bore, rock portals and a lit interior in both race directions.
-Lungomare also has both palm rows, white parasols with orange valances over
+Lungomare also has two rows of split-frond fan palms, white parasols with orange valances over
 the land-side terraces, pastel 10–15 storey blocks, and stone paving with
 lawns cut by diagonal paths down to the beach (`seafront_promenade.gd`,
 `shaders/seafront_ground.gdshader`). Rendered check:

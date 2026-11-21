@@ -237,9 +237,9 @@ func reset_control_layout() -> void:
 
 
 # Keep the old Vlorë lap times under their original course key. They are
-# incomparable with the longer Uji i Ftohtë circuit.
+# incomparable with the revised Vlorë circuit.
 func _lap_record_key(city: String) -> String:
-	return "vlore:2" if city == "vlore" else city
+	return "vlore:3" if city == "vlore" else city
 
 
 func best_lap_for(city: String) -> float:

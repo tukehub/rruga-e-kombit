@@ -161,7 +161,8 @@ func _build_world() -> void:
 	else:
 		sea.free()
 		sea = null
-	track = RaceTrack.load_city(city_id, bool(Game.race_setting("reverse")))
+	var reverse := bool(Game.race_setting("reverse"))
+	track = RaceTrack.load_city(city_id, reverse)
 	route_guide = RouteGuide.new(track)
 	var tj: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/%s/track.json" % city_id))
 	sky = SkyEnv.new()
@@ -174,18 +175,17 @@ func _build_world() -> void:
 		var tunnel := preload("res://scripts/world/vlore_tunnel.gd").new()
 		tunnel.name = "UjiIFtohteTunnel"
 		road.add_child(tunnel)
-		tunnel.build(track, tj.tunnel, bool(Game.race_setting("reverse")), terrain)
+		tunnel.build(track, tj.tunnel, reverse, terrain)
+	if tj.has("median"):
+		var median := _road_section(tj.median, reverse)
+		road.add_paved_median(track, median.x, median.y)
 	if tj.has("stone_street"):
-		var reverse := bool(Game.race_setting("reverse"))
-		var entry: Array = tj.stone_street[1 if reverse else 0]
-		var exit: Array = tj.stone_street[0 if reverse else 1]
-		var start := track.locate_xz(entry[0], entry[1]).x
-		var length := track.mod_s(track.locate_xz(exit[0], exit[1]).x - start)
+		var section := _road_section(tj.stone_street, reverse)
 		var street := preload("res://scripts/world/muradie_street.gd").new()
 		street.name = "MuradieStreet"
 		road.add_child(street)
-		street.build(track, start, length)
-		road.surface_mat.set_shader_parameter("stone_section", Vector2(start, length))
+		street.build(track, section.x, section.y)
+		road.surface_mat.set_shader_parameter("stone_section", section)
 	var route_signs := RouteSigns.new()
 	route_signs.name = "RouteSigns"
 	road.add_child(route_signs)
@@ -215,6 +215,14 @@ func _build_world() -> void:
 	if sea != null:
 		sea.set_env(sky.wet, sky.night)
 	road.set_wet(sky.wet)
+
+
+func _road_section(endpoints: Array, reverse: bool) -> Vector2:
+	var entry: Array = endpoints[1 if reverse else 0]
+	var exit: Array = endpoints[0 if reverse else 1]
+	var start := track.locate_xz(entry[0], entry[1]).x
+	var length := track.mod_s(track.locate_xz(exit[0], exit[1]).x - start)
+	return Vector2(start, length)
 
 
 func _setup_pines() -> void:

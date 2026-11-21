@@ -120,7 +120,10 @@ func _ready() -> void:
 					marks = child
 			var expected := {"flamurtari": "FlamurtariStadium", "independence": "IndependenceMonument",
 				"independence_museum": "IndependenceHouse", "flagpole_big": "GreatFlag",
-				"vlora_house": "VloreHeritage/VloraHouseFacade", "muradie_mosque": "VloreHeritage/MuradieMasonry"}
+				"vlora_house": "VloreHeritage/VloraHouseFacade", "muradie_mosque": "VloreHeritage/MuradieMasonry",
+				"petro_marko": "VloreCivic/PetroMarkoTheatre", "skela_roundabout": "VloreCivic/SkelaPlantedIsland",
+				"lungomare_gateway": "VloreCivic/LungomareTwinWings", "waterfront_courts": "WaterfrontCourts/CourtSurfacesAndFixtures",
+				"vlore_municipality": "VloreCivic/MunicipalityFacade"}
 			for id: String in expected:
 				var root := marks.get_node(id) as Node3D
 				assert(root.get_node_or_null(str(expected[id])) != null, "Vlorë landmark model missing: " + id)
@@ -152,16 +155,29 @@ func _test_vlore_circuit(scene: RaceScene, marks: Node) -> void:
 	var track := scene.track
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/cities/vlore/track.json"))
 	var prior := 0.0
-	for landmark in ["vlora_house", "muradie_mosque", "flamurtari", "independence_museum"]:
+	assert(track.L < 11200.0, "the compact Vlorë circuit must stay near 11 km")
+	for landmark in ["vlora_house", "muradie_mosque", "petro_marko", "flamurtari", "skela_roundabout",
+			"independence_museum", "lungomare_gateway", "waterfront_courts"]:
 		var at := (marks.get_node(landmark) as Node3D).position
 		var s := track.locate_xz(at.x, at.z).x
-		assert(s > prior and s < track.L * 0.30, "Vlorë outbound landmarks must be passed in order")
+		assert(s > prior, "Vlorë outbound landmarks must be passed in order: " + landmark)
 		prior = s
 	var entry := track.locate_xz(data.tunnel[0][0], data.tunnel[0][1]).x
 	var exit := track.locate_xz(data.tunnel[1][0], data.tunnel[1][1]).x
 	var old_town := track.locate_xz(data.stone_street[0][0], data.stone_street[0][1]).x
-	assert(prior < entry and entry + 70.0 < exit and exit < old_town and old_town > track.L - 240.0)
+	var turn := track.locate_xz(data.turnaround[0][0], data.turnaround[0][1]).x
+	var city_hall := (marks.get_node("vlore_municipality") as Node3D).position
+	var hall_s := track.locate_xz(city_hall.x, city_hall.z).x
+	assert(prior < entry and entry + 70.0 < exit and exit < turn and turn < old_town and old_town < hall_s)
+	assert(hall_s > track.L - 850.0, "town hall should be on the final approach to Flag Square")
+	var approach := track.tangent(turn)
+	var turn_dot := 1.0
+	for after in range(25, 170, 5):
+		turn_dot = minf(turn_dot, approach.dot(track.tangent(turn + after)))
+	assert(turn_dot < -0.85, "the road reverses heading after the southern portal")
 	assert(scene.road.get_node_or_null("UjiIFtohteTunnel/TunnelBore") != null)
+	var median := scene.road.get_node_or_null("LungomarePavedMedian") as MeshInstance3D
+	assert(median != null and median.mesh.get_aabb().size.length() < 900.0, "Lungomare needs a short raised median")
 	assert(scene.road.get_node_or_null("MuradieStreet/MuradieStreetFronts") != null)
 	for i in track.M * 4:
 		var s := i * track.ds * 0.25

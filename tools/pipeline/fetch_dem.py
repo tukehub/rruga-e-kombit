@@ -64,13 +64,12 @@ def sample(lat, lon):
 def window(city_id, cell_m, half_km):
     c = CITIES[city_id]
     lat0, lon0 = c['origin']
-    pr = Proj(lat0, lon0)
+    pr = Proj(lat0, lon0, c.get('latitude_compression', ()))
     n = int(round(half_km * 2000 / cell_m)) + 1
     xs = (np.arange(n) - (n - 1) / 2) * cell_m
     zs = (np.arange(n) - (n - 1) / 2) * cell_m
     X, Z = np.meshgrid(xs, zs)
-    lat = lat0 - Z / pr.kz
-    lon = lon0 + X / pr.kx
+    lat, lon = pr.to_ll(X, Z)
     h = sample(lat, lon)
     return h, xs[0], zs[0], cell_m
 
